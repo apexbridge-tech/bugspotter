@@ -36,7 +36,9 @@ export class ConsoleCapture {
         }
 
         this.logs.push(log);
-        if (this.logs.length > this.maxLogs) this.logs.shift();
+        if (this.logs.length > this.maxLogs) {
+          this.logs.shift();
+        }
         original.apply(console, args);
       };
     });
@@ -46,7 +48,7 @@ export class ConsoleCapture {
     return [...this.logs];
   }
 
-    destroy(): void {
+  destroy(): void {
     this.originalMethods.forEach((original, method) => {
       // Restore original console methods
       type ConsoleMethod = 'log' | 'warn' | 'error' | 'info' | 'debug';

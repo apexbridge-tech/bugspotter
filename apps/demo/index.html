@@ -173,7 +173,8 @@
       }
 
       @keyframes pulse {
-        0%, 100% {
+        0%,
+        100% {
           opacity: 1;
         }
         50% {
@@ -230,7 +231,9 @@
           <h2>🌐 Network Requests <span class="badge">Test Network Capture</span></h2>
           <p>Make various API calls to test network request capture.</p>
           <div class="button-grid">
-            <button class="btn-success" onclick="testSuccessfulRequest()">Successful API Call</button>
+            <button class="btn-success" onclick="testSuccessfulRequest()">
+              Successful API Call
+            </button>
             <button class="btn-danger" onclick="testFailedRequest()">Failed API Call</button>
             <button class="btn-info" onclick="testMultipleRequests()">Multiple Requests</button>
             <button class="btn-warning" onclick="testXHRRequest()">XHR Request</button>
@@ -259,7 +262,10 @@
         <!-- Main Capture Button -->
         <div class="section">
           <h2>🚀 Capture Everything</h2>
-          <p>Click the button below to capture all data: console logs, network requests, screenshot, and metadata.</p>
+          <p>
+            Click the button below to capture all data: console logs, network requests, screenshot,
+            and metadata.
+          </p>
           <div class="button-grid">
             <button class="btn-capture" onclick="captureBugReport()">🐛 Capture Bug Report</button>
           </div>

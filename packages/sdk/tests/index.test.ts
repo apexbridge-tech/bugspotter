@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { BugSpotter } from '../src/index';
 import type { BugSpotterConfig } from '../src/index';
 
@@ -174,18 +174,20 @@ describe('BugSpotter', () => {
 
     it('should clean up console interceptor on destroy', () => {
       const bugspotter = BugSpotter.init({ apiKey: 'test-key' });
-      const originalLog = console.log;
+      const _originalLog = console.log;
 
       bugspotter.destroy();
 
       // After destroy, console should be restored (we can't directly check this,
       // but we can verify no errors occur)
-      expect(() => console.log('test')).not.toThrow();
+      expect(() => {
+        return console.log('test');
+      }).not.toThrow();
     });
 
     it('should clean up network interceptor on destroy', () => {
       const bugspotter = BugSpotter.init({ apiKey: 'test-key' });
-      const originalFetch = global.fetch;
+      const _originalFetch = global.fetch;
 
       bugspotter.destroy();
 

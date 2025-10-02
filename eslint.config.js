@@ -43,6 +43,8 @@ export default tseslint.config(
         },
       ],
       'no-console': 'off',
+      curly: ['error', 'all'],
+      'arrow-body-style': ['error', 'always'],
     },
   },
   {

@@ -44,7 +44,9 @@ export class NetworkCapture {
           duration: Date.now() - startTime,
           timestamp: startTime,
         });
-        if (this.requests.length > this.maxRequests) this.requests.shift();
+        if (this.requests.length > this.maxRequests) {
+          this.requests.shift();
+        }
         return response;
       } catch (error) {
         this.requests.push({
@@ -67,7 +69,12 @@ export class NetworkCapture {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const captureInstance = this; // Capture the NetworkCapture instance
 
-    XHR.open = function (this: TrackedXMLHttpRequest, method: string, url: string, ...args: unknown[]) {
+    XHR.open = function (
+      this: TrackedXMLHttpRequest,
+      method: string,
+      url: string,
+      ...args: unknown[]
+    ) {
       this._method = method;
       this._url = url;
       this._startTime = Date.now();

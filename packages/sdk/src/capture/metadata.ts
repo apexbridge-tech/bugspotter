@@ -24,20 +24,38 @@ export class MetadataCapture {
 
   private detectBrowser(): string {
     const ua = navigator.userAgent;
-    if (ua.includes('Edg')) return 'Edge'; // Check Edge before Chrome
-    if (ua.includes('Chrome') && !ua.includes('Edge')) return 'Chrome';
-    if (ua.includes('Firefox')) return 'Firefox';
-    if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+    if (ua.includes('Edg')) {
+      return 'Edge';
+    } // Check Edge before Chrome
+    if (ua.includes('Chrome') && !ua.includes('Edge')) {
+      return 'Chrome';
+    }
+    if (ua.includes('Firefox')) {
+      return 'Firefox';
+    }
+    if (ua.includes('Safari') && !ua.includes('Chrome')) {
+      return 'Safari';
+    }
     return 'Unknown';
   }
 
   private detectOS(): string {
     const ua = navigator.userAgent;
-    if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS'; // Check iOS before Mac
-    if (ua.includes('Android')) return 'Android'; // Check Android before Linux
-    if (ua.includes('Win')) return 'Windows';
-    if (ua.includes('Mac')) return 'macOS';
-    if (ua.includes('Linux')) return 'Linux';
+    if (ua.includes('iPhone') || ua.includes('iPad')) {
+      return 'iOS';
+    } // Check iOS before Mac
+    if (ua.includes('Android')) {
+      return 'Android';
+    } // Check Android before Linux
+    if (ua.includes('Win')) {
+      return 'Windows';
+    }
+    if (ua.includes('Mac')) {
+      return 'macOS';
+    }
+    if (ua.includes('Linux')) {
+      return 'Linux';
+    }
     return 'Unknown';
   }
 }
