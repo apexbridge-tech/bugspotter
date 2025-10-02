@@ -1,0 +1,15 @@
+{
+  "name": "bugspotter",
+  "version": "0.1.0",
+  "description": "Intelligent bug reporting platform with one-click context capture",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter \"./packages/*\" dev",
+    "build": "pnpm --filter \"./packages/*\" build",
+    "test": "pnpm --filter \"./packages/*\" test"
+  },
+  "keywords": ["bug-tracking", "qa", "testing"],
+  "author": "",
+  "license": "MIT",
+  "packageManager": "pnpm@10.17.1"
+}
