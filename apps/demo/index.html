@@ -259,12 +259,27 @@
           </div>
         </div>
 
+        <!-- Floating Button Widget Section -->
+        <div class="section">
+          <h2>🎈 Floating Button Widget <span class="badge">New!</span></h2>
+          <p>
+            The floating bug button appears in the bottom-right corner. Click it to capture a bug
+            report! You can also test the widget configuration options below.
+          </p>
+          <div class="button-grid">
+            <button class="btn-info" onclick="showFloatingButton()">Show Button</button>
+            <button class="btn-warning" onclick="hideFloatingButton()">Hide Button</button>
+            <button class="btn-success" onclick="changeButtonIcon()">Change Icon</button>
+            <button class="btn-danger" onclick="changeButtonColor()">Change Color</button>
+          </div>
+        </div>
+
         <!-- Main Capture Button -->
         <div class="section">
           <h2>🚀 Capture Everything</h2>
           <p>
-            Click the button below to capture all data: console logs, network requests, screenshot,
-            and metadata.
+            Click the floating bug button (bottom-right) or the button below to capture all data:
+            console logs, network requests, screenshot, and metadata.
           </p>
           <div class="button-grid">
             <button class="btn-capture" onclick="captureBugReport()">🐛 Capture Bug Report</button>
@@ -279,12 +294,29 @@
     <script src="../../packages/sdk/dist/bugspotter.min.js"></script>
     <script>
       // Initialize BugSpotter
-      const bugSpotter = BugSpotter.init({
+      const bugSpotter = BugSpotter.BugSpotter.init({
         apiKey: 'demo-api-key-12345',
         endpoint: 'https://api.bugspotter.example.com',
       });
 
       console.log('✅ BugSpotter SDK initialized successfully');
+
+      // Initialize Floating Button Widget
+      const floatingButton = new BugSpotter.FloatingButton({
+        position: 'bottom-right',
+        icon: '🐛',
+        backgroundColor: '#ef4444',
+        size: 60,
+        offset: { x: 20, y: 20 },
+      });
+
+      // Add click handler to floating button
+      floatingButton.onClick(async () => {
+        console.log('🐛 Floating button clicked!');
+        await captureBugReport();
+      });
+
+      console.log('✅ Floating button widget initialized');
 
       // Make an initial API call on page load
       fetch('https://jsonplaceholder.typicode.com/posts/1')
@@ -383,13 +415,41 @@
         alert('Check the console for current metadata!');
       }
 
+      // Floating Button Widget Controls
+      function showFloatingButton() {
+        floatingButton.show();
+        console.log('👁️ Floating button shown');
+      }
+
+      function hideFloatingButton() {
+        floatingButton.hide();
+        console.log('🙈 Floating button hidden');
+      }
+
+      function changeButtonIcon() {
+        const icons = ['🐛', '🚨', '📝', '💬', '⚠️', '🔔'];
+        const randomIcon = icons[Math.floor(Math.random() * icons.length)];
+        floatingButton.setIcon(randomIcon);
+        console.log(`🎨 Button icon changed to: ${randomIcon}`);
+      }
+
+      function changeButtonColor() {
+        const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        floatingButton.setBackgroundColor(randomColor);
+        console.log(`🎨 Button color changed to: ${randomColor}`);
+      }
+
       // Main Capture Function
       async function captureBugReport() {
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '⏳ Capturing...';
-        btn.classList.add('loading');
-        btn.disabled = true;
+        const btn = event?.target;
+        const originalText = btn?.textContent;
+        
+        if (btn) {
+          btn.textContent = '⏳ Capturing...';
+          btn.classList.add('loading');
+          btn.disabled = true;
+        }
 
         console.log('🐛 Starting bug report capture...');
 
@@ -420,9 +480,11 @@
           document.getElementById('output').textContent =
             '❌ Error capturing bug report:\n' + error.message;
         } finally {
-          btn.textContent = originalText;
-          btn.classList.remove('loading');
-          btn.disabled = false;
+          if (btn) {
+            btn.textContent = originalText;
+            btn.classList.remove('loading');
+            btn.disabled = false;
+          }
         }
       }
 

@@ -81,3 +81,7 @@ export { ScreenshotCapture } from './capture/screenshot';
 export { ConsoleCapture } from './capture/console';
 export { NetworkCapture } from './capture/network';
 export { MetadataCapture } from './capture/metadata';
+
+// Export widget components
+export { FloatingButton } from './widget/button';
+export type { FloatingButtonOptions } from './widget/button';

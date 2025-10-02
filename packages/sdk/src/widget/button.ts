@@ -47,7 +47,15 @@ export class FloatingButton {
     };
     
     this.button = this.createButton();
-    document.body.appendChild(this.button);
+    
+    // Ensure DOM is ready before appending
+    if (document.body) {
+      document.body.appendChild(this.button);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body.appendChild(this.button);
+      });
+    }
   }
   
   private createButton(): HTMLButtonElement {
