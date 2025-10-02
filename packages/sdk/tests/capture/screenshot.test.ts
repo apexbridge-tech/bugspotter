@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ScreenshotCapture } from '../src/capture/screenshot';
+import { ScreenshotCapture } from '../../src/capture/screenshot';
 import * as htmlToImage from 'html-to-image';
 
 vi.mock('html-to-image');

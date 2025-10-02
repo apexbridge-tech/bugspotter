@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, beforeAll } from 'vitest';
-import { NetworkCapture } from '../src/capture/network';
+import { NetworkCapture } from '../../src/capture/network';
 
 describe('NetworkCapture', () => {
   let networkCapture: NetworkCapture;

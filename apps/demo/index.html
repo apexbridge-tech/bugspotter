@@ -3,55 +3,426 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BugSpotter Demo</title>
+    <title>BugSpotter Demo - Test All Capture Features</title>
     <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
       body {
-        font-family: Arial, sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      .content {
         padding: 2rem;
       }
-      button {
-        padding: 1rem 2rem;
-        font-size: 1.2rem;
-        cursor: pointer;
+
+      .section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
       }
+
+      .section h2 {
+        color: #667eea;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+      }
+
+      .section p {
+        color: #666;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+      }
+
+      .button-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      button {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-success {
+        background: #10b981;
+        color: white;
+      }
+
+      .btn-warning {
+        background: #f59e0b;
+        color: white;
+      }
+
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+
+      .btn-info {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .btn-capture {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        font-size: 1.2rem;
+        padding: 1.25rem;
+      }
+
       #output {
         margin-top: 2rem;
+        padding: 1.5rem;
+        background: #1e293b;
+        color: #e2e8f0;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        max-height: 600px;
+        overflow-y: auto;
         white-space: pre-wrap;
+        word-break: break-word;
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      #output:empty::before {
+        content: 'Click "🐛 Capture Bug Report" to see captured data...';
+        color: #64748b;
+        font-style: italic;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #667eea;
+        color: white;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+      }
+
+      .test-element {
+        padding: 1rem;
+        background: white;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        margin-top: 1rem;
+        text-align: center;
+        color: #6b7280;
+      }
+
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .loading {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      /* Scrollbar styling */
+      #output::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #output::-webkit-scrollbar-track {
+        background: #0f172a;
+        border-radius: 8px;
+      }
+
+      #output::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 8px;
+      }
+
+      #output::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
       }
     </style>
   </head>
   <body>
-    <h1>BugSpotter Demo</h1>
-    <button onclick="triggerBug()">Capture Bug</button>
-    <div id="output"></div>
+    <div class="container">
+      <div class="header">
+        <h1>🐛 BugSpotter SDK Demo</h1>
+        <p>Test all capture features: Screenshots, Console Logs, Network Requests & Metadata</p>
+      </div>
+
+      <div class="content">
+        <!-- Console Logging Section -->
+        <div class="section">
+          <h2>📝 Console Logging <span class="badge">Test Console Capture</span></h2>
+          <p>Trigger different console log levels to test console capture functionality.</p>
+          <div class="button-grid">
+            <button class="btn-info" onclick="testConsoleLog()">console.log</button>
+            <button class="btn-warning" onclick="testConsoleWarn()">console.warn</button>
+            <button class="btn-danger" onclick="testConsoleError()">console.error</button>
+            <button class="btn-success" onclick="testConsoleInfo()">console.info</button>
+          </div>
+        </div>
+
+        <!-- Network Requests Section -->
+        <div class="section">
+          <h2>🌐 Network Requests <span class="badge">Test Network Capture</span></h2>
+          <p>Make various API calls to test network request capture.</p>
+          <div class="button-grid">
+            <button class="btn-success" onclick="testSuccessfulRequest()">Successful API Call</button>
+            <button class="btn-danger" onclick="testFailedRequest()">Failed API Call</button>
+            <button class="btn-info" onclick="testMultipleRequests()">Multiple Requests</button>
+            <button class="btn-warning" onclick="testXHRRequest()">XHR Request</button>
+          </div>
+        </div>
+
+        <!-- Screenshot Section -->
+        <div class="section">
+          <h2>📸 Screenshot <span class="badge">Auto-captured</span></h2>
+          <p>Screenshots are automatically captured when you click "Capture Bug Report" below.</p>
+          <div class="test-element" id="screenshot-test">
+            <strong>🎨 This content will be captured in the screenshot!</strong>
+            <p>ID: screenshot-test-element-${Date.now()}</p>
+          </div>
+        </div>
+
+        <!-- Metadata Section -->
+        <div class="section">
+          <h2>📊 Browser Metadata <span class="badge">Auto-captured</span></h2>
+          <p>Browser information, viewport size, OS, and timestamp are automatically captured.</p>
+          <div class="button-grid">
+            <button class="btn-info" onclick="showCurrentMetadata()">Show Current Metadata</button>
+          </div>
+        </div>
+
+        <!-- Main Capture Button -->
+        <div class="section">
+          <h2>🚀 Capture Everything</h2>
+          <p>Click the button below to capture all data: console logs, network requests, screenshot, and metadata.</p>
+          <div class="button-grid">
+            <button class="btn-capture" onclick="captureBugReport()">🐛 Capture Bug Report</button>
+          </div>
+        </div>
+
+        <!-- Output Section -->
+        <div id="output"></div>
+      </div>
+    </div>
 
     <script src="../../packages/sdk/dist/bugspotter.min.js"></script>
     <script>
+      // Initialize BugSpotter
       const bugSpotter = BugSpotter.init({
-        apiKey: 'test-key-123',
+        apiKey: 'demo-api-key-12345',
+        endpoint: 'https://api.bugspotter.example.com',
       });
 
-      // Test API call on page load
+      console.log('✅ BugSpotter SDK initialized successfully');
+
+      // Make an initial API call on page load
       fetch('https://jsonplaceholder.typicode.com/posts/1')
         .then((res) => res.json())
-        .then((data) => console.log('API response:', data))
-        .catch((err) => console.error('API error:', err));
+        .then((data) => console.log('📡 Initial API call successful:', data.title))
+        .catch((err) => console.error('❌ Initial API call failed:', err));
 
-      async function triggerBug() {
-        console.log('User clicked capture button');
-        console.warn('This is a warning');
-        console.error('This is an error');
-
-        // Make another API call before capturing
-        try {
-          await fetch('https://jsonplaceholder.typicode.com/posts/2');
-        } catch (err) {
-          console.error('Failed to fetch:', err);
-        }
-
-        const data = await bugSpotter.capture();
-        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+      // Console Logging Tests
+      function testConsoleLog() {
+        console.log('🔵 This is a LOG message with data:', {
+          timestamp: Date.now(),
+          user: 'demo-user',
+          action: 'button-click',
+        });
       }
+
+      function testConsoleWarn() {
+        console.warn('⚠️ This is a WARNING message:', 'Something might be wrong!');
+      }
+
+      function testConsoleError() {
+        console.error('🔴 This is an ERROR message:', new Error('Something went wrong!'));
+      }
+
+      function testConsoleInfo() {
+        console.info('ℹ️ This is an INFO message:', 'Informational data', [1, 2, 3]);
+      }
+
+      // Network Request Tests
+      function testSuccessfulRequest() {
+        console.log('🌐 Making successful API request...');
+        fetch('https://jsonplaceholder.typicode.com/posts/1')
+          .then((res) => res.json())
+          .then((data) => console.log('✅ Successful request:', data.title))
+          .catch((err) => console.error('❌ Request failed:', err));
+      }
+
+      function testFailedRequest() {
+        console.log('🌐 Making failed API request...');
+        fetch('https://jsonplaceholder.typicode.com/invalid-endpoint-404')
+          .then((res) => {
+            if (!res.ok) {
+              console.error('❌ Request failed with status:', res.status);
+            }
+            return res.json();
+          })
+          .catch((err) => console.error('❌ Network error:', err));
+      }
+
+      function testMultipleRequests() {
+        console.log('🌐 Making multiple API requests...');
+        const requests = [1, 2, 3].map((id) =>
+          fetch(`https://jsonplaceholder.typicode.com/posts/${id}`)
+            .then((res) => res.json())
+            .then((data) => console.log(`✅ Request ${id} complete:`, data.title))
+        );
+
+        Promise.all(requests)
+          .then(() => console.log('✅ All requests completed'))
+          .catch((err) => console.error('❌ Some requests failed:', err));
+      }
+
+      function testXHRRequest() {
+        console.log('🌐 Making XMLHttpRequest...');
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'https://jsonplaceholder.typicode.com/posts/5');
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            console.log('✅ XHR request successful');
+          }
+        };
+        xhr.onerror = function () {
+          console.error('❌ XHR request failed');
+        };
+        xhr.send();
+      }
+
+      // Metadata Display
+      function showCurrentMetadata() {
+        const metadata = {
+          userAgent: navigator.userAgent,
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+          screen: {
+            width: window.screen.width,
+            height: window.screen.height,
+            pixelRatio: window.devicePixelRatio,
+          },
+        };
+
+        console.log('📊 Current Browser Metadata:', metadata);
+        alert('Check the console for current metadata!');
+      }
+
+      // Main Capture Function
+      async function captureBugReport() {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Capturing...';
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        console.log('🐛 Starting bug report capture...');
+
+        try {
+          // Add a small delay to ensure all console logs are captured
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          const data = await bugSpotter.capture();
+
+          console.log('✅ Bug report captured successfully!');
+
+          // Format the output nicely
+          const formattedData = {
+            '🕐 Captured At': new Date(data.metadata.timestamp).toLocaleString(),
+            '🌍 URL': data.metadata.url,
+            '🖥️ Browser': data.metadata.browser,
+            '💻 OS': data.metadata.os,
+            '📐 Viewport': `${data.metadata.viewport.width}x${data.metadata.viewport.height}`,
+            '📝 Console Logs': `${data.console.length} entries`,
+            '🌐 Network Requests': `${data.network.length} requests`,
+            '📸 Screenshot': data.screenshot === 'SCREENSHOT_FAILED' ? '❌ Failed' : '✅ Captured',
+            '📦 Full Data': data,
+          };
+
+          document.getElementById('output').textContent = JSON.stringify(formattedData, null, 2);
+        } catch (error) {
+          console.error('❌ Failed to capture bug report:', error);
+          document.getElementById('output').textContent =
+            '❌ Error capturing bug report:\n' + error.message;
+        } finally {
+          btn.textContent = originalText;
+          btn.classList.remove('loading');
+          btn.disabled = false;
+        }
+      }
+
+      // Add some test data on page load
+      console.log('🎬 Demo page loaded successfully!');
+      console.info('💡 Try clicking different buttons to test capture functionality');
     </script>
   </body>
 </html>

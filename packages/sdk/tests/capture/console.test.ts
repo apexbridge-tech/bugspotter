@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ConsoleCapture } from '../src/capture/console';
+import { ConsoleCapture } from '../../src/capture/console';
 
 describe('ConsoleCapture', () => {
   let consoleCapture: ConsoleCapture;
