@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ScreenshotCapture } from '../src/capture/screenshot';
 import * as htmlToImage from 'html-to-image';
 
@@ -24,7 +24,7 @@ describe('ScreenshotCapture', () => {
       expect.objectContaining({
         quality: 0.8,
         cacheBust: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
       })
     );
   });
@@ -32,10 +32,10 @@ describe('ScreenshotCapture', () => {
   it('should use devicePixelRatio from window', async () => {
     const mockDataUrl = 'data:image/png;base64,mockImageData';
     vi.mocked(htmlToImage.toPng).mockResolvedValue(mockDataUrl);
-    
+
     Object.defineProperty(window, 'devicePixelRatio', {
       writable: true,
-      value: 2
+      value: 2,
     });
 
     await screenshotCapture.capture();
@@ -43,7 +43,7 @@ describe('ScreenshotCapture', () => {
     expect(htmlToImage.toPng).toHaveBeenCalledWith(
       document.body,
       expect.objectContaining({
-        pixelRatio: 2
+        pixelRatio: 2,
       })
     );
   });
@@ -59,12 +59,12 @@ describe('ScreenshotCapture', () => {
 
     // Mock element with attribute
     const elementWithAttr = {
-      hasAttribute: vi.fn().mockReturnValue(true)
+      hasAttribute: vi.fn().mockReturnValue(true),
     };
-    
+
     // Mock element without attribute
     const elementWithoutAttr = {
-      hasAttribute: vi.fn().mockReturnValue(false)
+      hasAttribute: vi.fn().mockReturnValue(false),
     };
 
     expect(filterFn?.(elementWithAttr as any)).toBe(false);
@@ -78,10 +78,7 @@ describe('ScreenshotCapture', () => {
     const result = await screenshotCapture.capture();
 
     expect(result).toBe('SCREENSHOT_FAILED');
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Screenshot capture failed:',
-      expect.any(Error)
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Screenshot capture failed:', expect.any(Error));
 
     consoleErrorSpy.mockRestore();
   });

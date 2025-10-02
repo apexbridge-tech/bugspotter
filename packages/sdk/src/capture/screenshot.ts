@@ -11,7 +11,7 @@ export class ScreenshotCapture {
         filter: (node) => {
           // Exclude elements with data-exclude attribute
           return !node.hasAttribute?.('data-bugspotter-exclude');
-        }
+        },
       });
       return dataUrl;
     } catch (error) {

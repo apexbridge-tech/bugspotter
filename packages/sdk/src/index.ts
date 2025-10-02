@@ -30,7 +30,7 @@ export class BugSpotter {
       network: this.network.getRequests(),
       timestamp: Date.now(),
       url: window.location.href,
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
     };
   }
 }

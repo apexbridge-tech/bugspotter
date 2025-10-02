@@ -1,6 +1,7 @@
 # BugSpotter Tech Stack
 
 ## Frontend SDK
+
 - **TypeScript** - Type-safe development
 - **Webpack** - Module bundling
 - **dom-to-image-more** - CSP-safe screenshot capture (primary)
@@ -8,6 +9,7 @@
 - **pako** - Data compression
 
 ## Development Tools
+
 - **Node.js 22.20.0** - Runtime environment
 - **pnpm 10.17.1** - Fast package manager
 - **Cursor IDE** - AI-assisted development
@@ -15,6 +17,7 @@
 - **Playwright** - E2E testing
 
 ## Infrastructure (Planned)
+
 - **Node.js + Express** - Backend API
 - **PostgreSQL** - Metadata storage
 - **Redis** - Session cache
@@ -22,6 +25,7 @@
 - **Vercel/Railway** - Hosting
 
 ## Current Status
+
 - ✅ SDK core structure
 - ✅ Console capture
 - ✅ Network capture

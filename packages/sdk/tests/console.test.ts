@@ -1,20 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ConsoleCapture, LogEntry } from '../src/capture/console';
+import { ConsoleCapture } from '../src/capture/console';
 
 describe('ConsoleCapture', () => {
   let consoleCapture: ConsoleCapture;
-  let originalConsole: any;
+  let _originalConsole: any;
 
   beforeEach(() => {
     // Store original console methods
-    originalConsole = {
+    _originalConsole = {
       log: console.log,
       warn: console.warn,
       error: console.error,
       info: console.info,
-      debug: console.debug
+      debug: console.debug,
     };
-    
+
     consoleCapture = new ConsoleCapture();
   });
 
@@ -25,9 +25,9 @@ describe('ConsoleCapture', () => {
 
   it('should capture console.log messages', () => {
     console.log('Test log message');
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs).toHaveLength(1);
     expect(logs[0].level).toBe('log');
     expect(logs[0].message).toBe('Test log message');
@@ -36,9 +36,9 @@ describe('ConsoleCapture', () => {
 
   it('should capture console.warn messages', () => {
     console.warn('Test warning');
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs).toHaveLength(1);
     expect(logs[0].level).toBe('warn');
     expect(logs[0].message).toBe('Test warning');
@@ -46,9 +46,9 @@ describe('ConsoleCapture', () => {
 
   it('should capture console.error messages with stack', () => {
     console.error('Test error');
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs).toHaveLength(1);
     expect(logs[0].level).toBe('error');
     expect(logs[0].message).toBe('Test error');
@@ -58,9 +58,9 @@ describe('ConsoleCapture', () => {
   it('should capture console.info and console.debug messages', () => {
     console.info('Info message');
     console.debug('Debug message');
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs).toHaveLength(2);
     expect(logs[0].level).toBe('info');
     expect(logs[1].level).toBe('debug');
@@ -68,18 +68,18 @@ describe('ConsoleCapture', () => {
 
   it('should handle multiple arguments', () => {
     console.log('Message with', 'multiple', 'arguments');
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs[0].message).toBe('Message with multiple arguments');
   });
 
   it('should stringify object arguments', () => {
     const obj = { key: 'value', nested: { data: 123 } };
     console.log('Object:', obj);
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs[0].message).toContain('Object:');
     expect(logs[0].message).toContain('"key":"value"');
     expect(logs[0].message).toContain('"nested"');
@@ -88,11 +88,11 @@ describe('ConsoleCapture', () => {
   it('should handle circular references in objects', () => {
     const circularObj: any = { name: 'test' };
     circularObj.self = circularObj;
-    
+
     console.log(circularObj);
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs).toHaveLength(1);
     expect(logs[0].message).toBeTruthy();
   });
@@ -102,9 +102,9 @@ describe('ConsoleCapture', () => {
     for (let i = 0; i < 150; i++) {
       console.log(`Log ${i}`);
     }
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs).toHaveLength(100);
     expect(logs[0].message).toBe('Log 50'); // First 50 should be removed
     expect(logs[99].message).toBe('Log 149');
@@ -112,10 +112,10 @@ describe('ConsoleCapture', () => {
 
   it('should return a copy of logs array', () => {
     console.log('Test message');
-    
+
     const logs1 = consoleCapture.getLogs();
     const logs2 = consoleCapture.getLogs();
-    
+
     expect(logs1).not.toBe(logs2); // Different array instances
     expect(logs1).toEqual(logs2); // But same content
   });
@@ -124,13 +124,13 @@ describe('ConsoleCapture', () => {
     const logSpy = vi.fn();
     const originalLog = console.log;
     console.log = logSpy;
-    
+
     // Create new instance after mocking
     const capture = new ConsoleCapture();
     console.log('Test');
-    
+
     expect(logSpy).toHaveBeenCalled();
-    
+
     capture.destroy();
     console.log = originalLog;
   });
@@ -138,26 +138,26 @@ describe('ConsoleCapture', () => {
   it('should restore original console methods on destroy', () => {
     const originalLog = console.log;
     const testCapture = new ConsoleCapture();
-    
+
     testCapture.destroy();
-    
+
     // After destroy, console.log should be restored to original
     expect(console.log).toBe(originalLog);
   });
 
   it('should handle null and undefined values', () => {
     console.log('Value:', null, undefined);
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs[0].message).toBe('Value: null undefined');
   });
 
   it('should handle numeric and boolean values', () => {
     console.log(42, true, false, 3.14);
-    
+
     const logs = consoleCapture.getLogs();
-    
+
     expect(logs[0].message).toBe('42 true false 3.14');
   });
 });

@@ -1,48 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BugSpotter Demo</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 2rem; }
-        button { padding: 1rem 2rem; font-size: 1.2rem; cursor: pointer; }
-        #output { margin-top: 2rem; white-space: pre-wrap; }
+      body {
+        font-family: Arial, sans-serif;
+        padding: 2rem;
+      }
+      button {
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
+      #output {
+        margin-top: 2rem;
+        white-space: pre-wrap;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>BugSpotter Demo</h1>
     <button onclick="triggerBug()">Capture Bug</button>
     <div id="output"></div>
 
     <script src="../../packages/sdk/dist/bugspotter.min.js"></script>
     <script>
-        const bugSpotter = BugSpotter.init({
-            apiKey: 'test-key-123'
-        });
+      const bugSpotter = BugSpotter.init({
+        apiKey: 'test-key-123',
+      });
 
-        // Test API call on page load
-        fetch('https://jsonplaceholder.typicode.com/posts/1')
-            .then(res => res.json())
-            .then(data => console.log('API response:', data))
-            .catch(err => console.error('API error:', err));
+      // Test API call on page load
+      fetch('https://jsonplaceholder.typicode.com/posts/1')
+        .then((res) => res.json())
+        .then((data) => console.log('API response:', data))
+        .catch((err) => console.error('API error:', err));
 
-        async function triggerBug() {
-            console.log('User clicked capture button');
-            console.warn('This is a warning');
-            console.error('This is an error');
-            
-            // Make another API call before capturing
-            try {
-                await fetch('https://jsonplaceholder.typicode.com/posts/2');
-            } catch (err) {
-                console.error('Failed to fetch:', err);
-            }
-            
-            const data = await bugSpotter.capture();
-            document.getElementById('output').textContent = 
-                JSON.stringify(data, null, 2);
+      async function triggerBug() {
+        console.log('User clicked capture button');
+        console.warn('This is a warning');
+        console.error('This is an error');
+
+        // Make another API call before capturing
+        try {
+          await fetch('https://jsonplaceholder.typicode.com/posts/2');
+        } catch (err) {
+          console.error('Failed to fetch:', err);
         }
+
+        const data = await bugSpotter.capture();
+        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+      }
     </script>
-</body>
+  </body>
 </html>

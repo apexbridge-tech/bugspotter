@@ -8,23 +8,23 @@ module.exports = {
     library: {
       name: 'BugSpotter',
       type: 'umd',
-      export: 'BugSpotter'
+      export: 'BugSpotter',
     },
-    globalObject: 'this'
+    globalObject: 'this',
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
   },
   module: {
     rules: [
       {
         test: /\.ts$/,
         use: 'ts-loader',
-        exclude: /node_modules/
-      }
-    ]
+        exclude: /node_modules/,
+      },
+    ],
   },
   optimization: {
-    minimize: true
-  }
+    minimize: true,
+  },
 };

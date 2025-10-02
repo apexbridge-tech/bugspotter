@@ -3,13 +3,31 @@
   "version": "0.1.0",
   "description": "Intelligent bug reporting platform with one-click context capture",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "pnpm --filter \"./packages/*\" dev",
     "build": "pnpm --filter \"./packages/*\" build",
-    "test": "pnpm --filter \"./packages/*\" test"
+    "test": "pnpm --filter \"./packages/*\" test",
+    "format": "prettier --write \"**/*.{js,ts,json,md,html,css}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,json,md,html,css}\"",
+    "lint": "eslint \"packages/**/*.{ts,js}\"",
+    "lint:fix": "eslint \"packages/**/*.{ts,js}\" --fix"
   },
-  "keywords": ["bug-tracking", "qa", "testing"],
+  "keywords": [
+    "bug-tracking",
+    "qa",
+    "testing"
+  ],
   "author": "",
   "license": "MIT",
-  "packageManager": "pnpm@10.17.1"
+  "packageManager": "pnpm@10.17.1",
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "prettier": "^3.4.2",
+    "typescript-eslint": "^8.19.1"
+  }
 }
