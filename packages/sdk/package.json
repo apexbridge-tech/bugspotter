@@ -10,6 +10,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@bugspotter/types": "workspace:*",
     "html-to-image": "^1.11.13",
     "pako": "^2.1.0"
   },

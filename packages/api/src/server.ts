@@ -29,9 +29,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Routes will be imported here
-// import bugRoutes from './routes/bugs';
-// app.use('/api/bugs', bugRoutes);
+// Routes
+import bugRoutes from './routes/bugs.js';
+app.use('/api/bugs', bugRoutes);
 
 // 404 handler
 app.use((req, res) => {
