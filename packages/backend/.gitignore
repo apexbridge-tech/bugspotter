@@ -1,0 +1,9 @@
+# Bug reports directory
+bug-reports/
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
