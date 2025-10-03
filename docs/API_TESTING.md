@@ -6,7 +6,7 @@ This guide explains how to test the BugSpotter API integration.
 
 ### 1. Start the Mock API Server
 ```bash
-cd packages/backend
+cd packages/backend-mock
 PORT=4000 pnpm dev
 ```
 

@@ -35,7 +35,7 @@ You should see:
 ### Terminal 1: Start Backend Server
 
 ```bash
-cd packages/backend
+cd packages/backend-mock
 node server.js
 ```
 

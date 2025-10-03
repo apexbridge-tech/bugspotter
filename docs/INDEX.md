@@ -47,8 +47,8 @@ Complete documentation for the BugSpotter project.
 - Advanced usage
 - Performance metrics
 
-### [packages/backend/README.md](../packages/backend/README.md)
-**Backend API Documentation** - Server setup
+### [packages/backend-mock/README.md](../packages/backend-mock/README.md)
+**Mock Backend API Documentation** - Test server setup
 - Endpoints reference
 - Request/response formats
 - Error codes
@@ -113,7 +113,7 @@ Complete documentation for the BugSpotter project.
 4. Submit pull requests
 
 ### For **DevOps/Backend**
-1. Read [packages/backend/README.md](../packages/backend/README.md)
+1. Read [packages/backend-mock/README.md](../packages/backend-mock/README.md)
 2. Check [API_TESTING.md](./API_TESTING.md)
 3. Review [ENHANCED_LOGGING.md](./ENHANCED_LOGGING.md)
 4. Set up deployment
@@ -154,7 +154,7 @@ cd packages/sdk && pnpm run build
 ### Run Demo
 ```bash
 # Terminal 1
-cd packages/backend && node server.js
+cd packages/backend-mock && node server.js
 
 # Terminal 2
 cd apps/demo && npx browser-sync start --config bs-config.json

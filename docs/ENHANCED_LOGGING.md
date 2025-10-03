@@ -37,7 +37,7 @@ Example output:
 
 ### 💾 Automatic File Saving
 Each bug report is automatically saved to:
-- **Directory**: `packages/backend/bug-reports/`
+- **Directory**: `packages/backend-mock/bug-reports/`
 - **Filename**: `bug-{id}-{timestamp}.json`
 - **Format**: Pretty-printed JSON (2-space indentation)
 - **Contents**: Complete bug report including all captured data
@@ -83,7 +83,7 @@ The terminal displays a comprehensive summary:
 ## File Structure
 
 ```
-packages/backend/
+packages/backend-mock/
 ├── server.js
 ├── bug-reports/           # Auto-created directory
 │   ├── bug-bug-1-*.json
@@ -96,32 +96,32 @@ packages/backend/
 
 ### View latest report:
 ```bash
-cat packages/backend/bug-reports/$(ls -t packages/backend/bug-reports/ | head -1)
+cat packages/backend-mock/bug-reports/$(ls -t packages/backend-mock/bug-reports/ | head -1)
 ```
 
 ### List all reports:
 ```bash
-ls -lh packages/backend/bug-reports/
+ls -lh packages/backend-mock/bug-reports/
 ```
 
 ### Count reports:
 ```bash
-ls packages/backend/bug-reports/*.json | wc -l
+ls packages/backend-mock/bug-reports/*.json | wc -l
 ```
 
 ### Search reports by title:
 ```bash
-grep -l "title.*Login" packages/backend/bug-reports/*.json
+grep -l "title.*Login" packages/backend-mock/bug-reports/*.json
 ```
 
 ### View console logs from a report:
 ```bash
-cat packages/backend/bug-reports/bug-bug-1-*.json | jq '.report.console'
+cat packages/backend-mock/bug-reports/bug-bug-1-*.json | jq '.report.console'
 ```
 
 ### View network requests:
 ```bash
-cat packages/backend/bug-reports/bug-bug-1-*.json | jq '.report.network'
+cat packages/backend-mock/bug-reports/bug-bug-1-*.json | jq '.report.network'
 ```
 
 ## Configuration
@@ -134,7 +134,7 @@ To disable file saving (console logging only), comment out the file write sectio
 
 To remove all saved reports:
 ```bash
-rm -rf packages/backend/bug-reports/*.json
+rm -rf packages/backend-mock/bug-reports/*.json
 ```
 
 Or use the API endpoint:

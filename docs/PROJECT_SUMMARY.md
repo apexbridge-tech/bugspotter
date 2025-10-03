@@ -93,7 +93,7 @@ A professional bug reporting SDK that captures:
 
 ### Code
 - ✅ `/packages/sdk/` - Full SDK implementation
-- ✅ `/packages/backend/` - Mock API server
+- ✅ `/packages/backend-mock/` - Mock API server for testing
 - ✅ `/apps/demo/` - Live demo application
 - ✅ `/tests/` - 129 comprehensive tests
 
@@ -105,7 +105,7 @@ A professional bug reporting SDK that captures:
 - ✅ `docs/TECH_STACK.md` - Technology overview
 - ✅ `CHANGELOG.md` - Version history
 - ✅ `CONTRIBUTING.md` - Contribution guide
-- ✅ `packages/backend/README.md` - Backend docs
+- ✅ `packages/backend-mock/README.md` - Mock backend docs
 
 ### Build Artifacts
 - ✅ `dist/bugspotter.min.js` - 29.2 KB minified

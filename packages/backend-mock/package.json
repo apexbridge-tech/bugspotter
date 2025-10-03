@@ -1,7 +1,7 @@
 {
-  "name": "@bugspotter/backend",
+  "name": "@bugspotter/backend-mock",
   "version": "0.1.0",
-  "description": "Mock API server for BugSpotter testing",
+  "description": "Mock API server for BugSpotter testing and development",
   "type": "module",
   "scripts": {
     "dev": "node server.js",

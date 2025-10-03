@@ -1,6 +1,10 @@
 # BugSpotter Mock API Server
 
-A mock API server for testing BugSpotter SDK integration.
+⚠️ **For Testing & Development Only**
+
+A lightweight mock API server for testing BugSpotter SDK integration during development. This is **not** intended for production use.
+
+For production deployment, use the production-ready API server at `/packages/api` with Supabase integration.
 
 ## Features
 

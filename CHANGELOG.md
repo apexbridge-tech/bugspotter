@@ -128,7 +128,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **docs/API_TESTING.md** - Complete API testing guide
 - **docs/ENHANCED_LOGGING.md** - Backend logging features
 - **docs/TECH_STACK.md** - Technology overview
-- **packages/backend/README.md** - Backend API documentation
+- **packages/backend-mock/README.md** - Mock backend API documentation
 
 ### 🎨 Design Improvements
 - **Professional color scheme** - Navy blue (#1a365d) corporate theme

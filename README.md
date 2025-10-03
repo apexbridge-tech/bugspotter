@@ -21,7 +21,8 @@ BugSpotter is a lightweight, professional SDK that enables users to capture and 
 bugspotter/
 ├── packages/
 │   ├── sdk/          # Core SDK (TypeScript + Webpack)
-│   ├── backend/      # Mock API server (Express + Node.js)
+│   ├── backend-mock/ # Mock API server (testing/development)
+│   ├── api/          # Production API server (Supabase + TypeScript)
 │   └── widget/       # UI components (future package)
 ├── apps/
 │   └── demo/         # Live demo application
@@ -133,8 +134,8 @@ floatingButton.onClick(async () => {
 ### Running the Demo
 
 ```bash
-# Terminal 1: Start the backend server
-cd packages/backend
+# Terminal 1: Start the mock backend server
+cd packages/backend-mock
 node server.js
 
 # Terminal 2: Start the demo
