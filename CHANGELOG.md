@@ -5,6 +5,56 @@ All notable changes to the BugSpotter project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-10-04
+
+### 🎥 Session Replay Feature
+
+Major update adding comprehensive session replay functionality.
+
+### ✨ Added
+
+#### Session Replay
+- **rrweb integration** for DOM recording and playback
+- **Circular buffer** with time-based event management (15-30s configurable)
+- **DOMCollector class** for recording user interactions
+- **Event types** captured:
+  - DOM mutations (additions, removals, attribute changes)
+  - Mouse movements (throttled to 50ms)
+  - Mouse interactions (clicks, double-clicks)
+  - Scroll events (throttled to 100ms)
+  - Form inputs
+  - Viewport changes
+- **Performance optimizations**:
+  - Sampling rates for mousemove and scroll
+  - Slim DOM options to reduce payload
+  - Automatic pruning of old events
+- **Interactive replay player** in demo using rrweb-player
+- **Persistent database** for backend-mock (JSON file storage)
+
+#### Documentation
+- Comprehensive session replay documentation
+- Interactive demo guide with replay player
+- Updated all docs with current stats (162 tests, ~99KB bundle)
+- Created master documentation index
+
+#### Testing
+- 17 tests for CircularBuffer
+- 13 tests for DOMCollector
+- 3 integration tests for replay in BugSpotter
+- **Total: 162 tests** (up from 129)
+
+### 📝 Changed
+- Bundle size increased to ~99 KB (from 29.2 KB) due to rrweb
+- Memory usage increased to ~15 MB (from ~10 MB) with 30s buffer
+- Demo now includes replay player with controls
+- Backend logs now show replay event breakdown
+
+### 🔧 Technical
+- Added rrweb@2.0.0-alpha.4
+- Added rrweb-snapshot@2.0.0-alpha.4
+- Added @rrweb/types@2.0.0-alpha.18
+- Updated vitest config for ES module compatibility
+
 ## [0.1.0] - 2025-10-03
 
 ### 🎉 Initial Release
@@ -18,7 +68,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Automatic capture** of screenshots, console logs, network requests, and metadata
 - **Configuration system** with API key and endpoint support
 - **TypeScript support** with full type definitions
-- **Webpack build** producing 29.2 KB minified bundle
+- **Webpack build** producing minified bundle
 
 #### Capture Modules
 - **Screenshot Capture**

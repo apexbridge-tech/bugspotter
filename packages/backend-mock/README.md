@@ -10,7 +10,8 @@ For production deployment, use the production-ready API server at `/packages/api
 
 - ✅ Accepts bug report submissions
 - ✅ Validates API keys
-- ✅ Stores reports in memory
+- ✅ **Persistent JSON database** (stores reports across restarts)
+- ✅ **Session replay event logging** with type breakdown
 - ✅ **Detailed console logging** with formatted output
 - ✅ **Network request summary** display
 - ✅ **Automatic file saving** to `bug-reports/` directory

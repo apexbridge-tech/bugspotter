@@ -3,8 +3,11 @@
 ## Frontend SDK
 
 - **TypeScript 5.3.3** - Type-safe development with full type definitions
-- **Webpack 5.102.0** - Module bundling and minification (29.2 KB output)
+- **Webpack 5.102.0** - Module bundling and minification (~99 KB output with replay)
 - **html-to-image 1.11.13** - CSP-safe screenshot capture
+- **rrweb 2.0.0-alpha.4** - Session replay recording
+- **rrweb-snapshot 2.0.0-alpha.4** - DOM snapshot utilities
+- **@rrweb/types 2.0.0-alpha.18** - TypeScript types for rrweb
 - **pako 2.1.0** - Data compression (future use)
 
 ## Widget Components
@@ -31,14 +34,16 @@
 
 ## Testing Infrastructure
 
-- **129 Total Tests** - Comprehensive test coverage
-  - 27 Core SDK tests
+- **162 Total Tests** - Comprehensive test coverage
+  - 30 Core SDK tests (with replay integration)
   - 13 Console capture tests
   - 12 Network capture tests
   - 5 Screenshot capture tests
   - 16 Metadata capture tests
   - 19 Button widget tests
   - 25 Modal widget tests
+  - 17 Circular buffer tests (session replay)
+  - 13 DOM collector tests (session replay)
   - 12 API submission tests
 - **@vitest/ui** - Interactive test UI
 - **Happy DOM** - Fast DOM testing environment
@@ -83,25 +88,31 @@
 - ✅ Network request monitoring (fetch + XHR)
 - ✅ Screenshot capture (CSP-safe with html-to-image)
 - ✅ Browser metadata detection
+- ✅ **Session replay with rrweb** (NEW!)
+- ✅ **Circular buffer for replay events** (NEW!)
+- ✅ **Interactive replay player in demo** (NEW!)
 - ✅ Floating button widget with Shadow DOM
 - ✅ Professional bug report modal
 - ✅ API submission with async support
-- ✅ Comprehensive test suite (129 tests)
+- ✅ Comprehensive test suite (162 tests)
 - ✅ Webpack build pipeline
 - ✅ Mock API server with enhanced logging
+- ✅ **Persistent JSON database** (NEW!)
 - ✅ File-based report persistence
 - ✅ Error handling and validation
-- ✅ Documentation
+- ✅ Comprehensive documentation
 
 ### 🚧 In Progress (0%)
 - None - all planned features complete
 
 ### ⏳ Planned (Future)
 - NPM package publication
+- Replay event compression
+- Privacy masking for sensitive data
 - React/Vue/Angular framework integrations
 - Production backend deployment
-- Database integration
-- Cloud storage for screenshots
+- Database integration (PostgreSQL/Supabase)
+- Cloud storage for screenshots and replays
 - Analytics dashboard
 - Team collaboration features
 - Mobile SDK (React Native)
@@ -110,11 +121,12 @@
 
 ## Performance Metrics
 
-- **Bundle Size**: 29.2 KB (minified)
+- **Bundle Size**: ~99 KB (minified with session replay)
 - **Load Time**: < 100ms
 - **Screenshot Capture**: ~500ms average
-- **Memory Footprint**: < 10 MB active
-- **Test Execution**: < 5 seconds (129 tests)
+- **Session Replay Overhead**: Minimal (throttled events)
+- **Memory Footprint**: < 15 MB active (with 30s replay buffer)
+- **Test Execution**: < 5 seconds (162 tests)
 - **Build Time**: ~4 seconds (production)
 
 ## Browser Support

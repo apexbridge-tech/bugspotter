@@ -93,11 +93,61 @@ describe('BugSpotter', () => {
       expect(report).toHaveProperty('console');
       expect(report).toHaveProperty('network');
       expect(report).toHaveProperty('metadata');
+      expect(report).toHaveProperty('replay');
 
       expect(typeof report.screenshot).toBe('string');
       expect(Array.isArray(report.console)).toBe(true);
       expect(Array.isArray(report.network)).toBe(true);
       expect(typeof report.metadata).toBe('object');
+      expect(Array.isArray(report.replay)).toBe(true);
+    });
+
+    it('should capture replay events when enabled', async () => {
+      const bugspotter = BugSpotter.init({ 
+        apiKey: 'test-key',
+        replay: {
+          enabled: true,
+          duration: 15
+        }
+      });
+
+      // Wait a bit for some events to be recorded
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const report = await bugspotter.capture();
+
+      expect(report.replay).toBeDefined();
+      expect(Array.isArray(report.replay)).toBe(true);
+      // Should have at least initial snapshot events
+      expect(report.replay.length).toBeGreaterThan(0);
+    });
+
+    it('should not capture replay events when disabled', async () => {
+      const bugspotter = BugSpotter.init({ 
+        apiKey: 'test-key',
+        replay: {
+          enabled: false
+        }
+      });
+
+      const report = await bugspotter.capture();
+
+      expect(report.replay).toBeDefined();
+      expect(Array.isArray(report.replay)).toBe(true);
+      expect(report.replay.length).toBe(0);
+    });
+
+    it('should respect replay duration configuration', async () => {
+      const bugspotter = BugSpotter.init({ 
+        apiKey: 'test-key',
+        replay: {
+          enabled: true,
+          duration: 20
+        }
+      });
+
+      const config = bugspotter.getConfig();
+      expect(config.replay?.duration).toBe(20);
     });
 
     it('should capture console logs', async () => {

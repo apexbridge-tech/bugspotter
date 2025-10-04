@@ -12,7 +12,7 @@ pnpm install
 pnpm run build
 ```
 
-The built SDK will be available at `dist/bugspotter.min.js` (29.2 KB minified).
+The built SDK will be available at `dist/bugspotter.min.js` (~99 KB minified with session replay).
 
 ## 🚀 Quick Start
 
@@ -133,6 +133,14 @@ interface BugSpotterConfig {
   endpoint?: string;            // Backend API URL
   showWidget?: boolean;         // Auto-show widget (default: true)
   widgetOptions?: FloatingButtonOptions;
+  replay?: {                    // Session replay configuration
+    enabled?: boolean;          // Enable replay (default: true)
+    duration?: number;          // Buffer duration in seconds (default: 15)
+    sampling?: {
+      mousemove?: number;       // Mousemove throttle in ms (default: 50)
+      scroll?: number;          // Scroll throttle in ms (default: 100)
+    };
+  };
 }
 ```
 
@@ -149,6 +157,7 @@ interface BugReport {
   console: ConsoleLog[];       // Array of console entries
   network: NetworkRequest[];   // Array of network requests
   metadata: BrowserMetadata;   // Browser/system info
+  replay: eventWithTime[];     // Session replay events (rrweb format)
 }
 
 interface ConsoleLog {
@@ -247,6 +256,33 @@ interface BugReportData {
 
 ## 📊 Capture Modules
 
+### Session Replay (NEW! 🎥)
+
+```typescript
+import { DOMCollector } from '@bugspotter/sdk';
+
+const collector = new DOMCollector({
+  duration: 30,           // Keep last 30 seconds
+  sampling: {
+    mousemove: 100,       // Throttle mousemove
+    scroll: 200,          // Throttle scroll
+  }
+});
+
+collector.startRecording();
+const events = collector.getEvents();
+```
+
+**Features:**
+- **Circular buffer** - Automatically maintains last 15-30 seconds
+- **DOM mutations** - Records all DOM changes
+- **User interactions** - Mouse movements, clicks, scrolls
+- **Performance optimized** - Configurable sampling rates
+- **Minimal overhead** - Slim DOM recording options
+- **Auto-pruning** - Removes old events to prevent memory bloat
+
+**See [Session Replay Documentation](docs/SESSION_REPLAY.md) for detailed guide.**
+
 ### Screenshot Capture
 
 ```typescript
@@ -330,12 +366,13 @@ pnpm test --coverage
 ```
 
 **Test Coverage:**
-- 129 tests total
+- 162 tests total
 - All passing ✅
 - Unit tests for all modules
 - Integration tests for SDK
 - API submission tests
 - Widget interaction tests
+- Session replay tests (circular buffer + DOM collector)
 
 ## 🏗️ Building
 
@@ -348,7 +385,7 @@ pnpm run build
 ```
 
 **Output:**
-- `dist/bugspotter.min.js` (29.2 KB)
+- `dist/bugspotter.min.js` (~99 KB with session replay)
 - `dist/*.d.ts` (TypeScript definitions)
 
 ## 🔧 Development
@@ -450,10 +487,11 @@ window.addEventListener('error', async (event) => {
 
 ## 📈 Performance
 
-- **Bundle size**: 29.2 KB minified
+- **Bundle size**: ~99 KB minified (with session replay)
 - **Load time**: < 100ms
-- **Memory**: < 10 MB active
+- **Memory**: < 15 MB active (with 30s replay buffer)
 - **Screenshot**: ~500ms average
+- **Replay overhead**: Minimal (throttled events)
 - **Zero impact** when idle
 
 ## 🤝 Contributing

@@ -5,5 +5,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: [],
+    server: {
+      deps: {
+        inline: ['rrweb', 'rrweb-snapshot', '@rrweb/types'],
+      },
+    },
   },
 });

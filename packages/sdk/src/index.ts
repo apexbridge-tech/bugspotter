@@ -5,6 +5,8 @@ import { MetadataCapture } from './capture/metadata';
 import type { BrowserMetadata } from './capture/metadata';
 import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
+import { DOMCollector } from './collectors';
+import type { eventWithTime } from '@rrweb/types';
 
 export class BugSpotter {
   private static instance: BugSpotter | undefined;
@@ -13,6 +15,7 @@ export class BugSpotter {
   private console: ConsoleCapture;
   private network: NetworkCapture;
   private metadata: MetadataCapture;
+  private domCollector?: DOMCollector;
   private widget?: FloatingButton;
 
   constructor(config: BugSpotterConfig) {
@@ -21,6 +24,15 @@ export class BugSpotter {
     this.console = new ConsoleCapture();
     this.network = new NetworkCapture();
     this.metadata = new MetadataCapture();
+
+    // Initialize DOM collector if replay is enabled
+    if (config.replay?.enabled !== false) {
+      this.domCollector = new DOMCollector({
+        duration: config.replay?.duration ?? 15,
+        sampling: config.replay?.sampling,
+      });
+      this.domCollector.startRecording();
+    }
 
     // Initialize widget if enabled
     if (config.showWidget !== false) {
@@ -48,6 +60,7 @@ export class BugSpotter {
       console: this.console.getLogs(),
       network: this.network.getRequests(),
       metadata: this.metadata.capture(),
+      replay: this.domCollector?.getEvents() ?? [],
     };
   }
 
@@ -114,6 +127,7 @@ export class BugSpotter {
   destroy(): void {
     this.console.destroy();
     this.network.destroy();
+    this.domCollector?.destroy();
     this.widget?.destroy();
     BugSpotter.instance = undefined;
   }
@@ -124,6 +138,19 @@ export interface BugSpotterConfig {
   endpoint?: string;
   showWidget?: boolean;
   widgetOptions?: FloatingButtonOptions;
+  replay?: {
+    /** Enable session replay recording (default: true) */
+    enabled?: boolean;
+    /** Duration in seconds to keep replay events (default: 15, max recommended: 30) */
+    duration?: number;
+    /** Sampling configuration for performance optimization */
+    sampling?: {
+      /** Throttle mousemove events in milliseconds (default: 50) */
+      mousemove?: number;
+      /** Throttle scroll events in milliseconds (default: 100) */
+      scroll?: number;
+    };
+  };
 }
 
 export interface BugReportPayload {
@@ -149,6 +176,7 @@ export interface BugReport {
     error?: string;
   }>;
   metadata: BrowserMetadata;
+  replay: eventWithTime[];
 }
 
 // Export capture module types for advanced usage
@@ -158,8 +186,19 @@ export { ConsoleCapture } from './capture/console';
 export { NetworkCapture } from './capture/network';
 export { MetadataCapture } from './capture/metadata';
 
+// Export collector modules
+export { DOMCollector } from './collectors';
+export type { DOMCollectorConfig } from './collectors';
+
+// Export core utilities
+export { CircularBuffer } from './core/buffer';
+export type { CircularBufferConfig } from './core/buffer';
+
 // Export widget components
 export { FloatingButton } from './widget/button';
 export type { FloatingButtonOptions } from './widget/button';
 export { BugReportModal } from './widget/modal';
 export type { BugReportData, BugReportModalOptions } from './widget/modal';
+
+// Re-export rrweb types for convenience
+export type { eventWithTime } from '@rrweb/types';

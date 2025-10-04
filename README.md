@@ -1,37 +1,74 @@
 # BugSpotter
 
-> Professional bug reporting SDK for web applications
+> Professional bug reporting SDK with session replay for web applications
 
-BugSpotter is a lightweight, professional SDK that enables users to capture and submit detailed bug reports directly from your web application. It automatically captures screenshots, console logs, network requests, and browser metadata to help developers reproduce and fix issues faster.
+BugSpotter is a lightweight, professional SDK that enables users to capture and submit detailed bug reports directly from your web application. It automatically captures screenshots, console logs, network requests, **session replays**, and browser metadata to help developers reproduce and fix issues faster.
 
 ## ✨ Features
 
+- 🎥 **Session Replay** - Record and replay user interactions (NEW!)
 - 📸 **Automatic Screenshot Capture** - CSP-safe visual capture of the current page
 - 📝 **Console Log Tracking** - Captures all console.log, warn, error, and info messages
 - 🌐 **Network Request Monitoring** - Tracks fetch and XHR requests with timing data
 - 🖥️ **Browser Metadata** - Collects browser, OS, viewport, and URL information
 - 🎨 **Professional UI Widget** - Customizable floating button and modal
 - 🔒 **Privacy-Focused** - All data stays in your control
-- ⚡ **Zero Dependencies** - Minimal bundle size (29 KB minified)
-- 🧪 **Fully Tested** - 129 passing tests with 100% type safety
+- ⚡ **Lightweight** - ~99 KB minified (includes rrweb)
+- 🧪 **Fully Tested** - 162 passing tests with 100% type safety
+
+## 🎬 Session Replay
+
+BugSpotter now includes powerful session replay functionality powered by [rrweb](https://www.rrweb.io/):
+
+- **Records user interactions** - Clicks, scrolls, mouse movements, and form inputs
+- **Circular buffer** - Keeps last 15-30 seconds of activity (configurable)
+- **Minimal overhead** - Optimized sampling and performance
+- **Playback in demo** - Built-in replay player for testing
+
+```javascript
+BugSpotter.init({
+  apiKey: 'your-api-key',
+  replay: {
+    enabled: true,
+    duration: 30,  // Keep last 30 seconds
+    sampling: {
+      mousemove: 50,  // Throttle to 50ms
+      scroll: 100     // Throttle to 100ms
+    }
+  }
+});
+```
+
+See [Session Replay Documentation](./packages/sdk/docs/SESSION_REPLAY.md) for details.
 
 ## 📦 Project Structure
 
 ```
 bugspotter/
 ├── packages/
-│   ├── sdk/          # Core SDK (TypeScript + Webpack)
+│   ├── sdk/          # Core SDK (TypeScript + Webpack) + Session Replay
+│   ├── types/        # Shared TypeScript types
 │   ├── backend-mock/ # Mock API server (testing/development)
-│   ├── api/          # Production API server (Supabase + TypeScript)
-│   └── widget/       # UI components (future package)
+│   └── api/          # Production API server (Supabase + TypeScript)
 ├── apps/
-│   └── demo/         # Live demo application
+│   └── demo/         # Live demo with replay player
 ├── docs/
-│   ├── API_TESTING.md          # API testing guide
-│   ├── ENHANCED_LOGGING.md     # Logging documentation
-│   └── TECH_STACK.md          # Technology overview
+│   ├── QUICK_START.md         # Getting started guide
+│   ├── API_TESTING.md         # API testing guide
+│   ├── ENHANCED_LOGGING.md    # Backend logging features
+│   └── TECH_STACK.md         # Technology overview
 └── scripts/          # Build and deployment scripts
 ```
+
+## 📚 Documentation
+
+### Quick Links
+- 🚀 [Quick Start Guide](./docs/QUICK_START.md) - Get up and running in 5 minutes
+- 🎥 [Session Replay Guide](./packages/sdk/docs/SESSION_REPLAY.md) - Learn about replay features
+- 🎮 [Demo Guide](./apps/demo/REPLAY_DEMO.md) - Try the interactive demo
+- 📖 [SDK API Reference](./packages/sdk/README.md) - Complete API documentation
+- 🧪 [API Testing](./docs/API_TESTING.md) - Test backend integration
+- 🛠️ [Tech Stack](./docs/TECH_STACK.md) - Technologies used
 
 ## 🚀 Quick Start
 
@@ -64,18 +101,42 @@ pnpm run build
   <!-- Include BugSpotter SDK -->
   <script src="path/to/bugspotter.min.js"></script>
   <script>
-    // Initialize BugSpotter
+    // Initialize BugSpotter with session replay
     const bugSpotter = BugSpotter.BugSpotter.init({
       apiKey: 'your-api-key',
       endpoint: 'https://your-api.com/api/bugs',
-      showWidget: true  // Shows floating button automatically
+      showWidget: true,  // Shows floating button automatically
+      replay: {
+        enabled: true,
+        duration: 30  // Record last 30 seconds
+      }
     });
     
-    console.log('✅ BugSpotter initialized');
+    console.log('✅ BugSpotter initialized with session replay');
   </script>
 </body>
 </html>
 ```
+
+### Try the Demo
+
+```bash
+# Terminal 1: Start backend
+cd packages/backend-mock
+node server.js
+
+# Terminal 2: Start demo
+cd apps/demo
+npx browser-sync start --config bs-config.json
+```
+
+Visit **http://localhost:3000/apps/demo/index.html** and click **"▶️ Play Session Replay"** to see it in action!
+
+## 📖 Documentation
+
+- [API Testing Guide](./docs/API_TESTING.md) - Test the API integration
+- [Enhanced Logging](./docs/ENHANCED_LOGGING.md) - Backend logging features
+- [Tech Stack](./docs/TECH_STACK.md) - Technologies used
 
 ### Advanced Usage with Custom Widget
 
@@ -143,13 +204,20 @@ cd apps/demo
 npx browser-sync start --config bs-config.json
 ```
 
-Visit: http://localhost:3000
+Visit: **http://localhost:3000/apps/demo/index.html**
+
+**Demo Features:**
+- ✅ Test all capture features (console, network, metadata, screenshot)
+- ✅ **Play session replay** with interactive player
+- ✅ Submit bug reports to mock backend
+- ✅ View captured data in real-time
+- ✅ Customize widget appearance
 
 ### Running Tests
 
 ```bash
 cd packages/sdk
-pnpm test           # Run all 129 tests
+pnpm test           # Run all 162 tests
 pnpm test --watch   # Watch mode
 pnpm test --ui      # Visual UI mode
 ```
@@ -178,7 +246,7 @@ Initialize the SDK with configuration options.
 
 ### bugSpotter.capture()
 
-Capture current bug report data.
+Capture current bug report data including session replay.
 
 **Returns:** `Promise<BugReport>`
 ```typescript
@@ -187,6 +255,7 @@ interface BugReport {
   console: ConsoleLog[];       // Console entries
   network: NetworkRequest[];   // Network requests
   metadata: BrowserMetadata;   // Browser info
+  replay: eventWithTime[];     // Session replay events (NEW!)
 }
 ```
 
@@ -245,7 +314,7 @@ button.hide();
 
 The SDK includes comprehensive test coverage:
 
-- **129 total tests** - All passing ✅
+- **162 total tests** - All passing ✅
 - **Unit tests** - Individual components
 - **Integration tests** - Widget + SDK + Modal
 - **API tests** - Submission and error handling
@@ -258,8 +327,9 @@ Test breakdown:
 - Metadata capture: 16 tests
 - Button widget: 19 tests
 - Modal widget: 25 tests
+- **Session replay**: 30 tests (circular buffer + DOM collector)
 - API submission: 12 tests
-- Core SDK: 27 tests
+- Core SDK: 30 tests
 
 ## 🏗️ Tech Stack
 
@@ -267,12 +337,15 @@ Test breakdown:
 - **TypeScript** - Type safety
 - **Webpack** - Module bundling
 - **html-to-image** - CSP-safe screenshots
+- **rrweb** - Session replay recording
+- **rrweb-player** - Replay playback (demo only)
 - **Vitest** - Testing framework
 
 ### Backend (Mock)
 - **Node.js** - Runtime
 - **Express** - Web framework
 - **CORS** - Cross-origin support
+- **Persistent storage** - JSON database
 
 ### Development
 - **pnpm** - Package management
@@ -289,10 +362,11 @@ Test breakdown:
 
 ## 📊 Performance
 
-- **Bundle size**: 29.2 KB (minified)
+- **Bundle size**: ~99 KB (minified, with rrweb)
 - **Load time**: < 100ms
 - **Screenshot capture**: ~500ms average
-- **Memory usage**: < 10 MB
+- **Session replay**: Minimal overhead (throttled events)
+- **Memory usage**: < 15 MB (with 30s replay buffer)
 - **Zero runtime impact** - Only active when capturing
 
 ## 🛣️ Roadmap
@@ -306,19 +380,25 @@ Test breakdown:
 - Professional widget UI
 - Bug report modal
 - API integration
-- Comprehensive tests
-- Enhanced logging
+- Comprehensive tests (162 passing)
+- Enhanced backend logging
+- **Session replay with rrweb**
+- **Circular buffer for replay events**
+- **Interactive replay player in demo**
+- **Persistent JSON database**
 
 ### 🚧 In Progress
-- Documentation improvements
+- Documentation consolidation
 - Performance optimizations
-- Additional browser support
+- Additional browser testing
 
 ### ⏳ Planned
 - NPM package publication
+- Replay event compression
+- Privacy masking for sensitive data
 - React/Vue/Angular integrations
 - Backend deployment templates
-- Cloud storage integration
+- Cloud storage integration (S3, Azure Blob)
 - Analytics dashboard
 - Team collaboration features
 - Custom themes

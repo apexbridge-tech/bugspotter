@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BugSpotter Demo - Test All Capture Features</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/style.css" crossorigin="anonymous" />
     <style>
       * {
         margin: 0;
@@ -240,13 +241,61 @@
       #output::-webkit-scrollbar-thumb:hover {
         background: #718096;
       }
+
+      /* Replay Player Styles */
+      #replay-player-container {
+        display: none;
+        margin-top: 1rem;
+        padding: 1.5rem;
+        background: white;
+        border: 2px solid #3182ce;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      #replay-player-container.active {
+        display: block;
+      }
+
+      .player-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .player-header h3 {
+        font-size: 1.1rem;
+        color: #2d3748;
+        font-weight: 600;
+      }
+
+      .player-stats {
+        font-size: 0.85rem;
+        color: #718096;
+      }
+
+      .player-controls {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+
+      #replay-player {
+        width: 100%;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
         <h1>BugSpotter SDK Demo</h1>
-        <p>Test capture features: Screenshots, Console Data, Network Activity & System Information</p>
+        <p>Test capture features: Screenshots, Console Data, Network Activity, Session Replay & System Information</p>
       </div>
 
       <div class="content">
@@ -295,9 +344,40 @@
           </div>
         </div>
 
+        <!-- Session Replay Section -->
+        <div class="section">
+          <h2>🎥 Session Replay <span class="badge">New!</span></h2>
+          <p>
+            Your interactions are continuously recorded in a 30-second circular buffer. DOM changes, clicks, scrolls, and mouse movements are captured automatically. Play back your session below!
+          </p>
+          <div class="button-grid">
+            <button class="btn-primary" onclick="playReplay()">▶️ Play Session Replay</button>
+            <button class="btn-info" onclick="showReplayInfo()">Show Replay Info</button>
+            <button class="btn-success" onclick="testInteraction()">Test Interaction</button>
+            <button class="btn-warning" onclick="stopReplay()">⏹️ Stop Replay</button>
+          </div>
+          <div id="replay-info" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.9rem;"></div>
+          
+          <!-- Replay Player -->
+          <div id="replay-player-container">
+            <div class="player-header">
+              <h3>📹 Session Replay Player</h3>
+              <div class="player-stats" id="player-stats">Ready to play</div>
+            </div>
+            <div id="replay-player"></div>
+            <div class="player-controls">
+              <button class="btn-success" onclick="replayPlayer && replayPlayer.play()">▶️ Play</button>
+              <button class="btn-warning" onclick="replayPlayer && replayPlayer.pause()">⏸️ Pause</button>
+              <button class="btn-info" onclick="replayPlayer && replayPlayer.setSpeed(2)">2x Speed</button>
+              <button class="btn-info" onclick="replayPlayer && replayPlayer.setSpeed(1)">1x Speed</button>
+              <button class="btn-danger" onclick="stopReplay()">⏹️ Close</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Floating Button Widget Section -->
         <div class="section">
-          <h2>🎈 Floating Button Widget <span class="badge">New!</span></h2>
+          <h2>🎈 Floating Button Widget <span class="badge">Updated!</span></h2>
           <p>
             The floating bug button appears in the bottom-right corner. Click it to capture a bug
             report! You can also test the widget configuration options below.
@@ -338,8 +418,11 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/index.js"></script>
     <script src="../../packages/sdk/dist/bugspotter.min.js"></script>
     <script>
+      // Global replay player instance
+      let replayPlayer = null;
       // Modal demo handler
       async function showBugReportModalDemo() {
         try {
@@ -380,7 +463,8 @@
                     bugId: result.bugId,
                     title: data.title,
                     description: data.description,
-                    timestamp: result.timestamp
+                    timestamp: result.timestamp,
+                    replayEvents: report.replay.length
                   }, null, 2);
               } catch (error) {
                 console.error('❌ Failed to submit bug report:', error);
@@ -400,6 +484,14 @@
         apiKey: 'demo-api-key-12345',
         endpoint: 'http://localhost:4000/api/bugs',
         showWidget: false, // Disable auto-widget, we'll create our own
+        replay: {
+          enabled: true,
+          duration: 30,  // Keep last 30 seconds
+          sampling: {
+            mousemove: 50,
+            scroll: 100,
+          }
+        }
       });
 
       console.log('✅ BugSpotter SDK initialized successfully');
@@ -464,7 +556,8 @@
                     description: data.description,
                     timestamp: result.timestamp,
                     consoleLogs: report.console.length,
-                    networkRequests: report.network.length
+                    networkRequests: report.network.length,
+                    replayEvents: report.replay.length
                   }, null, 2);
               } catch (error) {
                 console.error('❌ Failed to submit bug report:', error);
@@ -633,6 +726,7 @@
             '📐 Viewport': `${data.metadata.viewport.width}x${data.metadata.viewport.height}`,
             '📝 Console Logs': `${data.console.length} entries`,
             '🌐 Network Requests': `${data.network.length} requests`,
+            '🎥 Replay Events': `${data.replay.length} events (${data.replay.length > 0 ? ((data.replay[data.replay.length - 1].timestamp - data.replay[0].timestamp) / 1000).toFixed(1) + 's' : '0s'})`,
             '📸 Screenshot': data.screenshot === 'SCREENSHOT_FAILED' ? '❌ Failed' : '✅ Captured',
             '📦 Full Data': data,
           };
@@ -651,9 +745,135 @@
         }
       }
 
+      // Session Replay Functions
+      function playReplay() {
+        const events = bugSpotter.domCollector.getEvents();
+        
+        if (events.length === 0) {
+          alert('No replay events captured yet. Interact with the page first!');
+          return;
+        }
+
+        // Show player container
+        const container = document.getElementById('replay-player-container');
+        container.classList.add('active');
+
+        // Update stats
+        const timeSpan = ((events[events.length - 1].timestamp - events[0].timestamp) / 1000).toFixed(2);
+        document.getElementById('player-stats').textContent = 
+          `${events.length} events • ${timeSpan}s duration`;
+
+        // Destroy existing player if any
+        if (replayPlayer) {
+          replayPlayer.pause();
+          document.getElementById('replay-player').innerHTML = '';
+        }
+
+        // Create new player
+        try {
+          // Log first few events to debug
+          console.log('First 5 events:', events.slice(0, 5));
+          
+          // Check if we have a fullSnapshot event (type 2)
+          const hasSnapshot = events.some(e => e.type === 2);
+          if (!hasSnapshot) {
+            console.warn('⚠️ No full snapshot found in events. Replay may not display correctly.');
+          }
+          
+          replayPlayer = new rrwebPlayer({
+            target: document.getElementById('replay-player'),
+            props: {
+              events: events,
+              autoPlay: true,
+              speedOption: [1, 2, 4, 8],
+              showController: true,
+              skipInactive: false,
+              mouseTail: {
+                duration: 500,
+                strokeStyle: '#3182ce',
+              },
+            },
+          });
+          
+          console.log('🎬 Replay player started with', events.length, 'events');
+          console.log('Event types:', [...new Set(events.map(e => e.type))]);
+        } catch (error) {
+          console.error('Failed to create replay player:', error);
+          alert('Failed to start replay player: ' + error.message);
+        }
+      }
+
+      function stopReplay() {
+        const container = document.getElementById('replay-player-container');
+        container.classList.remove('active');
+        
+        if (replayPlayer) {
+          replayPlayer.pause();
+        }
+        
+        console.log('⏹️ Replay player stopped');
+      }
+
+      async function showReplayInfo() {
+        try {
+          const report = await bugSpotter.capture();
+          const replayEvents = report.replay;
+          
+          const infoDiv = document.getElementById('replay-info');
+          infoDiv.style.display = 'block';
+          
+          if (replayEvents.length === 0) {
+            infoDiv.innerHTML = '<strong>No replay events captured yet.</strong><br>Interact with the page to generate events!';
+            return;
+          }
+          
+          const timeSpan = ((replayEvents[replayEvents.length - 1].timestamp - replayEvents[0].timestamp) / 1000).toFixed(2);
+          const eventTypes = [...new Set(replayEvents.map(e => e.type))];
+          
+          infoDiv.innerHTML = `
+            <strong>📊 Replay Buffer Status:</strong><br>
+            • Total Events: ${replayEvents.length}<br>
+            • Time Span: ${timeSpan} seconds<br>
+            • Event Types: ${eventTypes.join(', ')}<br>
+            • First Event: ${new Date(replayEvents[0].timestamp).toLocaleTimeString()}<br>
+            • Last Event: ${new Date(replayEvents[replayEvents.length - 1].timestamp).toLocaleTimeString()}<br>
+            <br>
+            <em>These events will be included when you submit a bug report!</em>
+          `;
+          
+          console.log('🎥 Replay Events:', {
+            count: replayEvents.length,
+            timeSpan: timeSpan + 's',
+            types: eventTypes,
+            sample: replayEvents.slice(0, 3)
+          });
+        } catch (error) {
+          console.error('Failed to get replay info:', error);
+        }
+      }
+      
+      function testInteraction() {
+        const testElement = document.getElementById('screenshot-test');
+        const colors = ['#e6f2ff', '#ffe6f2', '#f2ffe6', '#fff2e6', '#f2e6ff'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        testElement.style.background = randomColor;
+        testElement.innerHTML = `
+          <strong>🎨 Content Updated!</strong>
+          <p>This DOM change was recorded at ${new Date().toLocaleTimeString()}</p>
+          <p>Background: ${randomColor}</p>
+        `;
+        
+        console.log('✨ Test interaction triggered - DOM changed!');
+        
+        // Automatically show replay info after interaction
+        setTimeout(() => showReplayInfo(), 500);
+      }
+
       // Add some test data on page load
       console.log('🎬 Demo page loaded successfully!');
       console.info('💡 Try clicking different buttons to test capture functionality');
+      console.info('🎥 Session replay is active - all interactions are being recorded!');
     </script>
   </body>
 </html>

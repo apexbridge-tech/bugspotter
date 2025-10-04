@@ -12,12 +12,33 @@ const PORT = process.env.PORT || 4000;
 
 // Directory for saving bug reports
 const REPORTS_DIR = path.join(__dirname, 'bug-reports');
+const DB_FILE = path.join(__dirname, 'db.json');
 
 // Ensure reports directory exists
 try {
   await fs.mkdir(REPORTS_DIR, { recursive: true });
 } catch (err) {
   console.error('Failed to create reports directory:', err);
+}
+
+// Load or initialize database
+let db = { bugs: [], nextId: 1 };
+try {
+  const dbData = await fs.readFile(DB_FILE, 'utf-8');
+  db = JSON.parse(dbData);
+  console.log(`📂 Loaded ${db.bugs.length} existing bug reports from database`);
+} catch (err) {
+  // File doesn't exist yet, will be created on first write
+  console.log('📂 No existing database found, starting fresh');
+}
+
+// Save database to file
+async function saveDatabase() {
+  try {
+    await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2));
+  } catch (err) {
+    console.error('Failed to save database:', err);
+  }
 }
 
 // Middleware
@@ -35,10 +56,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Store bug reports in memory (for testing only)
-const bugReports = [];
-let bugIdCounter = 1;
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -46,16 +63,16 @@ app.get('/health', (req, res) => {
 
 // Get all bug reports
 app.get('/api/bugs', (req, res) => {
-  console.log(`Returning ${bugReports.length} bug reports`);
+  console.log(`Returning ${db.bugs.length} bug reports`);
   res.json({
-    total: bugReports.length,
-    bugs: bugReports,
+    total: db.bugs.length,
+    bugs: db.bugs,
   });
 });
 
 // Get single bug report
 app.get('/api/bugs/:id', (req, res) => {
-  const bug = bugReports.find((b) => b.id === req.params.id);
+  const bug = db.bugs.find((b) => b.id === req.params.id);
   if (!bug) {
     return res.status(404).json({ error: 'Bug report not found' });
   }
@@ -92,7 +109,7 @@ app.post('/api/bugs', async (req, res) => {
   }
 
   // Create bug report record
-  const bugId = `bug-${bugIdCounter++}`;
+  const bugId = `bug-${db.nextId++}`;
   const bugReport = {
     id: bugId,
     title,
@@ -102,11 +119,15 @@ app.post('/api/bugs', async (req, res) => {
       console: report.console,
       network: report.network,
       metadata: report.metadata,
+      replay: report.replay,
     },
     receivedAt: new Date().toISOString(),
   };
 
-  bugReports.push(bugReport);
+  db.bugs.push(bugReport);
+
+  // Save database
+  await saveDatabase();
 
   // Save to file
   const filename = `bug-${bugId}-${Date.now()}.json`;
@@ -131,6 +152,17 @@ app.post('/api/bugs', async (req, res) => {
   console.log(`✓ Console Logs: ${report.console?.length || 0} entries`);
   console.log(`✓ Network Requests: ${report.network?.length || 0} requests`);
   console.log(`✓ Screenshot: ${report.screenshot ? 'Captured' : 'Not available'}`);
+  
+  // Session Replay info
+  if (report.replay && report.replay.length > 0) {
+    const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
+    const eventTypes = [...new Set(report.replay.map(e => e.type))];
+    console.log(`✓ Session Replay: ${report.replay.length} events (${timeSpan}s span)`);
+    console.log(`  Event Types: ${eventTypes.join(', ')}`);
+  } else {
+    console.log(`✓ Session Replay: Not available`);
+  }
+  
   console.log(`✓ Browser: ${report.metadata?.browser || 'Unknown'}`);
   console.log(`✓ OS: ${report.metadata?.os || 'Unknown'}`);
   console.log(`✓ URL: ${report.metadata?.url || 'Unknown'}`);
@@ -165,9 +197,38 @@ app.post('/api/bugs', async (req, res) => {
     }
   }
   
+  // Log session replay details
+  if (report.replay && report.replay.length > 0) {
+    console.log('\n🎥 Session Replay Events:');
+    const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
+    const eventTypes = [...new Set(report.replay.map(e => e.type))];
+    const eventTypeCounts = {};
+    report.replay.forEach(e => {
+      eventTypeCounts[e.type] = (eventTypeCounts[e.type] || 0) + 1;
+    });
+    
+    console.log(`  Total Events: ${report.replay.length}`);
+    console.log(`  Time Span: ${timeSpan} seconds`);
+    console.log(`  First Event: ${new Date(report.replay[0].timestamp).toLocaleTimeString()}`);
+    console.log(`  Last Event: ${new Date(report.replay[report.replay.length - 1].timestamp).toLocaleTimeString()}`);
+    console.log(`  Event Type Breakdown:`);
+    Object.entries(eventTypeCounts).forEach(([type, count]) => {
+      const typeName = {
+        0: 'DomContentLoaded',
+        1: 'Load',
+        2: 'FullSnapshot',
+        3: 'IncrementalSnapshot',
+        4: 'Meta',
+        5: 'Custom',
+        6: 'Plugin'
+      }[type] || `Type${type}`;
+      console.log(`    ${typeName}: ${count}`);
+    });
+  }
+  
   console.log('─────────────────────────────────────');
   console.log(`✓ Bug Report ID: ${bugId}`);
-  console.log(`✓ Total Reports: ${bugReports.length}\n`);
+  console.log(`✓ Total Reports: ${db.bugs.length}\n`);
 
   // Simulate processing delay (optional)
   const simulateDelay = req.query.delay ? parseInt(req.query.delay) : 0;
@@ -202,10 +263,11 @@ app.post('/api/bugs/error/:code', (req, res) => {
 });
 
 // Delete all bug reports (for testing)
-app.delete('/api/bugs', (req, res) => {
-  const count = bugReports.length;
-  bugReports.length = 0;
-  bugIdCounter = 1;
+app.delete('/api/bugs', async (req, res) => {
+  const count = db.bugs.length;
+  db.bugs = [];
+  db.nextId = 1;
+  await saveDatabase();
   console.log(`\n🗑️  Deleted ${count} bug reports`);
   res.json({ success: true, deleted: count });
 });

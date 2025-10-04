@@ -78,7 +78,7 @@ pnpm test
 pnpm test -- api-submission.test.ts
 ```
 
-All 129 tests should pass, including:
+All 162 tests should pass, including:
 - ✅ Successful submission with API key
 - ✅ Submission without API key
 - ✅ JSON response handling
@@ -87,6 +87,9 @@ All 129 tests should pass, including:
 - ✅ Network errors
 - ✅ Timeout errors
 - ✅ Payload structure validation
+- ✅ Session replay event validation
+- ✅ Circular buffer functionality
+- ✅ DOM collector integration
 
 ### Method 3: Manual cURL Testing
 

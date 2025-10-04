@@ -11,8 +11,11 @@
   },
   "dependencies": {
     "@bugspotter/types": "workspace:*",
+    "@rrweb/types": "2.0.0-alpha.18",
     "html-to-image": "^1.11.13",
-    "pako": "^2.1.0"
+    "pako": "^2.1.0",
+    "rrweb": "2.0.0-alpha.4",
+    "rrweb-snapshot": "2.0.0-alpha.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
