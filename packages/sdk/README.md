@@ -118,7 +118,113 @@ button.setIcon('⚠️');
 button.setBackgroundColor('#00ff00');
 ```
 
-## 📋 API Reference
+## � PII Sanitization
+
+Protect sensitive user data with automatic PII detection and sanitization before sending bug reports.
+
+### Built-in Patterns
+
+The SDK automatically detects and masks common PII types:
+
+| Pattern Type | Example | Redacted As |
+|-------------|---------|-------------|
+| Email | `user@example.com` | `[REDACTED-EMAIL]` |
+| Phone | `+1-555-123-4567` | `[REDACTED-PHONE]` |
+| Credit Card | `4532-1488-0343-6467` | `[REDACTED-CREDITCARD]` |
+| SSN | `123-45-6789` | `[REDACTED-SSN]` |
+| Kazakhstan IIN | `950315300123` | `[REDACTED-IIN]` |
+| IP Address | `192.168.1.100` | `[REDACTED-IP]` |
+
+### Configuration Examples
+
+#### Default (All Patterns Enabled)
+```javascript
+BugSpotter.init({
+  endpoint: 'https://api.example.com/bugs',
+  // Sanitization is enabled by default with all patterns
+});
+```
+
+#### Custom Pattern Selection
+```javascript
+BugSpotter.init({
+  endpoint: 'https://api.example.com/bugs',
+  sanitize: {
+    enabled: true,
+    patterns: ['email', 'phone', 'creditcard']  // Only these patterns
+  }
+});
+```
+
+#### Custom Regex Patterns
+```javascript
+BugSpotter.init({
+  endpoint: 'https://api.example.com/bugs',
+  sanitize: {
+    enabled: true,
+    patterns: ['email', 'custom'],
+    customPatterns: [
+      {
+        name: 'api-key',
+        regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi
+      },
+      {
+        name: 'token',
+        regex: /(?:TOKEN[-_:]?\s*[\w\-]{32,})/gi
+      }
+    ]
+  }
+});
+```
+
+#### Exclude Public Data
+```javascript
+BugSpotter.init({
+  endpoint: 'https://api.example.com/bugs',
+  sanitize: {
+    enabled: true,
+    excludeSelectors: [
+      '.public-email',      // Support emails you want to keep
+      '#contact-info',      // Public contact information
+      '[data-public="true"]' // Elements marked as public
+    ]
+  }
+});
+```
+
+#### Disable Sanitization (Not Recommended)
+```javascript
+BugSpotter.init({
+  endpoint: 'https://api.example.com/bugs',
+  sanitize: {
+    enabled: false  // ⚠️ All PII will be sent in clear text
+  }
+});
+```
+
+### What Gets Sanitized
+
+- ✅ **Console logs** - Arguments and error messages
+- ✅ **Network data** - URLs, headers, request/response bodies
+- ✅ **Error stack traces** - File paths and error messages
+- ✅ **DOM content** - Text nodes in session replay
+- ✅ **Metadata** - Page URLs and user agents
+
+### Performance
+
+- **Overhead**: <10ms per bug report
+- **Memory**: Minimal - patterns compiled once at init
+- **CPU**: Efficient regex with Unicode support for Cyrillic text
+
+### International Support
+
+Full support for:
+- 🇺🇸 English text
+- 🇷🇺 Russian Cyrillic
+- 🇰🇿 Kazakh Cyrillic and IIN/BIN numbers
+- 🌍 All standard phone number formats
+
+## �📋 API Reference
 
 ### BugSpotter Class
 
@@ -140,6 +246,17 @@ interface BugSpotterConfig {
       mousemove?: number;       // Mousemove throttle in ms (default: 50)
       scroll?: number;          // Scroll throttle in ms (default: 100)
     };
+  };
+  sanitize?: {                  // PII sanitization configuration
+    enabled?: boolean;          // Enable PII sanitization (default: true)
+    patterns?: Array<           // PII patterns to detect
+      'email' | 'phone' | 'creditcard' | 'ssn' | 'iin' | 'ip' | 'custom'
+    >;
+    customPatterns?: Array<{    // Custom regex patterns
+      name: string;             // Pattern name for [REDACTED-NAME]
+      regex: RegExp;            // Detection regex
+    }>;
+    excludeSelectors?: string[];// CSS selectors to exclude from sanitization
   };
 }
 ```
@@ -480,6 +597,7 @@ window.addEventListener('error', async (event) => {
 ## 🔒 Security
 
 - **CSP-safe** - No eval(), no inline scripts
+- **PII sanitization** - Automatic detection and masking of sensitive data
 - **Input sanitization** - All user inputs are validated
 - **Bearer auth** - API key sent in Authorization header
 - **HTTPS recommended** - Use secure endpoints in production
@@ -492,7 +610,19 @@ window.addEventListener('error', async (event) => {
 - **Memory**: < 15 MB active (with 30s replay buffer)
 - **Screenshot**: ~500ms average
 - **Replay overhead**: Minimal (throttled events)
+- **PII sanitization**: <10ms per bug report
 - **Zero impact** when idle
+
+## 🧪 Testing
+
+- **226 tests** passing
+  - 52 PII sanitization tests
+  - 25 DOM collector tests (including edge cases)
+  - 30 SDK integration tests
+  - 19 widget tests
+  - And more...
+- Full coverage of edge cases
+- Performance benchmarks included
 
 ## 🤝 Contributing
 

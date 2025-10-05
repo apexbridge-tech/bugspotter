@@ -7,6 +7,7 @@ import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
 import { DOMCollector } from './collectors';
 import type { eventWithTime } from '@rrweb/types';
+import { createSanitizer, type Sanitizer, type SanitizeConfig } from './utils/sanitize';
 
 export class BugSpotter {
   private static instance: BugSpotter | undefined;
@@ -17,19 +18,32 @@ export class BugSpotter {
   private metadata: MetadataCapture;
   private domCollector?: DOMCollector;
   private widget?: FloatingButton;
+  private sanitizer?: Sanitizer;
 
   constructor(config: BugSpotterConfig) {
     this.config = config;
+    
+    // Initialize sanitizer if enabled
+    if (config.sanitize?.enabled !== false) {
+      this.sanitizer = createSanitizer({
+        enabled: config.sanitize?.enabled ?? true,
+        patterns: config.sanitize?.patterns,
+        customPatterns: config.sanitize?.customPatterns,
+        excludeSelectors: config.sanitize?.excludeSelectors,
+      });
+    }
+    
     this.screenshot = new ScreenshotCapture();
-    this.console = new ConsoleCapture();
-    this.network = new NetworkCapture();
-    this.metadata = new MetadataCapture();
+    this.console = new ConsoleCapture({ sanitizer: this.sanitizer });
+    this.network = new NetworkCapture({ sanitizer: this.sanitizer });
+    this.metadata = new MetadataCapture({ sanitizer: this.sanitizer });
 
     // Initialize DOM collector if replay is enabled
     if (config.replay?.enabled !== false) {
       this.domCollector = new DOMCollector({
         duration: config.replay?.duration ?? 15,
         sampling: config.replay?.sampling,
+        sanitizer: this.sanitizer,
       });
       this.domCollector.startRecording();
     }
@@ -151,6 +165,35 @@ export interface BugSpotterConfig {
       scroll?: number;
     };
   };
+  sanitize?: {
+    /** Enable PII sanitization (default: true) */
+    enabled?: boolean;
+    /** 
+     * PII patterns to detect and mask
+     * - Can be a preset name: 'all', 'minimal', 'financial', 'contact', 'gdpr', 'pci', etc.
+     * - Or an array of pattern names: ['email', 'phone', 'ip']
+     */
+    patterns?: 
+      | 'all' 
+      | 'minimal' 
+      | 'financial' 
+      | 'contact' 
+      | 'identification' 
+      | 'kazakhstan' 
+      | 'gdpr' 
+      | 'pci'
+      | Array<'email' | 'phone' | 'creditcard' | 'ssn' | 'iin' | 'ip' | 'custom'>;
+    /** Custom regex patterns for PII detection */
+    customPatterns?: Array<{ 
+      name: string; 
+      regex: RegExp;
+      description?: string;
+      examples?: string[];
+      priority?: number;
+    }>;
+    /** CSS selectors to exclude from sanitization */
+    excludeSelectors?: string[];
+  };
 }
 
 export interface BugReportPayload {
@@ -194,11 +237,51 @@ export type { DOMCollectorConfig } from './collectors';
 export { CircularBuffer } from './core/buffer';
 export type { CircularBufferConfig } from './core/buffer';
 
+// Export sanitization utilities
+export { createSanitizer, Sanitizer } from './utils/sanitize';
+export type { PIIPattern, CustomPattern, SanitizeConfig } from './utils/sanitize';
+
+// Export pattern configuration utilities
+export {
+  DEFAULT_PATTERNS,
+  PATTERN_PRESETS,
+  PATTERN_CATEGORIES,
+  PatternBuilder,
+  createPatternConfig,
+  getPattern,
+  getPatternsByCategory,
+  validatePattern,
+} from './utils/sanitize';
+export type { PIIPatternName, PatternDefinition } from './utils/sanitize';
+
 // Export widget components
 export { FloatingButton } from './widget/button';
 export type { FloatingButtonOptions } from './widget/button';
 export { BugReportModal } from './widget/modal';
-export type { BugReportData, BugReportModalOptions } from './widget/modal';
+export type { BugReportData, BugReportModalOptions, PIIDetection } from './widget/modal';
 
 // Re-export rrweb types for convenience
 export type { eventWithTime } from '@rrweb/types';
+
+/**
+ * Convenience function to sanitize text with default PII patterns
+ * Useful for quick sanitization without creating a Sanitizer instance
+ * 
+ * @param text - Text to sanitize
+ * @returns Sanitized text with PII redacted
+ * 
+ * @example
+ * ```typescript
+ * const sanitized = sanitize('Email: user@example.com');
+ * // Returns: 'Email: [REDACTED]'
+ * ```
+ */
+export function sanitize(text: string): string {
+  const sanitizer = createSanitizer({
+    enabled: true,
+    patterns: 'all',
+    customPatterns: [],
+    excludeSelectors: [],
+  });
+  return sanitizer.sanitize(text) as string;
+}

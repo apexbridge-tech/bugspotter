@@ -1,6 +1,7 @@
 import { toPng } from 'html-to-image';
+import { BaseCapture, type CaptureOptions } from './base-capture';
 
-export interface ScreenshotCaptureOptions {
+export interface ScreenshotCaptureOptions extends CaptureOptions {
   quality?: number;
   pixelRatio?: number;
   backgroundColor?: string;
@@ -20,8 +21,14 @@ const DEFAULT_SCREENSHOT_OPTIONS = {
   errorPlaceholder: 'SCREENSHOT_FAILED',
 } as const;
 
-export class ScreenshotCapture {
-  constructor(private options: ScreenshotCaptureOptions = {}) {}
+export class ScreenshotCapture extends BaseCapture<Promise<string>, ScreenshotCaptureOptions> {
+  constructor(options: ScreenshotCaptureOptions = {}) {
+    super(options);
+  }
+
+  protected getErrorPlaceholder(): string {
+    return this.options.errorPlaceholder ?? DEFAULT_SCREENSHOT_OPTIONS.errorPlaceholder;
+  }
 
   private shouldIncludeNode(node: Node): boolean {
     if (!('hasAttribute' in node)) {
@@ -47,23 +54,18 @@ export class ScreenshotCapture {
     };
   }
 
-  private async handleError(error: unknown): Promise<string> {
-    const err = error instanceof Error ? error : new Error(String(error));
-    console.error('Screenshot capture failed:', err);
-    return this.options.errorPlaceholder ?? DEFAULT_SCREENSHOT_OPTIONS.errorPlaceholder;
-  }
-
   async capture(targetElement?: HTMLElement): Promise<string> {
-    const element = targetElement || 
-                    this.options.targetElement || 
-                    document.body;
-    
     try {
+      const element = targetElement || 
+                      this.options.targetElement || 
+                      document.body;
+      
       const options = this.buildCaptureOptions();
       const dataUrl = await toPng(element, options);
       return dataUrl;
     } catch (error) {
-      return this.handleError(error);
+      this.handleError('capturing screenshot', error);
+      return this.getErrorPlaceholder();
     }
   }
 }

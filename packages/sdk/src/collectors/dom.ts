@@ -1,6 +1,7 @@
 import { record } from 'rrweb';
 import type { eventWithTime } from '@rrweb/types';
 import { CircularBuffer } from '../core/buffer';
+import type { Sanitizer } from '../utils/sanitize';
 
 export interface DOMCollectorConfig {
   /** Duration in seconds to keep replay events (default: 15) */
@@ -16,6 +17,8 @@ export interface DOMCollectorConfig {
   recordCanvas?: boolean;
   /** Whether to record cross-origin iframes (default: false) */
   recordCrossOriginIframes?: boolean;
+  /** Sanitizer for PII protection */
+  sanitizer?: Sanitizer;
 }
 
 /**
@@ -26,9 +29,11 @@ export class DOMCollector {
   private buffer: CircularBuffer;
   private stopRecordingFn?: () => void;
   private isRecording = false;
-  private config: Required<DOMCollectorConfig>;
+  private config: DOMCollectorConfig & { duration: number; sampling: Required<DOMCollectorConfig['sampling']>; recordCanvas: boolean; recordCrossOriginIframes: boolean };
+  private sanitizer?: Sanitizer;
 
   constructor(config: DOMCollectorConfig = {}) {
+    this.sanitizer = config.sanitizer;
     this.config = {
       duration: config.duration ?? 15,
       sampling: {
@@ -37,6 +42,7 @@ export class DOMCollector {
       },
       recordCanvas: config.recordCanvas ?? false,
       recordCrossOriginIframes: config.recordCrossOriginIframes ?? false,
+      sanitizer: config.sanitizer,
     };
 
     this.buffer = new CircularBuffer({
@@ -59,8 +65,8 @@ export class DOMCollector {
           this.buffer.add(event);
         },
         sampling: {
-          mousemove: this.config.sampling.mousemove,
-          scroll: this.config.sampling.scroll,
+          mousemove: this.config.sampling?.mousemove ?? 50,
+          scroll: this.config.sampling?.scroll ?? 100,
           // Also throttle mouse interactions slightly for better performance
           mouseInteraction: {
             MouseUp: false,
@@ -76,6 +82,10 @@ export class DOMCollector {
         },
         recordCanvas: this.config.recordCanvas,
         recordCrossOriginIframes: this.config.recordCrossOriginIframes,
+        // PII sanitization for text content
+        maskTextFn: this.sanitizer ? (text: string, element?: HTMLElement) => {
+          return this.sanitizer!.sanitizeTextNode(text, element);
+        } : undefined,
         // Performance optimizations
         slimDOMOptions: {
           script: true, // Don't record script tags

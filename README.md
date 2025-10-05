@@ -6,15 +6,16 @@ BugSpotter is a lightweight, professional SDK that enables users to capture and 
 
 ## ✨ Features
 
-- 🎥 **Session Replay** - Record and replay user interactions (NEW!)
+- 🎥 **Session Replay** - Record and replay user interactions with rrweb
+- 🔒 **PII Sanitization** - Automatic detection and masking of sensitive data (NEW!)
 - 📸 **Automatic Screenshot Capture** - CSP-safe visual capture of the current page
 - 📝 **Console Log Tracking** - Captures all console.log, warn, error, and info messages
 - 🌐 **Network Request Monitoring** - Tracks fetch and XHR requests with timing data
 - 🖥️ **Browser Metadata** - Collects browser, OS, viewport, and URL information
 - 🎨 **Professional UI Widget** - Customizable floating button and modal
-- 🔒 **Privacy-Focused** - All data stays in your control
+- 🔒 **Privacy-Focused** - All data stays in your control with built-in PII protection
 - ⚡ **Lightweight** - ~99 KB minified (includes rrweb)
-- 🧪 **Fully Tested** - 162 passing tests with 100% type safety
+- 🧪 **Fully Tested** - 226 passing tests with 100% type safety
 
 ## 🎬 Session Replay
 
@@ -40,6 +41,40 @@ BugSpotter.init({
 ```
 
 See [Session Replay Documentation](./packages/sdk/docs/SESSION_REPLAY.md) for details.
+
+## 🔒 PII Sanitization
+
+Protect sensitive user data with automatic PII detection before sending bug reports:
+
+- **Email addresses** - `user@example.com` → `[REDACTED-EMAIL]`
+- **Phone numbers** - International formats including Kazakhstan
+- **Credit cards** - All major card formats
+- **Social Security Numbers** - US SSN patterns
+- **Kazakhstan IIN/BIN** - With birth date validation
+- **IP addresses** - IPv4 and IPv6
+- **Custom patterns** - Define your own regex patterns
+
+```javascript
+BugSpotter.init({
+  apiKey: 'your-api-key',
+  sanitize: {
+    enabled: true,
+    patterns: ['email', 'phone', 'creditcard', 'ssn', 'iin', 'ip'],
+    customPatterns: [
+      { name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }
+    ],
+    excludeSelectors: ['.public-email']
+  }
+});
+```
+
+**Sanitization applies to:**
+- Console logs and error messages
+- Network request/response data
+- DOM text content in session replays
+- Browser metadata (URLs, user agents)
+
+**Performance:** <10ms overhead per bug report with full Unicode/Cyrillic support.
 
 ## 📦 Project Structure
 
@@ -366,6 +401,7 @@ Test breakdown:
 - **Load time**: < 100ms
 - **Screenshot capture**: ~500ms average
 - **Session replay**: Minimal overhead (throttled events)
+- **PII sanitization**: <10ms per bug report
 - **Memory usage**: < 15 MB (with 30s replay buffer)
 - **Zero runtime impact** - Only active when capturing
 
@@ -380,12 +416,16 @@ Test breakdown:
 - Professional widget UI
 - Bug report modal
 - API integration
-- Comprehensive tests (162 passing)
+- Comprehensive tests (226 passing)
 - Enhanced backend logging
 - **Session replay with rrweb**
 - **Circular buffer for replay events**
 - **Interactive replay player in demo**
 - **Persistent JSON database**
+- **PII detection and sanitization**
+- **Kazakhstan IIN/BIN support**
+- **Cyrillic text handling**
+- **Custom regex patterns**
 
 ### 🚧 In Progress
 - Documentation consolidation
@@ -395,7 +435,6 @@ Test breakdown:
 ### ⏳ Planned
 - NPM package publication
 - Replay event compression
-- Privacy masking for sensitive data
 - React/Vue/Angular integrations
 - Backend deployment templates
 - Cloud storage integration (S3, Azure Blob)

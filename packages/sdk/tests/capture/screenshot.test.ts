@@ -78,7 +78,7 @@ describe('ScreenshotCapture', () => {
     const result = await screenshotCapture.capture();
 
     expect(result).toBe('SCREENSHOT_FAILED');
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Screenshot capture failed:', expect.any(Error));
+    expect(consoleErrorSpy).toHaveBeenCalledWith('ScreenshotCapture capturing screenshot:', expect.any(Error));
 
     consoleErrorSpy.mockRestore();
   });

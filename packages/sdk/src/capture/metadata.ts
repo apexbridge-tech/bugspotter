@@ -1,3 +1,5 @@
+import { BaseCapture, type CaptureOptions } from './base-capture';
+
 export interface BrowserMetadata {
   userAgent: string;
   viewport: { width: number; height: number };
@@ -6,6 +8,8 @@ export interface BrowserMetadata {
   url: string;
   timestamp: number;
 }
+
+export interface MetadataCaptureOptions extends CaptureOptions {}
 
 interface BrowserPattern {
   pattern: string;
@@ -18,7 +22,7 @@ interface OSPattern {
   name: string;
 }
 
-export class MetadataCapture {
+export class MetadataCapture extends BaseCapture<BrowserMetadata, MetadataCaptureOptions> {
   private readonly browserPatterns: readonly BrowserPattern[] = [
     { pattern: 'Edg', name: 'Edge' }, // Check Edge before Chrome
     { pattern: 'Chrome', exclude: 'Edge', name: 'Chrome' },
@@ -34,18 +38,43 @@ export class MetadataCapture {
     { patterns: ['Linux'], name: 'Linux' },
   ];
 
+  constructor(options: MetadataCaptureOptions = {}) {
+    super(options);
+  }
+
   capture(): BrowserMetadata {
-    return {
-      userAgent: navigator.userAgent,
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      },
-      browser: this.detectBrowser(),
-      os: this.detectOS(),
-      url: window.location.href,
-      timestamp: Date.now(),
-    };
+    try {
+      const metadata: BrowserMetadata = {
+        userAgent: navigator.userAgent,
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+        browser: this.detectBrowser(),
+        os: this.detectOS(),
+        url: window.location.href,
+        timestamp: Date.now(),
+      };
+      
+      // Sanitize sensitive data if sanitizer is enabled
+      if (this.sanitizer) {
+        metadata.url = this.sanitizer.sanitize(metadata.url) as string;
+        metadata.userAgent = this.sanitizer.sanitize(metadata.userAgent) as string;
+      }
+      
+      return metadata;
+    } catch (error) {
+      this.handleError('capturing metadata', error);
+      // Return fallback metadata
+      return {
+        userAgent: 'Unknown',
+        viewport: { width: 0, height: 0 },
+        browser: 'Unknown',
+        os: 'Unknown',
+        url: 'Unknown',
+        timestamp: Date.now(),
+      };
+    }
   }
 
   private detectBrowser(): string {

@@ -1,30 +1,39 @@
+import { BaseCapture, type CaptureOptions } from './base-capture';
+import { CircularBuffer } from '../core/circular-buffer';
+
 type ConsoleLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
 const CONSOLE_METHODS: readonly ConsoleLevel[] = ['log', 'warn', 'error', 'info', 'debug'] as const;
 
-export interface ConsoleCaptureOptions {
+export interface ConsoleCaptureOptions extends CaptureOptions {
   maxLogs?: number;
   captureStackTrace?: boolean;
   levels?: readonly ConsoleLevel[];
 }
 
-export class ConsoleCapture {
-  private logs: LogEntry[] = [];
-  private maxLogs: number;
-  private logIndex = 0;
-  private logCount = 0;
+export class ConsoleCapture extends BaseCapture<LogEntry[], ConsoleCaptureOptions> {
+  private buffer: CircularBuffer<LogEntry>;
   private captureStackTrace: boolean;
   private originalMethods: Map<string, (...args: unknown[]) => void> = new Map();
 
   constructor(options: ConsoleCaptureOptions = {}) {
-    this.maxLogs = options.maxLogs ?? 100;
+    super(options);
+    const maxLogs = options.maxLogs ?? 100;
+    this.buffer = new CircularBuffer<LogEntry>(maxLogs);
     this.captureStackTrace = options.captureStackTrace ?? true;
     this.interceptConsole(options.levels ?? CONSOLE_METHODS);
+  }
+
+  capture(): LogEntry[] {
+    return this.getLogs();
   }
 
   private formatMessage(args: unknown[]): string {
     if (!args || args.length === 0) return '';
     
-    return args
+    // Sanitize args if sanitizer is enabled
+    const sanitizedArgs = this.sanitizer ? this.sanitizer.sanitizeConsoleArgs(args) : args;
+    
+    return sanitizedArgs
       .map((arg) => {
         if (arg === null) return 'null';
         if (arg === undefined) return 'undefined';
@@ -48,7 +57,8 @@ export class ConsoleCapture {
     };
 
     if (this.captureStackTrace && method === 'error') {
-      log.stack = this.captureStack();
+      const stack = this.captureStack();
+      log.stack = this.sanitizer && stack ? this.sanitizer.sanitize(stack) as string : stack;
     }
 
     return log;
@@ -61,51 +71,48 @@ export class ConsoleCapture {
   }
 
   private addLog(log: LogEntry): void {
-    if (this.logCount < this.maxLogs) {
-      this.logs.push(log);
-      this.logCount++;
-    } else {
-      this.logs[this.logIndex] = log;
-    }
-    this.logIndex = (this.logIndex + 1) % this.maxLogs;
+    this.buffer.add(log);
   }
 
   private interceptConsole(levels: readonly ConsoleLevel[] = CONSOLE_METHODS): void {
     levels.forEach((method) => {
-      const original = console[method];
-      this.originalMethods.set(method, original);
+      try {
+        const original = console[method];
+        this.originalMethods.set(method, original);
 
-      console[method] = (...args: unknown[]) => {
-        const log = this.createLogEntry(method, args);
-        this.addLog(log);
-        original.apply(console, args);
-      };
+        console[method] = (...args: unknown[]) => {
+          try {
+            const log = this.createLogEntry(method, args);
+            this.addLog(log);
+          } catch (error) {
+            this.handleError('creating log entry', error);
+          }
+          original.apply(console, args);
+        };
+      } catch (error) {
+        this.handleError(`intercepting console.${method}`, error);
+      }
     });
   }
 
   getLogs(): LogEntry[] {
-    if (this.logCount < this.maxLogs) {
-      return [...this.logs];
-    }
-    // Return logs in chronological order
-    return [
-      ...this.logs.slice(this.logIndex),
-      ...this.logs.slice(0, this.logIndex)
-    ];
+    return this.buffer.getAll();
   }
 
   clear(): void {
-    this.logs = [];
-    this.logIndex = 0;
-    this.logCount = 0;
+    this.buffer.clear();
   }
 
   destroy(): void {
-    this.originalMethods.forEach((original, method) => {
-      const consoleMethod = method as ConsoleLevel;
-      console[consoleMethod] = original as Console[typeof consoleMethod];
-    });
-    this.originalMethods.clear();
+    try {
+      this.originalMethods.forEach((original, method) => {
+        const consoleMethod = method as ConsoleLevel;
+        console[consoleMethod] = original as Console[typeof consoleMethod];
+      });
+      this.originalMethods.clear();
+    } catch (error) {
+      this.handleError('destroying console capture', error);
+    }
   }
 }
 

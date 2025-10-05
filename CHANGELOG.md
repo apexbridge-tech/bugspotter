@@ -5,6 +5,65 @@ All notable changes to the BugSpotter project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-10-05
+
+### 🔒 PII Detection & Sanitization
+
+Major security update adding comprehensive PII detection and sanitization.
+
+### ✨ Added
+
+#### PII Sanitization
+- **Automatic PII detection** and masking before sending bug reports
+- **Built-in patterns** for sensitive data:
+  - Email addresses (`user@example.com` → `[REDACTED-EMAIL]`)
+  - Phone numbers - international formats (`+1-555-1234` → `[REDACTED-PHONE]`)
+  - Credit cards - all major formats (`4532-1488-0343-6467` → `[REDACTED-CREDITCARD]`)
+  - Social Security Numbers (`123-45-6789` → `[REDACTED-SSN]`)
+  - Kazakhstan IIN/BIN numbers with date validation (`950315300123` → `[REDACTED-IIN]`)
+  - IP addresses - IPv4 and IPv6 (`192.168.1.1` → `[REDACTED-IP]`)
+- **Custom regex patterns** support for app-specific sensitive data
+- **Exclude selectors** to preserve public data (e.g., support emails)
+- **Cyrillic text support** for Russian and Kazakh content
+- **Performance optimized** - <10ms overhead per bug report
+
+#### Sanitization Coverage
+- Console logs and error messages
+- Network request/response data (URLs, headers, bodies)
+- Error stack traces
+- DOM text content in session replays
+- Metadata (URLs, user agents)
+
+#### Configuration
+- Enable/disable sanitization globally
+- Select specific PII patterns to detect
+- Define custom patterns with regex
+- Exclude DOM elements from sanitization
+
+#### Testing
+- 52 comprehensive sanitization tests
+- Edge cases: nested objects, Cyrillic text, performance benchmarks
+- **Total: 226 tests** (up from 174)
+
+### 📝 Changed
+- All capture modules now accept optional `Sanitizer` instance
+- DOM collector uses rrweb's `maskTextFn` for text sanitization
+- Default behavior: sanitization **enabled** with all built-in patterns
+
+### 🔧 Configuration Example
+```typescript
+BugSpotter.init({
+  sanitize: {
+    enabled: true,
+    patterns: ['email', 'phone', 'creditcard', 'ssn', 'iin', 'ip'],
+    customPatterns: [
+      { name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }
+    ],
+    excludeSelectors: ['.public-email', '#support-contact']
+  }
+});
+```
+
 ## [0.2.0] - 2025-10-04
 
 ### 🎥 Session Replay Feature

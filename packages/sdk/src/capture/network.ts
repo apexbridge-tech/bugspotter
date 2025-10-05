@@ -1,3 +1,6 @@
+import { BaseCapture, type CaptureOptions } from './base-capture';
+import { CircularBuffer } from '../core/circular-buffer';
+
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
 // Extend XMLHttpRequest to include our custom tracking properties
@@ -7,34 +10,25 @@ interface TrackedXMLHttpRequest extends XMLHttpRequest {
   _startTime?: number;
 }
 
-export interface NetworkCaptureOptions {
+export interface NetworkCaptureOptions extends CaptureOptions {
   maxRequests?: number;
   filterUrls?: (url: string) => boolean;
 }
 
-export class NetworkCapture {
-  private static instance: NetworkCapture | null = null;
-  private requests: NetworkRequest[] = [];
-  private maxRequests = 50;
-  private requestIndex = 0;
-  private requestCount = 0;
+export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCaptureOptions> {
+  private buffer: CircularBuffer<NetworkRequest>;
   private filterUrls?: (url: string) => boolean;
-  private originalFetch!: typeof fetch; // Definite assignment - set in constructor or returned instance
-  private originalXHR!: {
+  private originalFetch: typeof fetch;
+  private originalXHR: {
     open: typeof XMLHttpRequest.prototype.open;
     send: typeof XMLHttpRequest.prototype.send;
   };
   private isIntercepting = false;
 
   constructor(options: NetworkCaptureOptions = {}) {
-    // Implement singleton pattern - only one NetworkCapture instance per page
-    if (NetworkCapture.instance) {
-      console.warn('NetworkCapture already exists, returning existing instance');
-      return NetworkCapture.instance;
-    }
-    NetworkCapture.instance = this;
-
-    this.maxRequests = options.maxRequests ?? 50;
+    super(options);
+    const maxRequests = options.maxRequests ?? 50;
+    this.buffer = new CircularBuffer<NetworkRequest>(maxRequests);
     this.filterUrls = options.filterUrls;
 
     this.originalFetch = window.fetch;
@@ -45,6 +39,10 @@ export class NetworkCapture {
     this.interceptFetch();
     this.interceptXHR();
     this.isIntercepting = true;
+  }
+
+  capture(): NetworkRequest[] {
+    return this.getRequests();
   }
 
   private parseFetchArgs(args: Parameters<typeof fetch>): { url: string; method: HttpMethod } {
@@ -76,7 +74,7 @@ export class NetworkCapture {
     startTime: number,
     error?: string
   ): NetworkRequest {
-    return {
+    const request: NetworkRequest = {
       url,
       method,
       status,
@@ -84,6 +82,23 @@ export class NetworkCapture {
       timestamp: startTime,
       ...(error && { error }),
     };
+    
+    // Sanitize network data if sanitizer is enabled
+    if (this.sanitizer) {
+      const sanitized = this.sanitizer.sanitizeNetworkData({
+        url: request.url,
+        method: request.method,
+        status: request.status,
+        ...(request.error && { error: request.error }),
+      });
+      return {
+        ...request,
+        url: sanitized.url || request.url,
+        error: sanitized.error as string | undefined,
+      };
+    }
+    
+    return request;
   }
 
   private addRequest(request: NetworkRequest): void {
@@ -91,13 +106,7 @@ export class NetworkCapture {
       return; // Skip filtered URLs
     }
     
-    if (this.requestCount < this.maxRequests) {
-      this.requests.push(request);
-      this.requestCount++;
-    } else {
-      this.requests[this.requestIndex] = request;
-    }
-    this.requestIndex = (this.requestIndex + 1) % this.maxRequests;
+    this.buffer.add(request);
   }
 
   private interceptFetch() {
@@ -105,7 +114,14 @@ export class NetworkCapture {
     
     window.fetch = async (...args) => {
       const startTime = Date.now();
-      const { url, method } = this.parseFetchArgs(args);
+      let url = '';
+      let method: HttpMethod = 'GET';
+      
+      try {
+        ({ url, method } = this.parseFetchArgs(args));
+      } catch (error) {
+        this.handleError('parsing fetch arguments', error);
+      }
       
       try {
         const response = await originalFetch(...args);
@@ -180,30 +196,24 @@ export class NetworkCapture {
   }
 
   getRequests(): NetworkRequest[] {
-    if (this.requestCount < this.maxRequests) {
-      return [...this.requests];
-    }
-    // Return requests in chronological order
-    return [
-      ...this.requests.slice(this.requestIndex),
-      ...this.requests.slice(0, this.requestIndex)
-    ];
+    return this.buffer.getAll();
   }
 
   clear(): void {
-    this.requests = [];
-    this.requestIndex = 0;
-    this.requestCount = 0;
+    this.buffer.clear();
   }
 
   destroy() {
     if (!this.isIntercepting) return;
     
-    window.fetch = this.originalFetch;
-    XMLHttpRequest.prototype.open = this.originalXHR.open;
-    XMLHttpRequest.prototype.send = this.originalXHR.send;
-    NetworkCapture.instance = null;
-    this.isIntercepting = false;
+    try {
+      window.fetch = this.originalFetch;
+      XMLHttpRequest.prototype.open = this.originalXHR.open;
+      XMLHttpRequest.prototype.send = this.originalXHR.send;
+      this.isIntercepting = false;
+    } catch (error) {
+      this.handleError('destroying network capture', error);
+    }
   }
 }
 
