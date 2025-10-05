@@ -1,5 +1,6 @@
-# Bug reports directory
-bug-reports/
+# Bug reports directory (keep structure but ignore JSON files)
+bug-reports/*.json
+!bug-reports/.gitkeep
 
 # Node modules
 node_modules/

@@ -5,32 +5,32 @@ Welcome to the BugSpotter documentation! This guide will help you get started an
 ## 📚 Table of Contents
 
 ### Getting Started
-- 🚀 **[Quick Start Guide](./QUICK_START.md)** - Get up and running in 5 minutes
+- 🚀 **[Quick Start Guide](./guides/QUICK_START.md)** - Get up and running in 5 minutes
 - 📖 **[Main README](../README.md)** - Project overview and features
-- 🎮 **[Demo Guide](../apps/demo/REPLAY_DEMO.md)** - Interactive demo with replay player
 
-### Core Features
-- 🎥 **[Session Replay](../packages/sdk/docs/SESSION_REPLAY.md)** - Record and replay user interactions
-- 📸 **Screenshot Capture** - CSP-safe visual capture (covered in SDK docs)
-- 📝 **Console Logging** - Capture all console output (covered in SDK docs)
-- 🌐 **Network Monitoring** - Track API requests and responses (covered in SDK docs)
+### Architecture & Design
+- �️ **[Architecture Overview](./ARCHITECTURE.md)** - **Start here** for architectural understanding
+- 📐 **[Modal Refactoring](./architecture/MODAL_REFACTORING.md)** - Modal system design and refactoring
+- 🧹 **[Sanitizer Refactoring](./architecture/SANITIZER_REFACTORING.md)** - PII sanitization architecture
+- � **[Enhanced Logging](./architecture/ENHANCED_LOGGING.md)** - Logging infrastructure
+
+### Features
+- 🔒 **[PII Sanitization](./features/PII_SANITIZATION.md)** - Privacy protection system
+- ⚙️ **[Pattern Configuration](./features/PATTERN_CONFIGURATION.md)** - Configure custom PII patterns
+- 🎯 **[Modal PII Features](./features/MODAL_PII_FEATURES.md)** - PII detection in the modal UI
 
 ### SDK Documentation
 - 📦 **[SDK API Reference](../packages/sdk/README.md)** - Complete API documentation
 - 🔧 **[Implementation Summary](../packages/sdk/IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
 - 📋 **[Type Definitions](../packages/types/README.md)** - TypeScript types and interfaces
 
-### Backend & Testing
-- 🧪 **[API Testing Guide](./API_TESTING.md)** - Test backend integration
-- 📊 **[Enhanced Logging](./ENHANCED_LOGGING.md)** - Backend logging features
+### Testing & Development
+- 🧪 **[API Testing Guide](./guides/API_TESTING.md)** - Test backend integration
 - 🗄️ **[Backend Mock](../packages/backend-mock/README.md)** - Mock API server for testing
-- 🌐 **[Production API](../packages/api/README.md)** - Supabase-based production server
 
 ### Technical
 - 🛠️ **[Tech Stack](./TECH_STACK.md)** - Technologies and dependencies
 - 📝 **[Type Guide](../TYPE_GUIDE.md)** - TypeScript type system
-- 🔒 **[Type Safety](../packages/api/docs/TYPE_SAFETY.md)** - Type safety patterns
-- 🗺️ **[Type Mapping](../packages/api/docs/TYPE_MAPPING.md)** - API type mappings
 
 ### Project
 - 📋 **[Project Summary](./PROJECT_SUMMARY.md)** - High-level project overview
@@ -41,135 +41,128 @@ Welcome to the BugSpotter documentation! This guide will help you get started an
 
 ### I want to...
 
-#### Get Started
-- **Install BugSpotter** → [Quick Start Guide](./QUICK_START.md)
-- **See it in action** → [Demo Guide](../apps/demo/REPLAY_DEMO.md)
-- **Understand the project** → [Main README](../README.md)
+#### Understand the Architecture
+- **Get the big picture** → [Architecture Overview](./ARCHITECTURE.md) ⭐
+- **Learn about modal design** → [Modal Refactoring](./architecture/MODAL_REFACTORING.md)
+- **Understand PII protection** → [PII Sanitization](./features/PII_SANITIZATION.md)
+- **See sanitization internals** → [Sanitizer Refactoring](./architecture/SANITIZER_REFACTORING.md)
 
-#### Use Features
-- **Enable session replay** → [Session Replay Docs](../packages/sdk/docs/SESSION_REPLAY.md)
-- **Customize the widget** → [SDK API Reference](../packages/sdk/README.md#-widget-customization)
-- **Submit bug reports** → [SDK API Reference](../packages/sdk/README.md#api-submission)
+#### Get Started
+- **Install BugSpotter** → [Quick Start Guide](./guides/QUICK_START.md)
+- **Understand the project** → [Main README](../README.md)
+- **Configure PII patterns** → [Pattern Configuration](./features/PATTERN_CONFIGURATION.md)
 
 #### Develop & Test
-- **Run tests** → [Quick Start - Testing](./QUICK_START.md#-run-tests)
-- **Test the API** → [API Testing Guide](./API_TESTING.md)
-- **Build the SDK** → [Quick Start - Build](./QUICK_START.md#step-2-build-the-sdk)
-
-#### Deploy
-- **Set up backend** → [Backend Mock](../packages/backend-mock/README.md) or [Production API](../packages/api/README.md)
-- **Understand logging** → [Enhanced Logging](./ENHANCED_LOGGING.md)
+- **Run tests** → [Quick Start - Testing](./guides/QUICK_START.md)
+- **Test the API** → [API Testing Guide](./guides/API_TESTING.md)
 - **Review tech stack** → [Tech Stack](./TECH_STACK.md)
 
 #### Contribute
 - **Submit a PR** → [Contributing Guide](../CONTRIBUTING.md)
+- **Understand design decisions** → [Architecture Overview](./ARCHITECTURE.md)
 - **Report a bug** → [GitHub Issues](https://github.com/apexbridge-tech/bugspotter/issues)
-- **Ask questions** → [GitHub Discussions](https://github.com/apexbridge-tech/bugspotter/discussions)
 
-## 🌟 Highlighted Features
+## 🌟 Key Features
 
-### 🎥 Session Replay (NEW!)
-Record user interactions and play them back to see exactly what happened:
+### 🔒 PII Sanitization
+Automatically detect and redact sensitive data with 9 pattern types:
 ```javascript
-BugSpotter.init({
-  replay: {
-    enabled: true,
-    duration: 30  // Keep last 30 seconds
+const bugSpotter = new BugSpotter({
+  sanitization: {
+    preset: 'gdpr',  // Built-in presets: all, gdpr, pci, security, etc.
+    customPatterns: [{ name: 'custom', pattern: /SECRET-\d+/g }]
   }
 });
 ```
-[Learn more →](../packages/sdk/docs/SESSION_REPLAY.md)
+[Learn more →](./features/PII_SANITIZATION.md)
 
-### 📸 Screenshot Capture
-CSP-safe screenshots without external dependencies:
+### 📸 Screenshot with Redaction
+Capture screenshots with interactive redaction tools:
 ```javascript
 const report = await bugSpotter.capture();
-// report.screenshot contains base64 PNG
+// User can draw redaction rectangles in the modal
 ```
-[Learn more →](../packages/sdk/README.md)
+[Learn more →](./architecture/MODAL_REFACTORING.md)
 
-### 🎨 Customizable Widget
-Professional UI with full customization:
-```javascript
-new BugSpotter.FloatingButton({
-  position: 'bottom-right',
-  icon: '⚡',
-  backgroundColor: '#1a365d'
-});
-```
-[Learn more →](../packages/sdk/README.md#-widget-customization)
+### �️ Component-Based Architecture
+Modular design following SOLID principles:
+- **8 modal components** (79% code reduction)
+- **5 sanitizer classes** (40% less duplication)
+- **226 tests** with 100% pass rate
+[Learn more →](./ARCHITECTURE.md)
 
 ## 📊 Documentation Stats
 
-- **10 documentation files**
-- **5 quick start sections**
-- **162 tests** with full coverage
-- **4 major feature areas**
+- **13 documentation files**
+- **3 architecture deep-dives**
+- **3 feature guides**
+- **226 tests** with 100% coverage
 
 ## 🔍 Search by Topic
 
-### Types & TypeScript
-- [Type Guide](../TYPE_GUIDE.md)
-- [Type Safety](../packages/api/docs/TYPE_SAFETY.md)
-- [Type Mapping](../packages/api/docs/TYPE_MAPPING.md)
-- [Type Definitions](../packages/types/README.md)
+### Architecture
+- [Architecture Overview](./ARCHITECTURE.md) ⭐
+- [Modal Refactoring](./architecture/MODAL_REFACTORING.md)
+- [Sanitizer Refactoring](./architecture/SANITIZER_REFACTORING.md)
+- [Enhanced Logging](./architecture/ENHANCED_LOGGING.md)
 
-### Backend
-- [Backend Mock](../packages/backend-mock/README.md)
-- [Production API](../packages/api/README.md)
-- [Enhanced Logging](./ENHANCED_LOGGING.md)
-- [API Testing](./API_TESTING.md)
-
-### Frontend/SDK
-- [SDK README](../packages/sdk/README.md)
-- [Session Replay](../packages/sdk/docs/SESSION_REPLAY.md)
-- [Implementation Summary](../packages/sdk/IMPLEMENTATION_SUMMARY.md)
+### Features
+- [PII Sanitization](./features/PII_SANITIZATION.md)
+- [Pattern Configuration](./features/PATTERN_CONFIGURATION.md)
+- [Modal PII Features](./features/MODAL_PII_FEATURES.md)
 
 ### Guides
-- [Quick Start](./QUICK_START.md)
-- [Demo Guide](../apps/demo/REPLAY_DEMO.md)
+- [Quick Start](./guides/QUICK_START.md)
+- [API Testing](./guides/API_TESTING.md)
 - [Tech Stack](./TECH_STACK.md)
 - [Contributing](../CONTRIBUTING.md)
+
+### Project
+- [Main README](../README.md)
+- [Project Summary](./PROJECT_SUMMARY.md)
+- [Changelog](../CHANGELOG.md)
+- [Type Guide](../TYPE_GUIDE.md)
 
 ## 🆘 Getting Help
 
 ### Common Issues
 
 **Build errors?**
-- Check [Quick Start - Troubleshooting](./QUICK_START.md#-troubleshooting)
+- Check [Quick Start Guide](./guides/QUICK_START.md)
 
 **API not working?**
-- See [API Testing Guide](./API_TESTING.md)
+- See [API Testing Guide](./guides/API_TESTING.md)
 
-**Replay not displaying?**
-- Read [Session Replay Troubleshooting](../packages/sdk/docs/SESSION_REPLAY.md#troubleshooting)
+**Understanding architecture?**
+- Read [Architecture Overview](./ARCHITECTURE.md)
 
-**Type errors?**
-- Review [Type Safety Guide](../packages/api/docs/TYPE_SAFETY.md)
+**PII detection questions?**
+- Review [PII Sanitization](./features/PII_SANITIZATION.md)
 
 ### Support Channels
 
-- 📧 **Email:** support@apexbridge.tech
-- 🐛 **Issues:** [GitHub Issues](https://github.com/apexbridge-tech/bugspotter/issues)
+-  **Issues:** [GitHub Issues](https://github.com/apexbridge-tech/bugspotter/issues)
 - 💬 **Discussions:** [GitHub Discussions](https://github.com/apexbridge-tech/bugspotter/discussions)
 - 📚 **Documentation:** You're here!
 
 ## 🎓 Learning Path
 
-### Beginner
-1. Start with [Quick Start Guide](./QUICK_START.md)
-2. Try the [Demo](../apps/demo/REPLAY_DEMO.md)
-3. Read [Main README](../README.md)
+### For Users
+1. Start with [Quick Start Guide](./guides/QUICK_START.md)
+2. Configure patterns in [Pattern Configuration](./features/PATTERN_CONFIGURATION.md)
+3. Understand PII protection in [PII Sanitization](./features/PII_SANITIZATION.md)
 
-### Intermediate
-1. Explore [SDK API Reference](../packages/sdk/README.md)
-2. Learn [Session Replay](../packages/sdk/docs/SESSION_REPLAY.md)
-3. Test with [API Testing Guide](./API_TESTING.md)
+### For Contributors
+1. Read [Architecture Overview](./ARCHITECTURE.md) ⭐
+2. Study [Modal Refactoring](./architecture/MODAL_REFACTORING.md)
+3. Review [Sanitizer Refactoring](./architecture/SANITIZER_REFACTORING.md)
+4. Follow [Contributing Guide](../CONTRIBUTING.md)
 
-### Advanced
-1. Review [Implementation Summary](../packages/sdk/IMPLEMENTATION_SUMMARY.md)
-2. Study [Type Safety](../packages/api/docs/TYPE_SAFETY.md)
-3. Contribute via [Contributing Guide](../CONTRIBUTING.md)
+### For Architects
+1. Start with [Architecture Overview](./ARCHITECTURE.md)
+2. Deep dive into [Modal Refactoring](./architecture/MODAL_REFACTORING.md)
+3. Understand [Sanitizer Refactoring](./architecture/SANITIZER_REFACTORING.md)
+4. Review design decisions and SOLID principles
 
 ## 📝 Documentation Standards
 
@@ -184,10 +177,11 @@ All our documentation follows these principles:
 
 ## 🔄 Recent Updates
 
-- **Oct 2025** - Added session replay feature and documentation
-- **Oct 2025** - Enhanced backend logging and persistent storage
-- **Oct 2025** - Added interactive replay player to demo
-- **Oct 2025** - Comprehensive documentation reorganization
+- **Oct 2025** - Refactored modal system (8 components, 79% code reduction)
+- **Oct 2025** - Refactored sanitizer (5 classes, SOLID principles)
+- **Oct 2025** - Added PII sanitization with 9 pattern types
+- **Oct 2025** - Reorganized documentation into architecture/features/guides
+- **Oct 2025** - Created comprehensive Architecture Overview
 
 See [Changelog](../CHANGELOG.md) for full history.
 
@@ -195,4 +189,4 @@ See [Changelog](../CHANGELOG.md) for full history.
 
 **Happy Building! 🚀**
 
-*Last updated: October 4, 2025*
+*Last updated: October 5, 2025*

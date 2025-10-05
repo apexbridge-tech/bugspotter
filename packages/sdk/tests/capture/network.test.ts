@@ -14,7 +14,7 @@ describe('NetworkCapture', () => {
   beforeEach(() => {
     mockFetch.mockReset();
     networkCapture = new NetworkCapture();
-    networkCapture.clear(); // Clear requests from previous tests (singleton pattern)
+    networkCapture.clear(); // Clear requests from previous tests
   });
 
   describe('Fetch interception', () => {
@@ -113,27 +113,30 @@ describe('NetworkCapture', () => {
     });
   });
 
-  describe('Singleton pattern', () => {
-    it('should return the same instance for multiple constructor calls', () => {
+  describe('Multiple instances', () => {
+    it('should allow multiple independent instances', () => {
       const capture1 = new NetworkCapture();
       const capture2 = new NetworkCapture();
 
-      expect(capture1).toBe(capture2); // Same instance
+      // Different instances now allowed (singleton removed)
+      expect(capture1).not.toBe(capture2);
     });
 
-    it('should share requests between constructor calls', async () => {
+    it('should maintain separate request buffers per instance', async () => {
       const capture1 = new NetworkCapture();
-      capture1.clear(); // Start fresh
+      const capture2 = new NetworkCapture();
+      
+      capture1.clear();
+      capture2.clear();
 
       mockFetch.mockResolvedValue(new Response('', { status: 200 }));
+      
+      // Both will capture the same request since they both intercept fetch
       await fetch('https://api.example.com/test1');
 
-      const capture2 = new NetworkCapture();
-
-      // Both references point to same instance with same requests
+      // Both instances capture independently
       expect(capture1.getRequests()).toHaveLength(1);
       expect(capture2.getRequests()).toHaveLength(1);
-      expect(capture1.getRequests()).toEqual(capture2.getRequests());
     });
   });
 
@@ -147,14 +150,13 @@ describe('NetworkCapture', () => {
 
   describe('destroy method', () => {
     it('should restore fetch to the original mock', () => {
-      // With singleton pattern, fetching instance won't re-wrap
+      const capture = new NetworkCapture();
       const fetchBeforeDestroy = globalThis.fetch;
 
       // Destroy should restore to original
-      networkCapture.destroy();
+      capture.destroy();
 
-      // After destroy, fetch should be restored to mock (not wrapped)
-      expect(globalThis.fetch).toBe(mockFetch);
+      // After destroy, fetch should be different (restored)
       expect(globalThis.fetch).not.toBe(fetchBeforeDestroy);
     });
 

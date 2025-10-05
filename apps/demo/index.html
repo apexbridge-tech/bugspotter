@@ -335,6 +335,31 @@
           </div>
         </div>
 
+        <!-- PII Sanitization Section -->
+        <div class="section">
+          <h2>🔒 Data Sanitization <span class="badge">Privacy & Security</span></h2>
+          <p>Test automatic detection and sanitization of PII (Personally Identifiable Information) and sensitive credentials.</p>
+          <div class="test-element" id="pii-test-area" style="text-align: left; font-family: monospace; font-size: 0.9rem; line-height: 1.6;">
+            <strong>Sample Sensitive Data:</strong><br>
+            <em style="color: #718096;">PII (Personal Info):</em><br>
+            Email: john.doe@example.com<br>
+            Phone: (555) 123-4567<br>
+            Credit Card: 4532-1234-5678-9010<br>
+            SSN: 123-45-6789<br>
+            <br>
+            <em style="color: #718096;">Credentials (Secrets):</em><br>
+            API Key: sk_live_abc123def456ghi789<br>
+            Token: ghp_1234567890abcdefghijklmnopqrstuv<br>
+            Password: MySecureP@ss123<br>
+          </div>
+          <div class="button-grid">
+            <button class="btn-primary" onclick="testPIISanitization()">Test Data Sanitization</button>
+            <button class="btn-info" onclick="testPIIInConsole()">Log Sensitive Data</button>
+            <button class="btn-success" onclick="showSanitizedData()">Show Before/After</button>
+          </div>
+          <div id="pii-output" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #48bb78; border-radius: 4px; font-size: 0.9rem; font-family: monospace;"></div>
+        </div>
+
         <!-- Metadata Section -->
         <div class="section">
           <h2>System Information <span class="badge">Auto-captured</span></h2>
@@ -419,10 +444,28 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/index.js"></script>
-    <script src="../../packages/sdk/dist/bugspotter.min.js"></script>
+    <script src="bugspotter.min.js"></script>
     <script>
+      // Initialize BugSpotter SDK first (before any functions that use it)
+      const bugSpotter = BugSpotter.BugSpotter.init({
+        apiKey: 'demo-api-key-12345',
+        endpoint: 'http://localhost:4000/api/bugs',
+        showWidget: false, // Disable auto-widget, we'll create our own
+        replay: {
+          enabled: true,
+          duration: 30,  // Keep last 30 seconds
+          sampling: {
+            mousemove: 50,
+            scroll: 100,
+          }
+        }
+      });
+
+      console.log('✅ BugSpotter SDK initialized successfully');
+
       // Global replay player instance
       let replayPlayer = null;
+      
       // Modal demo handler
       async function showBugReportModalDemo() {
         try {
@@ -480,23 +523,7 @@
       }
 
       // Initialize BugSpotter
-      const bugSpotter = BugSpotter.BugSpotter.init({
-        apiKey: 'demo-api-key-12345',
-        endpoint: 'http://localhost:4000/api/bugs',
-        showWidget: false, // Disable auto-widget, we'll create our own
-        replay: {
-          enabled: true,
-          duration: 30,  // Keep last 30 seconds
-          sampling: {
-            mousemove: 50,
-            scroll: 100,
-          }
-        }
-      });
-
-      console.log('✅ BugSpotter SDK initialized successfully');
-
-      // Initialize Floating Button Widget
+      // Initialize Floating Button Widget (bugSpotter already initialized at top)
       const floatingButton = new BugSpotter.FloatingButton({
         position: 'bottom-right',
         icon: '⚡',
@@ -648,6 +675,102 @@
           console.error('❌ XHR request failed');
         };
         xhr.send();
+      }
+
+      // PII and Credentials Sanitization Tests
+      function testPIISanitization() {
+        console.log('🔒 Testing PII and credential detection/sanitization...');
+        
+        const testData = {
+          // PII (Personally Identifiable Information)
+          email: 'john.doe@example.com',
+          phone: '(555) 123-4567',
+          creditCard: '4532-1234-5678-9010',
+          ssn: '123-45-6789',
+          ipAddress: '192.168.1.100',
+          
+          // Credentials (Secrets - NOT PII, but still sensitive)
+          apiKey: 'sk_live_abc123def456ghi789',
+          token: 'ghp_1234567890abcdefghijklmnopqrstuv',
+          password: 'MySecureP@ss123',
+          
+          // Normal data
+          normalData: 'This is normal data without PII or secrets'
+        };
+        
+        // Use the SDK's sanitization utility
+        const sanitized = BugSpotter.sanitize(JSON.stringify(testData, null, 2));
+        
+        document.getElementById('pii-output').style.display = 'block';
+        document.getElementById('pii-output').innerHTML = `
+          <strong>✅ Data Sanitization Test Complete</strong><br><br>
+          <strong>Original Data (PII + Credentials):</strong><br>
+          <pre style="background: #fff5f5; padding: 0.5rem; border-radius: 4px; overflow-x: auto;">${JSON.stringify(testData, null, 2)}</pre>
+          <br>
+          <strong>Sanitized Data (Protected):</strong><br>
+          <pre style="background: #f0fff4; padding: 0.5rem; border-radius: 4px; overflow-x: auto;">${sanitized}</pre>
+          <br>
+          <em style="color: #38a169;">✓ PII: email, phone, credit card, SSN, IP</em><br>
+          <em style="color: #3182ce;">✓ Credentials: API keys, tokens, passwords</em>
+        `;
+        
+        console.log('Original data:', testData);
+        console.log('Sanitized data:', sanitized);
+      }
+
+      function testPIIInConsole() {
+        console.log('=== Testing PII Detection ===');
+        console.log('📧 User email: support@example.com');
+        console.log('📞 Contact phone: +1 (555) 987-6543');
+        console.log('💳 Payment method: 5555-5555-5555-4444');
+        console.log('🆔 SSN: 987-65-4321');
+        console.log('');
+        console.log('=== Testing Credential Detection ===');
+        console.log('🔑 API Key: sk_test_FAKE_KEY_FOR_DEMO_ONLY');
+        console.log('🎫 GitHub Token: ghp_FAKE_TOKEN_FOR_DEMO');
+        console.log('🔐 Password: MyP@ssw0rd123!');
+        console.warn('⚠️ All sensitive data is automatically sanitized when captured!');
+        console.info('ℹ️ Check the Console Data section below to see sanitized logs');
+      }
+
+      function showSanitizedData() {
+        const sampleText = `
+User Profile & Access Information:
+========================================
+PERSONAL INFORMATION (PII):
+- Email: alice.smith@company.com
+- Phone: 555-123-4567
+- Mobile: +1-555-987-6543
+- Credit Card: 4111111111111111
+- SSN: 456-78-9012
+- IP Address: 10.0.1.45
+
+CREDENTIALS (SECRETS - NOT PII):
+- API Key: sk_live_FAKE_DEMO_KEY_NOT_REAL
+- Access Token: ghp_FAKE_DEMO_TOKEN_NOT_REAL
+- Password: MySecure123!Pass
+
+SAFE DATA:
+- Customer ID: #12345
+- Order Number: ORD-2024-5678
+        `.trim();
+        
+        const sanitized = BugSpotter.sanitize(sampleText);
+        
+        document.getElementById('pii-output').style.display = 'block';
+        document.getElementById('pii-output').innerHTML = `
+          <strong>✅ Text Sanitization Demo</strong><br><br>
+          <strong>Before Sanitization:</strong><br>
+          <div style="background: #fff5f5; padding: 0.5rem; border-radius: 4px; white-space: pre-wrap; margin-bottom: 1rem;">${sampleText}</div>
+          <strong>After Sanitization:</strong><br>
+          <div style="background: #f0fff4; padding: 0.5rem; border-radius: 4px; white-space: pre-wrap;">${sanitized}</div>
+          <br>
+          <em style="color: #38a169;">✓ PII redacted: email, phone, credit card, SSN, IP address</em><br>
+          <em style="color: #3182ce;">✓ Credentials redacted: API keys, tokens, passwords</em><br>
+          <em style="color: #718096;">✓ Safe data preserved: customer ID, order number</em>
+        `;
+        
+        console.log('Sanitization complete - check output above');
       }
 
       // Metadata Display
