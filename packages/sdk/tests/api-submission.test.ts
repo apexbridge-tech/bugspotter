@@ -38,7 +38,7 @@ describe('API Submission', () => {
       });
 
       const bugSpotter = BugSpotter.init({
-        apiKey: 'test-api-key',
+        auth: { type: 'api-key', apiKey: 'test-api-key' },
         endpoint: 'https://api.example.com/bugs',
         showWidget: false,
       });
@@ -75,7 +75,8 @@ describe('API Submission', () => {
         expect(calledBody).toHaveProperty('report');
       }
       
-      expect(call.headers.Authorization).toBe('Bearer test-api-key');
+      // API Key auth uses X-API-Key header, not Authorization
+      expect(call.headers['X-API-Key']).toBe('test-api-key');
     });
 
     it('should submit without API key if not configured', async () => {
@@ -153,7 +154,7 @@ describe('API Submission', () => {
   describe('Error handling', () => {
     it('should throw error if no endpoint is configured', async () => {
       const bugSpotter = BugSpotter.init({
-        apiKey: 'test-key',
+        auth: { type: 'api-key', apiKey: 'test-key' },
         showWidget: false,
       });
 

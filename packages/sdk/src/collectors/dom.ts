@@ -22,9 +22,13 @@ export interface DOMCollectorConfig {
 }
 
 /**
- * DOM Collector using rrweb to record DOM mutations, mouse movements, clicks, and scrolls.
- * Maintains a circular buffer with the last 15-30 seconds of events.
+ * DOM Collector - Records user interactions and DOM mutations
+ * @packageDocumentation
  */
+
+import { getLogger } from '../utils/logger';
+
+const logger = getLogger();
 export class DOMCollector {
   private buffer: CircularBuffer;
   private stopRecordingFn?: () => void;
@@ -55,7 +59,7 @@ export class DOMCollector {
    */
   startRecording(): void {
     if (this.isRecording) {
-      console.warn('DOMCollector: Recording already in progress');
+      getLogger().warn('DOMCollector: Recording already in progress');
       return;
     }
 
@@ -106,9 +110,9 @@ export class DOMCollector {
 
       this.stopRecordingFn = record(recordConfig);
       this.isRecording = true;
-      console.debug('DOMCollector: Started recording');
+      getLogger().debug('DOMCollector: Started recording');
     } catch (error) {
-      console.error('DOMCollector: Failed to start recording', error);
+      getLogger().error('DOMCollector: Failed to start recording', error);
       this.isRecording = false;
     }
   }
@@ -117,19 +121,18 @@ export class DOMCollector {
    * Stop recording DOM events
    */
   stopRecording(): void {
-    if (!this.isRecording) {
-      console.warn('DOMCollector: No recording in progress');
+    if (!this.isRecording || !this.stopRecordingFn) {
+      logger.warn('DOMCollector: No recording in progress');
       return;
     }
 
-    if (this.stopRecordingFn) {
-      try {
-        this.stopRecordingFn();
-        this.isRecording = false;
-        console.debug('DOMCollector: Stopped recording');
-      } catch (error) {
-        console.error('DOMCollector: Failed to stop recording', error);
-      }
+    try {
+      this.stopRecordingFn();
+      this.isRecording = false;
+      this.stopRecordingFn = undefined;
+      logger.debug('DOMCollector: Stopped recording');
+    } catch (error) {
+      logger.error('DOMCollector: Failed to stop recording', error);
     }
   }
 
