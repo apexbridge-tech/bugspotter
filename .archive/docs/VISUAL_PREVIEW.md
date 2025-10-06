@@ -48,6 +48,7 @@
 ## Tab Contents Overview
 
 ### 📸 Tab 1: Capture (Default Active)
+
 ```
 ┌─────────────────────────────────────┐
 │ Console Data                        │
@@ -74,6 +75,7 @@
 ```
 
 ### 🎥 Tab 2: Session Replay
+
 ```
 ┌─────────────────────────────────────┐
 │ Session Replay                      │
@@ -96,6 +98,7 @@
 ```
 
 ### 🔒 Tab 3: Security & Privacy
+
 ```
 ┌─────────────────────────────────────┐
 │ Data Sanitization                   │
@@ -113,6 +116,7 @@
 ```
 
 ### ⚙️ Tab 4: Advanced Features
+
 ```
 ┌─────────────────────────────────────┐
 │ Authentication Flexibility          │
@@ -130,6 +134,7 @@
 ```
 
 ### 🎨 Tab 5: UI Components
+
 ```
 ┌─────────────────────────────────────┐
 │ Floating Button Widget              │
@@ -146,6 +151,7 @@
 ## Interactive Elements
 
 ### Tab Bar (Top)
+
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  Active: White bg, blue border bottom, dark text               │
@@ -156,6 +162,7 @@
 ```
 
 ### State Indicators
+
 - ✅ Active Tab: `class="tab active"`
 - 📊 Badge Count: Shows number of features/demos
 - 🎨 Icons: Emoji for visual categorization
@@ -164,6 +171,7 @@
 ## Color Scheme
 
 ### Tabs
+
 - **Active Tab**: `#ffffff` (white) with `#1a365d` bottom border
 - **Inactive Tab**: `#f7fafc` (light gray)
 - **Hover**: `#edf2f7` (lighter gray)
@@ -171,6 +179,7 @@
 - **Badge Inactive**: `#cbd5e0` (gray)
 
 ### Content
+
 - **Section Background**: `#f7fafc` (light gray)
 - **Section Border**: `#e2e8f0` (border gray)
 - **Buttons**: Various (primary blue, success green, danger red, etc.)
@@ -179,21 +188,27 @@
 ## Responsive Behavior
 
 ### Desktop (> 1024px)
+
 ```
 [📸 Capture 4] [🎥 Replay] [🔒 Security 3] [⚙️ Advanced 2] [🎨 UI 2]
 ```
+
 All tabs visible in horizontal row
 
 ### Tablet (768px - 1024px)
+
 ```
 [📸 Capture 4] [🎥 Replay] [🔒 Security 3] ▶
 ```
+
 Horizontal scroll for overflow tabs
 
 ### Mobile (< 768px)
+
 ```
 [📸 Capture 4] [🎥 Replay] ▶
 ```
+
 Compact tabs with scroll, smaller text
 
 ## User Flow

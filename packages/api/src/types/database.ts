@@ -182,7 +182,7 @@ export interface WebhookPayload {
   timestamp: string;
 }
 
-export type WebhookEvent = 
+export type WebhookEvent =
   | 'bug.created'
   | 'bug.updated'
   | 'bug.status_changed'

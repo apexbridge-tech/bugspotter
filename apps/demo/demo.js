@@ -1,16 +1,18 @@
 // Tab switching functionality (defined early so onclick handlers can use it)
 function switchTab(tabName) {
   // Remove active class from all tabs and content
-  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-  
+  document.querySelectorAll('.tab').forEach((tab) => tab.classList.remove('active'));
+  document
+    .querySelectorAll('.tab-content')
+    .forEach((content) => content.classList.remove('active'));
+
   // Add active class to selected tab and content
   event.target.closest('.tab').classList.add('active');
   document.getElementById(`tab-${tabName}`).classList.add('active');
-  
+
   // Save active tab to localStorage
   localStorage.setItem('activeTab', tabName);
-  
+
   console.log(`📑 Switched to ${tabName} tab`);
 }
 
@@ -21,12 +23,12 @@ const bugSpotter = BugSpotter.BugSpotter.init({
   showWidget: false, // Disable auto-widget, we'll create our own
   replay: {
     enabled: true,
-    duration: 30,  // Keep last 30 seconds
+    duration: 30, // Keep last 30 seconds
     sampling: {
       mousemove: 50,
       scroll: 100,
-    }
-  }
+    },
+  },
 });
 
 console.log('✅ BugSpotter SDK initialized with API Key authentication');
@@ -37,7 +39,7 @@ if (bugSpotter.domCollector) {
   console.log('🎥 Recording status:', bugSpotter.domCollector.isCurrentlyRecording());
   console.log('📊 Buffer size:', bugSpotter.domCollector.getBufferSize());
   console.log('⏱️ Buffer duration:', bugSpotter.domCollector.getDuration(), 'seconds');
-  
+
   // Check replay events periodically
   setInterval(() => {
     const events = bugSpotter.domCollector.getEvents();
@@ -57,9 +59,9 @@ async function submitBugReport(title, description, report) {
   const payload = {
     title: title,
     description: description,
-    report: report
+    report: report,
   };
-  
+
   console.log('📤 Payload being sent to API:', {
     title: payload.title,
     description: payload.description,
@@ -68,39 +70,43 @@ async function submitBugReport(title, description, report) {
       console: payload.report.console?.length || 0,
       network: payload.report.network?.length || 0,
       replay: payload.report.replay?.length || 0,
-      metadata: payload.report.metadata ? 'Present' : 'Missing'
-    }
+      metadata: payload.report.metadata ? 'Present' : 'Missing',
+    },
   });
-  
+
   const response = await fetch(bugSpotter.getConfig().endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${bugSpotter.getConfig().apiKey}`
+      Authorization: `Bearer ${bugSpotter.getConfig().apiKey}`,
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
-  
+
   if (!response.ok) {
     throw new Error(`API returned ${response.status}: ${response.statusText}`);
   }
-  
+
   const result = await response.json();
   console.log('✅ Bug report submitted successfully:', result);
-  
+
   // Display success message
-  document.getElementById('output').textContent = 
-    '✅ Bug Report Submitted Successfully!\n' + 
-    JSON.stringify({
-      bugId: result.bugId,
-      title: title,
-      description: description,
-      timestamp: result.timestamp,
-      consoleLogs: report.console?.length,
-      networkRequests: report.network?.length,
-      replayEvents: report.replay?.length
-    }, null, 2);
-  
+  document.getElementById('output').textContent =
+    '✅ Bug Report Submitted Successfully!\n' +
+    JSON.stringify(
+      {
+        bugId: result.bugId,
+        title: title,
+        description: description,
+        timestamp: result.timestamp,
+        consoleLogs: report.console?.length,
+        networkRequests: report.network?.length,
+        replayEvents: report.replay?.length,
+      },
+      null,
+      2
+    );
+
   return result;
 }
 
@@ -109,20 +115,20 @@ function createReplayPlayer(events, bugId = null) {
   // Show player container
   const container = document.getElementById('replay-player-container');
   container.classList.add('active');
-  
+
   // Update stats
   const timeSpan = ((events[events.length - 1].timestamp - events[0].timestamp) / 1000).toFixed(2);
-  const statsText = bugId 
+  const statsText = bugId
     ? `Bug #${bugId} • ${events.length} events • ${timeSpan}s duration`
     : `${events.length} events • ${timeSpan}s duration`;
   document.getElementById('player-stats').textContent = statsText;
-  
+
   // Destroy existing player if any
   if (replayPlayer) {
     replayPlayer.pause();
     document.getElementById('replay-player').innerHTML = '';
   }
-  
+
   // Create new player
   replayPlayer = new rrwebPlayer({
     target: document.getElementById('replay-player'),
@@ -138,7 +144,7 @@ function createReplayPlayer(events, bugId = null) {
       },
     },
   });
-  
+
   console.log('🎬 Replay player started with', events.length, 'events');
 }
 
@@ -152,14 +158,14 @@ function showOutput(divId, title, content, style = 'info') {
 // Helper: Reinitialize SDK with auth config
 function reinitializeSDK(authConfig) {
   bugSpotter.destroy();
-  
+
   const config = {
     endpoint: 'http://localhost:4000/api/bugs',
     showWidget: false,
     replay: { enabled: true, duration: 30 },
-    ...authConfig
+    ...authConfig,
   };
-  
+
   window.bugSpotterInstance = BugSpotter.BugSpotter.init(config);
 }
 
@@ -168,14 +174,14 @@ async function showBugReportModalDemo() {
   try {
     // Capture real data instead of using placeholder
     const report = await bugSpotter.capture();
-    
+
     const modal = new BugSpotter.BugReportModal({
       onSubmit: async (data) => {
         console.log('🚀 Submitting bug report to API (from modal demo)...');
         await submitBugReport(data.title, data.description, report);
       },
     });
-    
+
     modal.show(report.screenshot);
   } catch (error) {
     console.error('Failed to show modal:', error);
@@ -193,25 +199,27 @@ const floatingButton = new BugSpotter.FloatingButton({
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     border: '1px solid rgba(255, 255, 255, 0.1)',
     transition: 'all 0.2s ease',
-  }
+  },
 });
 
 // Add click handler to floating button
 floatingButton.onClick(async () => {
   console.log('Floating button clicked - capturing data...');
-  
+
   try {
     // Capture all the data
     const report = await bugSpotter.capture();
-    
+
     console.log('📦 Captured report data:', {
-      screenshot: report.screenshot ? 'Present (' + report.screenshot.length + ' chars)' : 'Missing',
+      screenshot: report.screenshot
+        ? 'Present (' + report.screenshot.length + ' chars)'
+        : 'Missing',
       console: report.console.length + ' entries',
       network: report.network.length + ' requests',
       replay: report.replay.length + ' events',
-      metadata: report.metadata ? 'Present' : 'Missing'
+      metadata: report.metadata ? 'Present' : 'Missing',
     });
-    
+
     // Show the modal with the captured screenshot
     const modal = new BugSpotter.BugReportModal({
       onSubmit: async (data) => {
@@ -221,12 +229,12 @@ floatingButton.onClick(async () => {
           description: data.description,
           replay_events: report.replay.length,
           console_logs: report.console.length,
-          network_requests: report.network.length
+          network_requests: report.network.length,
         });
         await submitBugReport(data.title, data.description, report);
       },
     });
-    
+
     modal.show(report.screenshot);
   } catch (error) {
     console.error('Failed to capture bug report:', error);
@@ -314,7 +322,7 @@ function testXHRRequest() {
 // PII and Credentials Sanitization Tests
 function testPIISanitization() {
   console.log('🔒 Testing PII and credential detection/sanitization...');
-  
+
   const testData = {
     // PII (Personally Identifiable Information)
     email: 'john.doe@example.com',
@@ -322,19 +330,19 @@ function testPIISanitization() {
     creditCard: '4532-1234-5678-9010',
     ssn: '123-45-6789',
     ipAddress: '192.168.1.100',
-    
+
     // Credentials (Secrets - NOT PII, but still sensitive)
     apiKey: 'sk_live_abc123def456ghi789',
     token: 'ghp_1234567890abcdefghijklmnopqrstuv',
     password: 'MySecureP@ss123',
-    
+
     // Normal data
-    normalData: 'This is normal data without PII or secrets'
+    normalData: 'This is normal data without PII or secrets',
   };
-  
+
   // Use the SDK's sanitization utility
   const sanitized = BugSpotter.sanitize(JSON.stringify(testData, null, 2));
-  
+
   document.getElementById('pii-output').style.display = 'block';
   document.getElementById('pii-output').innerHTML = `
     <strong>✅ Data Sanitization Test Complete</strong><br><br>
@@ -347,7 +355,7 @@ function testPIISanitization() {
     <em style="color: #38a169;">✓ PII: email, phone, credit card, SSN, IP</em><br>
     <em style="color: #3182ce;">✓ Credentials: API keys, tokens, passwords</em>
   `;
-  
+
   console.log('Original data:', testData);
   console.log('Sanitized data:', sanitized);
 }
@@ -388,9 +396,9 @@ SAFE DATA:
 - Customer ID: #12345
 - Order Number: ORD-2024-5678
   `.trim();
-  
+
   const sanitized = BugSpotter.sanitize(sampleText);
-  
+
   document.getElementById('pii-output').style.display = 'block';
   document.getElementById('pii-output').innerHTML = `
     <strong>✅ Text Sanitization Demo</strong><br><br>
@@ -403,7 +411,7 @@ SAFE DATA:
     <em style="color: #3182ce;">✓ Credentials redacted: API keys, tokens, passwords</em><br>
     <em style="color: #718096;">✓ Safe data preserved: customer ID, order number</em>
   `;
-  
+
   console.log('Sanitization complete - check output above');
 }
 
@@ -457,7 +465,7 @@ function changeButtonColor() {
 async function captureBugReport() {
   const btn = event?.target;
   const originalText = btn?.textContent;
-  
+
   if (btn) {
     btn.textContent = '⏳ Capturing...';
     btn.classList.add('loading');
@@ -505,21 +513,21 @@ async function captureBugReport() {
 // Session Replay Functions
 function playReplay() {
   const events = bugSpotter.domCollector.getEvents();
-  
+
   if (events.length === 0) {
     alert('No replay events captured yet. Interact with the page first!');
     return;
   }
 
   // Check if we have a fullSnapshot event (type 2)
-  const hasSnapshot = events.some(e => e.type === 2);
+  const hasSnapshot = events.some((e) => e.type === 2);
   if (!hasSnapshot) {
     console.warn('⚠️ No full snapshot found in events. Replay may not display correctly.');
   }
-  
+
   try {
     createReplayPlayer(events);
-    console.log('Event types:', [...new Set(events.map(e => e.type))]);
+    console.log('Event types:', [...new Set(events.map((e) => e.type))]);
   } catch (error) {
     console.error('Failed to create replay player:', error);
     alert('Failed to start replay player: ' + error.message);
@@ -529,11 +537,11 @@ function playReplay() {
 function stopReplay() {
   const container = document.getElementById('replay-player-container');
   container.classList.remove('active');
-  
+
   if (replayPlayer) {
     replayPlayer.pause();
   }
-  
+
   console.log('⏹️ Replay player stopped');
 }
 
@@ -541,18 +549,22 @@ async function showReplayInfo() {
   try {
     const report = await bugSpotter.capture();
     const replayEvents = report.replay;
-    
+
     const infoDiv = document.getElementById('replay-info');
     infoDiv.style.display = 'block';
-    
+
     if (replayEvents.length === 0) {
-      infoDiv.innerHTML = '<strong>No replay events captured yet.</strong><br>Interact with the page to generate events!';
+      infoDiv.innerHTML =
+        '<strong>No replay events captured yet.</strong><br>Interact with the page to generate events!';
       return;
     }
-    
-    const timeSpan = ((replayEvents[replayEvents.length - 1].timestamp - replayEvents[0].timestamp) / 1000).toFixed(2);
-    const eventTypes = [...new Set(replayEvents.map(e => e.type))];
-    
+
+    const timeSpan = (
+      (replayEvents[replayEvents.length - 1].timestamp - replayEvents[0].timestamp) /
+      1000
+    ).toFixed(2);
+    const eventTypes = [...new Set(replayEvents.map((e) => e.type))];
+
     infoDiv.innerHTML = `
       <strong>📊 Replay Buffer Status:</strong><br>
       • Total Events: ${replayEvents.length}<br>
@@ -563,12 +575,12 @@ async function showReplayInfo() {
       <br>
       <em>These events will be included when you submit a bug report!</em>
     `;
-    
+
     console.log('🎥 Replay Events:', {
       count: replayEvents.length,
       timeSpan: timeSpan + 's',
       types: eventTypes,
-      sample: replayEvents.slice(0, 3)
+      sample: replayEvents.slice(0, 3),
     });
   } catch (error) {
     console.error('Failed to get replay info:', error);
@@ -579,16 +591,16 @@ function testInteraction() {
   const testElement = document.getElementById('screenshot-test');
   const colors = ['#e6f2ff', '#ffe6f2', '#f2ffe6', '#fff2e6', '#f2e6ff'];
   const randomColor = colors[Math.floor(Math.random() * colors.length)];
-  
+
   testElement.style.background = randomColor;
   testElement.innerHTML = `
     <strong>🎨 Content Updated!</strong>
     <p>This DOM change was recorded at ${new Date().toLocaleTimeString()}</p>
     <p>Background: ${randomColor}</p>
   `;
-  
+
   console.log('✨ Test interaction triggered - DOM changed!');
-  
+
   // Automatically show replay info after interaction
   setTimeout(() => showReplayInfo(), 500);
 }
@@ -600,28 +612,30 @@ async function fetchBugReports() {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log('📋 Fetched bug reports:', data);
-    
+
     // Handle both response formats: array or {total, bugs}
-    const bugs = Array.isArray(data) ? data : (data.bugs || []);
-    
+    const bugs = Array.isArray(data) ? data : data.bugs || [];
+
     const listDiv = document.getElementById('bug-reports-list');
-    
+
     if (bugs.length === 0) {
       listDiv.innerHTML = '<p style="color: #94a3b8;">No bug reports found. Submit one first!</p>';
       return;
     }
-    
+
     // Show only the last 5 reports
     const recentBugs = bugs.slice(-5).reverse();
-    
+
     listDiv.innerHTML = `
       <div style="background: white; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1rem;">
         <h4 style="margin-top: 0;">📋 Recent Bug Reports (${bugs.length} total, showing last 5)</h4>
         <div style="max-height: 300px; overflow-y: auto;">
-          ${recentBugs.map((bug, index) => `
+          ${recentBugs
+            .map(
+              (bug, index) => `
             <div style="padding: 0.75rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: background 0.2s;"
                  onmouseover="this.style.background='#f8fafc'" 
                  onmouseout="this.style.background='white'"
@@ -643,13 +657,15 @@ async function fetchBugReports() {
                 </button>
               </div>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
       </div>
     `;
   } catch (error) {
     console.error('❌ Failed to fetch bug reports:', error);
-    document.getElementById('bug-reports-list').innerHTML = 
+    document.getElementById('bug-reports-list').innerHTML =
       `<p style="color: #dc2626;">Error: ${error.message}</p>`;
   }
 }
@@ -657,20 +673,20 @@ async function fetchBugReports() {
 async function replayBugReport(bugId) {
   try {
     console.log('🎬 Fetching bug report:', bugId);
-    
+
     const response = await fetch(`http://localhost:4000/api/bugs/${bugId}`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const bug = await response.json();
     console.log('📦 Bug report data:', bug);
-    
+
     if (!bug.report || !bug.report.replay || bug.report.replay.length === 0) {
       alert('❌ This bug report has no session replay data to play.');
       return;
     }
-    
+
     const events = bug.report.replay;
     createReplayPlayer(events, bugId);
     console.log('✅ Playing replay for bug:', bugId);
@@ -686,16 +702,16 @@ async function replayLatestReport() {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const data = await response.json();
     // Handle both response formats: array or {total, bugs}
-    const bugs = Array.isArray(data) ? data : (data.bugs || []);
-    
+    const bugs = Array.isArray(data) ? data : data.bugs || [];
+
     if (bugs.length === 0) {
       alert('No bug reports found. Submit one first!');
       return;
     }
-    
+
     const latestBug = bugs[bugs.length - 1];
     await replayBugReport(latestBug.id);
   } catch (error) {
@@ -707,29 +723,31 @@ async function replayLatestReport() {
 // Compression Demo Functions
 async function testCompression() {
   console.log('📦 Testing compression...');
-  
+
   try {
     // Create a test payload
     const testData = {
       title: 'Compression Test',
       description: 'Testing gzip compression',
-      logs: Array(50).fill(null).map((_, i) => ({
-        level: 'info',
-        message: `Test log entry ${i}`,
-        timestamp: Date.now() + i,
-      })),
+      logs: Array(50)
+        .fill(null)
+        .map((_, i) => ({
+          level: 'info',
+          message: `Test log entry ${i}`,
+          timestamp: Date.now() + i,
+        })),
       metadata: {
         browser: navigator.userAgent,
         viewport: { width: window.innerWidth, height: window.innerHeight },
       },
     };
-    
+
     // Use the SDK's compression utilities
     const originalSize = BugSpotter.estimateSize(testData);
     const compressed = await BugSpotter.compressData(testData);
     const compressedSize = compressed.byteLength;
     const ratio = BugSpotter.getCompressionRatio(originalSize, compressedSize);
-    
+
     // Display results
     const outputDiv = document.getElementById('compression-output');
     outputDiv.style.display = 'block';
@@ -756,38 +774,40 @@ async function testCompression() {
         <strong>Compression:</strong> Gzip level 6 (balanced speed/size)
       </div>
     `;
-    
-    console.log(`✅ Compression: ${(originalSize / 1024).toFixed(2)}KB → ${(compressedSize / 1024).toFixed(2)}KB (${ratio}% reduction)`);
+
+    console.log(
+      `✅ Compression: ${(originalSize / 1024).toFixed(2)}KB → ${(compressedSize / 1024).toFixed(2)}KB (${ratio}% reduction)`
+    );
   } catch (error) {
     console.error('❌ Compression test failed:', error);
-    document.getElementById('compression-output').innerHTML = 
+    document.getElementById('compression-output').innerHTML =
       '<strong style="color: #c53030;">❌ Compression test failed</strong><br>' + error.message;
   }
 }
 
 async function testLargePayload() {
   console.log('📦 Generating large payload with compression test...');
-  
+
   // Generate a lot of console logs
   for (let i = 0; i < 100; i++) {
     console.log(`Large payload test entry ${i}:`, {
       index: i,
       timestamp: Date.now(),
       data: 'This is some repetitive data that should compress well',
-      metadata: { browser: 'test', version: '1.0.0' }
+      metadata: { browser: 'test', version: '1.0.0' },
     });
   }
-  
+
   // Capture the data
   try {
     const report = await bugSpotter.capture();
-    
+
     // Calculate compression for the full report
     const originalSize = BugSpotter.estimateSize(report);
     const compressed = await BugSpotter.compressData(report);
     const compressedSize = compressed.byteLength;
     const ratio = BugSpotter.getCompressionRatio(originalSize, compressedSize);
-    
+
     const outputDiv = document.getElementById('compression-output');
     outputDiv.style.display = 'block';
     outputDiv.innerHTML = `
@@ -822,8 +842,10 @@ async function testLargePayload() {
         <strong>💾 Bandwidth Saved: ${((originalSize - compressedSize) / 1024).toFixed(2)} KB per report</strong>
       </div>
     `;
-    
-    console.log(`✅ Large payload: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`);
+
+    console.log(
+      `✅ Large payload: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`
+    );
   } catch (error) {
     console.error('❌ Large payload test failed:', error);
   }
@@ -862,17 +884,20 @@ async function showCompressionInfo() {
       <strong>💡 Tip:</strong> Click "Test Compression" or "Generate Large Payload" to see real compression stats!
     </div>
   `;
-  
+
   console.log('ℹ️ Compression information displayed');
 }
 
 // Authentication Demo Functions
 function switchToApiKey() {
   console.log('🔑 Switching to API Key authentication...');
-  
+
   reinitializeSDK({ apiKey: 'demo-api-key-12345' });
-  
-  showOutput('auth-output', '✅ Switched to API Key Authentication', `
+
+  showOutput(
+    'auth-output',
+    '✅ Switched to API Key Authentication',
+    `
     <div style="background: #f7fafc; padding: 0.75rem; border-radius: 4px;">
       <strong>Configuration:</strong><br>
       • Auth Type: API Key (deprecated but supported)<br>
@@ -880,14 +905,15 @@ function switchToApiKey() {
       • Header: X-API-Key: demo-api-key-12345<br><br>
       <em style="color: #718096;">⚠️ API Key auth is deprecated. Consider using Bearer Token or OAuth.</em>
     </div>
-  `);
-  
+  `
+  );
+
   console.log('✅ API Key authentication active');
 }
 
 function switchToBearerToken() {
   console.log('🎫 Switching to Bearer Token authentication...');
-  
+
   const timestamp = Date.now();
   reinitializeSDK({
     auth: {
@@ -896,17 +922,20 @@ function switchToBearerToken() {
       refreshToken: 'demo-refresh-token-' + timestamp,
       onRefresh: async (refreshToken) => {
         console.log('🔄 Token refresh handler called');
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         return {
           accessToken: 'refreshed-token-' + Date.now(),
           refreshToken: 'new-refresh-token-' + Date.now(),
-          expiresIn: 3600
+          expiresIn: 3600,
         };
-      }
-    }
+      },
+    },
   });
-  
-  showOutput('auth-output', '✅ Switched to Bearer Token Authentication', `
+
+  showOutput(
+    'auth-output',
+    '✅ Switched to Bearer Token Authentication',
+    `
     <div style="background: #f7fafc; padding: 0.75rem; border-radius: 4px;">
       <strong>Configuration:</strong><br>
       • Auth Type: Bearer Token<br>
@@ -916,14 +945,15 @@ function switchToBearerToken() {
       • Auto-Refresh: ✅ Enabled (on 401 errors)<br><br>
       <em style="color: #38a169;">✓ Recommended for modern applications</em>
     </div>
-  `);
-  
+  `
+  );
+
   console.log('✅ Bearer Token authentication active');
 }
 
 function switchToOAuth() {
   console.log('🔐 Switching to OAuth authentication...');
-  
+
   const timestamp = Date.now();
   reinitializeSDK({
     auth: {
@@ -934,17 +964,20 @@ function switchToOAuth() {
       clientSecret: 'demo-client-secret',
       onRefresh: async (refreshToken) => {
         console.log('🔄 OAuth token refresh initiated');
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 800));
         return {
           accessToken: 'oauth-refreshed-' + Date.now(),
           refreshToken: 'oauth-new-refresh-' + Date.now(),
-          expiresIn: 3600
+          expiresIn: 3600,
         };
-      }
-    }
+      },
+    },
   });
-  
-  showOutput('auth-output', '✅ Switched to OAuth Authentication', `
+
+  showOutput(
+    'auth-output',
+    '✅ Switched to OAuth Authentication',
+    `
     <div style="background: #f7fafc; padding: 0.75rem; border-radius: 4px;">
       <strong>Configuration:</strong><br>
       • Auth Type: OAuth 2.0<br>
@@ -955,14 +988,15 @@ function switchToOAuth() {
       • Auto-Refresh: ✅ Enabled<br><br>
       <em style="color: #3182ce;">✓ Industry standard for secure authentication</em>
     </div>
-  `);
-  
+  `
+  );
+
   console.log('✅ OAuth authentication active');
 }
 
 async function testTokenRefresh() {
   console.log('🧪 Testing token refresh on 401 error...');
-  
+
   const outputDiv = document.getElementById('auth-output');
   outputDiv.style.display = 'block';
   outputDiv.innerHTML = `
@@ -972,15 +1006,15 @@ async function testTokenRefresh() {
       <span class="loading">⏳ Please wait...</span>
     </div>
   `;
-  
+
   try {
     // Create a test payload
     const testPayload = {
       title: 'Token Refresh Test',
       description: 'Testing automatic token refresh on 401',
-      report: await bugSpotter.capture()
+      report: await bugSpotter.capture(),
     };
-    
+
     // Simulate 401 by using an expired token
     const mockAuth = {
       type: 'bearer',
@@ -988,16 +1022,16 @@ async function testTokenRefresh() {
       refreshToken: 'valid-refresh-token',
       onRefresh: async (refreshToken) => {
         console.log('🔄 Token expired! Refreshing...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         console.log('✅ New token obtained');
         return {
           accessToken: 'new-fresh-token-' + Date.now(),
           refreshToken: 'new-refresh-token-' + Date.now(),
-          expiresIn: 3600
+          expiresIn: 3600,
         };
-      }
+      },
     };
-    
+
     // Show the refresh flow
     outputDiv.innerHTML = `
       <strong>✅ Token Refresh Flow Complete</strong><br><br>
@@ -1021,7 +1055,7 @@ async function testTokenRefresh() {
       <br>
       <em style="color: #38a169;">✓ Your application stays authenticated seamlessly!</em>
     `;
-    
+
     console.log('✅ Token refresh test completed successfully');
   } catch (error) {
     console.error('❌ Token refresh test failed:', error);
@@ -1037,10 +1071,10 @@ async function testTokenRefresh() {
 function showAuthConfig() {
   const config = bugSpotter.getConfig();
   const auth = config.auth || { type: 'apiKey', apiKey: config.apiKey };
-  
+
   const outputDiv = document.getElementById('auth-output');
   outputDiv.style.display = 'block';
-  
+
   let authDetails = '';
   if (auth.type === 'bearer' || auth.type === 'oauth') {
     authDetails = `
@@ -1057,7 +1091,7 @@ function showAuthConfig() {
       • Header: X-API-Key<br>
     `;
   }
-  
+
   outputDiv.innerHTML = `
     <strong>🔍 Current Authentication Configuration</strong><br><br>
     <div style="background: #f7fafc; padding: 0.75rem; border-radius: 4px;">
@@ -1074,7 +1108,7 @@ function showAuthConfig() {
       4. <strong>Custom</strong> - Use custom headers or getAuthHeaders()<br>
     </div>
   `;
-  
+
   console.log('Current auth config:', auth);
 }
 
@@ -1083,7 +1117,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedTab = localStorage.getItem('activeTab');
   if (savedTab && document.getElementById(`tab-${savedTab}`)) {
     const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
+    tabs.forEach((tab) => {
       if (tab.onclick && tab.onclick.toString().includes(savedTab)) {
         tab.click();
       }

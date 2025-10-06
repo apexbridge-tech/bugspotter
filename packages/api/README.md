@@ -5,12 +5,14 @@ Production-ready API server for BugSpotter with Supabase integration.
 ## Quick Start
 
 ### 1. Install Dependencies
+
 ```bash
 cd packages/api
 pnpm install
 ```
 
 ### 2. Configure Environment
+
 ```bash
 # Copy example env file
 cp .env.example .env
@@ -19,6 +21,7 @@ cp .env.example .env
 ```
 
 ### 3. Run Development Server
+
 ```bash
 pnpm dev
 ```
@@ -75,6 +78,7 @@ CORS_ORIGIN=http://localhost:3000
 ## API Endpoints
 
 ### Health Check
+
 ```
 GET /health
 ```
@@ -82,6 +86,7 @@ GET /health
 Returns server status.
 
 ### Bug Reports (Coming Soon)
+
 ```
 POST /api/bugs
 GET /api/bugs
@@ -107,6 +112,7 @@ GET /api/bugs/:id
 4. Import route in `src/server.ts`
 
 Example:
+
 ```typescript
 // src/routes/bugs.ts
 import { Router } from 'express';
@@ -125,6 +131,7 @@ See `docs/DATABASE_SCHEMA.md` for Supabase table definitions.
 ## Production Deployment
 
 1. Build the project:
+
 ```bash
 pnpm build
 ```
@@ -132,6 +139,7 @@ pnpm build
 2. Set production environment variables
 
 3. Start server:
+
 ```bash
 NODE_ENV=production pnpm start
 ```

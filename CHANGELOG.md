@@ -14,6 +14,7 @@ Major security update adding comprehensive PII detection and sanitization.
 ### ✨ Added
 
 #### PII Sanitization
+
 - **Automatic PII detection** and masking before sending bug reports
 - **Built-in patterns** for sensitive data:
   - Email addresses (`user@example.com` → `[REDACTED-EMAIL]`)
@@ -28,6 +29,7 @@ Major security update adding comprehensive PII detection and sanitization.
 - **Performance optimized** - <10ms overhead per bug report
 
 #### Sanitization Coverage
+
 - Console logs and error messages
 - Network request/response data (URLs, headers, bodies)
 - Error stack traces
@@ -35,32 +37,34 @@ Major security update adding comprehensive PII detection and sanitization.
 - Metadata (URLs, user agents)
 
 #### Configuration
+
 - Enable/disable sanitization globally
 - Select specific PII patterns to detect
 - Define custom patterns with regex
 - Exclude DOM elements from sanitization
 
 #### Testing
+
 - 52 comprehensive sanitization tests
 - Edge cases: nested objects, Cyrillic text, performance benchmarks
 - **Total: 226 tests** (up from 174)
 
 ### 📝 Changed
+
 - All capture modules now accept optional `Sanitizer` instance
 - DOM collector uses rrweb's `maskTextFn` for text sanitization
 - Default behavior: sanitization **enabled** with all built-in patterns
 
 ### 🔧 Configuration Example
+
 ```typescript
 BugSpotter.init({
   sanitize: {
     enabled: true,
     patterns: ['email', 'phone', 'creditcard', 'ssn', 'iin', 'ip'],
-    customPatterns: [
-      { name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }
-    ],
-    excludeSelectors: ['.public-email', '#support-contact']
-  }
+    customPatterns: [{ name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }],
+    excludeSelectors: ['.public-email', '#support-contact'],
+  },
 });
 ```
 
@@ -73,6 +77,7 @@ Major update adding comprehensive session replay functionality.
 ### ✨ Added
 
 #### Session Replay
+
 - **rrweb integration** for DOM recording and playback
 - **Circular buffer** with time-based event management (15-30s configurable)
 - **DOMCollector class** for recording user interactions
@@ -91,24 +96,28 @@ Major update adding comprehensive session replay functionality.
 - **Persistent database** for backend-mock (JSON file storage)
 
 #### Documentation
+
 - Comprehensive session replay documentation
 - Interactive demo guide with replay player
 - Updated all docs with current stats (162 tests, ~99KB bundle)
 - Created master documentation index
 
 #### Testing
+
 - 17 tests for CircularBuffer
 - 13 tests for DOMCollector
 - 3 integration tests for replay in BugSpotter
 - **Total: 162 tests** (up from 129)
 
 ### 📝 Changed
+
 - Bundle size increased to ~99 KB (from 29.2 KB) due to rrweb
 - Memory usage increased to ~15 MB (from ~10 MB) with 30s buffer
 - Demo now includes replay player with controls
 - Backend logs now show replay event breakdown
 
 ### 🔧 Technical
+
 - Added rrweb@2.0.0-alpha.4
 - Added rrweb-snapshot@2.0.0-alpha.4
 - Added @rrweb/types@2.0.0-alpha.18
@@ -123,6 +132,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 ### ✨ Added
 
 #### Core SDK
+
 - **BugSpotter class** with singleton pattern
 - **Automatic capture** of screenshots, console logs, network requests, and metadata
 - **Configuration system** with API key and endpoint support
@@ -130,6 +140,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Webpack build** producing minified bundle
 
 #### Capture Modules
+
 - **Screenshot Capture**
   - CSP-safe using html-to-image library
   - Full page capture as Base64 PNG
@@ -160,6 +171,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
   - Capture timestamp
 
 #### Widget Components
+
 - **FloatingButton**
   - Customizable position (4 corners)
   - Custom icon support (emoji/text)
@@ -182,6 +194,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
   - Shadow DOM isolation
 
 #### API Integration
+
 - **HTTP submission** with fetch API
 - **Bearer token authentication**
 - **JSON payload** structure
@@ -190,6 +203,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Response parsing**
 
 #### Backend (Mock Server)
+
 - **Express.js server** on port 4000
 - **CORS enabled** for cross-origin requests
 - **POST /api/bugs** - Submit bug reports
@@ -208,6 +222,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Health check** endpoint
 
 #### Testing
+
 - **129 comprehensive tests** - All passing ✅
   - 27 Core SDK tests
   - 13 Console capture tests
@@ -224,6 +239,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Unit tests** for individual components
 
 #### Demo Application
+
 - **Professional UI** with corporate blue theme (#1a365d)
 - **Interactive test buttons** for console/network testing
 - **Live capture** demonstration
@@ -232,6 +248,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Responsive design**
 
 #### Documentation
+
 - **README.md** - Project overview and quick start
 - **packages/sdk/README.md** - SDK API documentation
 - **docs/API_TESTING.md** - Complete API testing guide
@@ -240,6 +257,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **packages/backend-mock/README.md** - Mock backend API documentation
 
 ### 🎨 Design Improvements
+
 - **Professional color scheme** - Navy blue (#1a365d) corporate theme
 - **Subtle animations** - Smooth transitions and effects
 - **Clean typography** - Modern font stack
@@ -247,6 +265,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Responsive layout** - Mobile-friendly design
 
 ### 🔒 Security
+
 - **CSP-safe** screenshot capture
 - **Input validation** on all forms
 - **Bearer token** authentication
@@ -254,6 +273,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Sanitized outputs** in logging
 
 ### 📊 Performance
+
 - **29.2 KB** minified bundle size
 - **< 100ms** load time
 - **< 10 MB** memory footprint
@@ -261,6 +281,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Zero impact** when idle
 
 ### 🐛 Bug Fixes
+
 - Fixed duplicate floating buttons (SDK auto-widget + manual widget)
 - Fixed modal closing accidentally on outside click (UX improvement)
 - Fixed port conflict (backend now uses 4000, not 3001)
@@ -268,6 +289,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - Fixed test for modal close behavior (async test)
 
 ### 🔧 Developer Experience
+
 - **TypeScript** strict mode enabled
 - **ESLint** configuration
 - **Prettier** formatting
@@ -278,6 +300,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **Watch mode** for development
 
 ### 📦 Build System
+
 - **Webpack 5** configuration
 - **Production optimization** with minification
 - **Tree shaking** for smaller bundles
@@ -285,6 +308,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - **ES modules** support
 
 ### 🚀 Deployment Ready
+
 - Mock server ready for testing
 - Production-ready SDK build
 - Documentation complete
@@ -296,6 +320,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 ## Future Releases
 
 ### [0.2.0] - Planned
+
 - NPM package publication
 - React integration example
 - Vue integration example
@@ -303,6 +328,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - Enhanced error boundary handling
 
 ### [0.3.0] - Planned
+
 - Production backend template
 - PostgreSQL integration
 - Cloud storage for screenshots
@@ -310,6 +336,7 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 - Rate limiting
 
 ### [1.0.0] - Planned
+
 - Public stable release
 - Complete documentation
 - Video tutorials
@@ -322,12 +349,15 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 ## Development Notes
 
 ### Breaking Changes
+
 None - this is the initial release.
 
 ### Deprecations
+
 None - this is the initial release.
 
 ### Migration Guide
+
 None - this is the initial release.
 
 ---

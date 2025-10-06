@@ -5,11 +5,11 @@
 
 import { Router } from 'express';
 import type { Request, Response, Router as ExpressRouter } from 'express';
-import type { 
+import type {
   CreateBugReportRequest,
   CreateBugReportResponse,
   ApiErrorResponse,
-  BugReportData
+  BugReportData,
 } from '@bugspotter/types';
 import { CreateBugReportSchema } from '../schemas/bug-report.schema.js';
 import { validateBody } from '../middleware/validate.js';

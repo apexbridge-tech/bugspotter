@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BugSpotter Demo - Test All Capture Features</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/style.css" crossorigin="anonymous" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/style.css"
+      crossorigin="anonymous"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -83,7 +87,10 @@
         <!-- Metadata Section -->
         <div class="section">
           <h2>System Information <span class="badge">Auto-captured</span></h2>
-          <p>Environment details including browser, viewport, operating system, and timestamps are automatically collected.</p>
+          <p>
+            Environment details including browser, viewport, operating system, and timestamps are
+            automatically collected.
+          </p>
           <div class="button-grid">
             <button class="btn-info" onclick="showCurrentMetadata()">Show Current Metadata</button>
           </div>
@@ -97,7 +104,9 @@
             console entries, network activity, visual capture, and system information.
           </p>
           <div class="button-grid">
-            <button class="btn-capture" onclick="captureBugReport()">📸 Generate Full Bug Report</button>
+            <button class="btn-capture" onclick="captureBugReport()">
+              📸 Generate Full Bug Report
+            </button>
           </div>
         </div>
 
@@ -110,23 +119,27 @@
         <div class="section">
           <h2>🎥 Session Replay <span class="badge">30-Second Buffer</span></h2>
           <p>
-            Your interactions are continuously recorded in a 30-second circular buffer. DOM changes, clicks, scrolls, and mouse movements are captured automatically. Play back your session below!
+            Your interactions are continuously recorded in a 30-second circular buffer. DOM changes,
+            clicks, scrolls, and mouse movements are captured automatically. Play back your session
+            below!
           </p>
-          
+
           <h3>📥 Replay Submitted Reports</h3>
-          <p style="color: #64748b; font-size: 0.9rem;">
+          <p style="color: #64748b; font-size: 0.9rem">
             Fetch and replay session recordings from previously submitted bug reports.
           </p>
           <div class="button-grid">
             <button class="btn-primary" onclick="fetchBugReports()">📋 Fetch Bug Reports</button>
-            <button class="btn-success" onclick="replayLatestReport()">▶️ Replay Latest Report</button>
+            <button class="btn-success" onclick="replayLatestReport()">
+              ▶️ Replay Latest Report
+            </button>
           </div>
-          <div id="bug-reports-list" style="margin-top: 1rem;"></div>
+          <div id="bug-reports-list" style="margin-top: 1rem"></div>
 
-          <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e2e8f0;">
+          <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e2e8f0" />
 
           <h3>📹 Live Session Recording</h3>
-          <p style="color: #64748b; font-size: 0.9rem;">
+          <p style="color: #64748b; font-size: 0.9rem">
             Record your current session and play it back immediately.
           </p>
           <div class="button-grid">
@@ -135,8 +148,19 @@
             <button class="btn-success" onclick="testInteraction()">✨ Test Interaction</button>
             <button class="btn-warning" onclick="stopReplay()">⏹️ Stop Replay</button>
           </div>
-          <div id="replay-info" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.9rem;"></div>
-          
+          <div
+            id="replay-info"
+            style="
+              display: none;
+              margin-top: 1rem;
+              padding: 1rem;
+              background: white;
+              border: 1px solid #e2e8f0;
+              border-radius: 4px;
+              font-size: 0.9rem;
+            "
+          ></div>
+
           <!-- Replay Player -->
           <div id="replay-player-container">
             <div class="player-header">
@@ -145,10 +169,18 @@
             </div>
             <div id="replay-player"></div>
             <div class="player-controls">
-              <button class="btn-success" onclick="replayPlayer && replayPlayer.play()">▶️ Play</button>
-              <button class="btn-warning" onclick="replayPlayer && replayPlayer.pause()">⏸️ Pause</button>
-              <button class="btn-info" onclick="replayPlayer && replayPlayer.setSpeed(2)">2x Speed</button>
-              <button class="btn-info" onclick="replayPlayer && replayPlayer.setSpeed(1)">1x Speed</button>
+              <button class="btn-success" onclick="replayPlayer && replayPlayer.play()">
+                ▶️ Play
+              </button>
+              <button class="btn-warning" onclick="replayPlayer && replayPlayer.pause()">
+                ⏸️ Pause
+              </button>
+              <button class="btn-info" onclick="replayPlayer && replayPlayer.setSpeed(2)">
+                2x Speed
+              </button>
+              <button class="btn-info" onclick="replayPlayer && replayPlayer.setSpeed(1)">
+                1x Speed
+              </button>
               <button class="btn-danger" onclick="stopReplay()">⏹️ Close</button>
             </div>
           </div>
@@ -160,26 +192,47 @@
         <!-- PII Sanitization Section -->
         <div class="section">
           <h2>🔒 Data Sanitization <span class="badge">Privacy & Security</span></h2>
-          <p>Test automatic detection and sanitization of PII (Personally Identifiable Information) and sensitive credentials.</p>
-          <div class="test-element" id="pii-test-area" style="text-align: left; font-family: monospace; font-size: 0.9rem; line-height: 1.6;">
-            <strong>Sample Sensitive Data:</strong><br>
-            <em style="color: #718096;">PII (Personal Info):</em><br>
-            Email: john.doe@example.com<br>
-            Phone: (555) 123-4567<br>
-            Credit Card: 4532-1234-5678-9010<br>
-            SSN: 123-45-6789<br>
-            <br>
-            <em style="color: #718096;">Credentials (Secrets):</em><br>
-            API Key: sk_live_abc123def456ghi789<br>
-            Token: ghp_1234567890abcdefghijklmnopqrstuv<br>
-            Password: MySecureP@ss123<br>
+          <p>
+            Test automatic detection and sanitization of PII (Personally Identifiable Information)
+            and sensitive credentials.
+          </p>
+          <div
+            class="test-element"
+            id="pii-test-area"
+            style="text-align: left; font-family: monospace; font-size: 0.9rem; line-height: 1.6"
+          >
+            <strong>Sample Sensitive Data:</strong><br />
+            <em style="color: #718096">PII (Personal Info):</em><br />
+            Email: john.doe@example.com<br />
+            Phone: (555) 123-4567<br />
+            Credit Card: 4532-1234-5678-9010<br />
+            SSN: 123-45-6789<br />
+            <br />
+            <em style="color: #718096">Credentials (Secrets):</em><br />
+            API Key: sk_live_abc123def456ghi789<br />
+            Token: ghp_1234567890abcdefghijklmnopqrstuv<br />
+            Password: MySecureP@ss123<br />
           </div>
           <div class="button-grid">
-            <button class="btn-primary" onclick="testPIISanitization()">Test Data Sanitization</button>
+            <button class="btn-primary" onclick="testPIISanitization()">
+              Test Data Sanitization
+            </button>
             <button class="btn-info" onclick="testPIIInConsole()">Log Sensitive Data</button>
             <button class="btn-success" onclick="showSanitizedData()">Show Before/After</button>
           </div>
-          <div id="pii-output" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #48bb78; border-radius: 4px; font-size: 0.9rem; font-family: monospace;"></div>
+          <div
+            id="pii-output"
+            style="
+              display: none;
+              margin-top: 1rem;
+              padding: 1rem;
+              background: white;
+              border: 1px solid #48bb78;
+              border-radius: 4px;
+              font-size: 0.9rem;
+              font-family: monospace;
+            "
+          ></div>
         </div>
       </div>
 
@@ -189,8 +242,9 @@
         <div class="section">
           <h2>🔐 Authentication Flexibility <span class="badge">Multiple Auth Methods</span></h2>
           <p>
-            BugSpotter supports multiple authentication methods: API Key, Bearer Token with auto-refresh, and OAuth. 
-            Switch between auth methods and test token refresh on 401 errors!
+            BugSpotter supports multiple authentication methods: API Key, Bearer Token with
+            auto-refresh, and OAuth. Switch between auth methods and test token refresh on 401
+            errors!
           </p>
           <div class="button-grid">
             <button class="btn-primary" onclick="switchToApiKey()">Use API Key Auth</button>
@@ -199,22 +253,45 @@
             <button class="btn-warning" onclick="testTokenRefresh()">Test Token Refresh</button>
             <button class="btn-danger" onclick="showAuthConfig()">Show Current Auth</button>
           </div>
-          <div id="auth-output" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #3182ce; border-radius: 4px; font-family: monospace; font-size: 0.9rem;"></div>
+          <div
+            id="auth-output"
+            style="
+              display: none;
+              margin-top: 1rem;
+              padding: 1rem;
+              background: white;
+              border: 1px solid #3182ce;
+              border-radius: 4px;
+              font-family: monospace;
+              font-size: 0.9rem;
+            "
+          ></div>
         </div>
 
         <!-- Compression Demo Section -->
         <div class="section">
           <h2>📦 Gzip Compression <span class="badge">70-90% Reduction</span></h2>
           <p>
-            Bug reports are automatically compressed using gzip before sending to the server. 
-            Screenshots are optimized to WebP format and resized. Test the compression below to see real-time size reduction!
+            Bug reports are automatically compressed using gzip before sending to the server.
+            Screenshots are optimized to WebP format and resized. Test the compression below to see
+            real-time size reduction!
           </p>
           <div class="button-grid">
             <button class="btn-primary" onclick="testCompression()">Test Compression</button>
             <button class="btn-success" onclick="testLargePayload()">Generate Large Payload</button>
             <button class="btn-info" onclick="showCompressionInfo()">Show Compression Stats</button>
           </div>
-          <div id="compression-output" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #3182ce; border-radius: 4px;"></div>
+          <div
+            id="compression-output"
+            style="
+              display: none;
+              margin-top: 1rem;
+              padding: 1rem;
+              background: white;
+              border: 1px solid #3182ce;
+              border-radius: 4px;
+            "
+          ></div>
         </div>
       </div>
 
@@ -239,14 +316,16 @@
         <div class="section">
           <h2>🪟 Bug Report Modal <span class="badge">UI Demo</span></h2>
           <p>
-            Click below to open the Bug Report Modal directly, with a sample screenshot preview. Submitting the form will display the bug data below.
+            Click below to open the Bug Report Modal directly, with a sample screenshot preview.
+            Submitting the form will display the bug data below.
           </p>
           <div class="button-grid">
-            <button class="btn-primary" onclick="showBugReportModalDemo()">Show Bug Report Modal</button>
+            <button class="btn-primary" onclick="showBugReportModalDemo()">
+              Show Bug Report Modal
+            </button>
           </div>
         </div>
       </div>
-
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/index.js"></script>

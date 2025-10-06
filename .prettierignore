@@ -20,3 +20,7 @@ pnpm-debug.log*
 .DS_Store
 *.swp
 *.swo
+
+# Data files (can get very large)
+packages/backend-mock/db.json
+packages/backend-mock/bug-reports/*.json

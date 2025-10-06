@@ -37,6 +37,7 @@ private render(): void {
 ```
 
 **Problems**:
+
 - CSS and HTML mixed with business logic
 - Hard to maintain and test
 - No reusability
@@ -122,15 +123,26 @@ class StyleManager {
     `;
   }
 
-  private static baseStyles(): string { /* ... */ }
-  private static layoutStyles(): string { /* ... */ }
-  private static formStyles(): string { /* ... */ }
-  private static piiStyles(): string { /* ... */ }
-  private static redactionStyles(): string { /* ... */ }
+  private static baseStyles(): string {
+    /* ... */
+  }
+  private static layoutStyles(): string {
+    /* ... */
+  }
+  private static formStyles(): string {
+    /* ... */
+  }
+  private static piiStyles(): string {
+    /* ... */
+  }
+  private static redactionStyles(): string {
+    /* ... */
+  }
 }
 ```
 
 **Benefits**:
+
 - ✅ Centralized style management
 - ✅ Easy theming via tokens
 - ✅ Can be replaced with CSS-in-JS library
@@ -176,14 +188,23 @@ class TemplateManager {
     `;
   }
 
-  static getFormFieldsTemplate(): string { /* ... */ }
-  static getScreenshotTemplate(): string { /* ... */ }
-  static getPIIDetectionTemplate(): string { /* ... */ }
-  static getSubmitButtonTemplate(): string { /* ... */ }
+  static getFormFieldsTemplate(): string {
+    /* ... */
+  }
+  static getScreenshotTemplate(): string {
+    /* ... */
+  }
+  static getPIIDetectionTemplate(): string {
+    /* ... */
+  }
+  static getSubmitButtonTemplate(): string {
+    /* ... */
+  }
 }
 ```
 
 **Benefits**:
+
 - ✅ Modular template composition
 - ✅ Easier to test individual sections
 - ✅ Can use template literals or template engine
@@ -257,6 +278,7 @@ class DOMElementCache {
 ```
 
 **Benefits**:
+
 - ✅ Eliminates repetitive `querySelector` calls
 - ✅ Type-safe element access
 - ✅ Performance optimization (caching)
@@ -310,10 +332,7 @@ class FormValidator {
     return { isValid, errors };
   }
 
-  displayErrors(
-    result: ValidationResult,
-    elements: DOMElementCache
-  ): void {
+  displayErrors(result: ValidationResult, elements: DOMElementCache): void {
     const titleError = elements.titleError;
     const descriptionError = elements.descriptionError;
 
@@ -343,6 +362,7 @@ class FormValidator {
 ```
 
 **Benefits**:
+
 - ✅ Pure validation logic (easily testable)
 - ✅ Structured error reporting
 - ✅ Separated from DOM manipulation
@@ -376,9 +396,7 @@ class PIIDetectionDisplay {
   }
 
   private getDetectionsTemplate(detections: PIIDetection[]): string {
-    return detections
-      .map((d) => this.getBadgeTemplate(d))
-      .join('');
+    return detections.map((d) => this.getBadgeTemplate(d)).join('');
   }
 
   private getBadgeTemplate(detection: PIIDetection): string {
@@ -394,6 +412,7 @@ class PIIDetectionDisplay {
 ```
 
 **Benefits**:
+
 - ✅ Encapsulates PII display logic
 - ✅ Templating methods for reusability
 - ✅ Easier to test
@@ -444,7 +463,7 @@ class RedactionCanvas {
     this.canvas.height = img.naturalHeight || img.height;
     this.canvas.style.width = `${img.width}px`;
     this.canvas.style.height = `${img.height}px`;
-    
+
     this.context = this.canvas.getContext('2d');
   }
 
@@ -497,10 +516,10 @@ class RedactionCanvas {
 
   private handleMove = (e: MouseEvent): void => {
     if (!this.isDrawing || !this.context || !this.startCoord) return;
-    
+
     const current = this.getCanvasCoordinate(e);
     this.redraw();
-    
+
     // Draw current rectangle
     this.context.fillStyle = 'rgba(0, 0, 0, 0.8)';
     this.context.fillRect(
@@ -513,7 +532,7 @@ class RedactionCanvas {
 
   private handleEnd = (e: MouseEvent): void => {
     if (!this.isDrawing || !this.startCoord) return;
-    
+
     const end = this.getCanvasCoordinate(e);
     this.redactions.push({
       x: this.startCoord.x,
@@ -521,7 +540,7 @@ class RedactionCanvas {
       width: end.x - this.startCoord.x,
       height: end.y - this.startCoord.y,
     });
-    
+
     this.isDrawing = false;
     this.startCoord = null;
     this.redraw();
@@ -529,11 +548,11 @@ class RedactionCanvas {
 
   private getCanvasCoordinate(e: MouseEvent): CanvasCoordinate {
     if (!this.canvas) throw new Error('Canvas not initialized');
-    
+
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
     const scaleY = this.canvas.height / rect.height;
-    
+
     return {
       x: (e.clientX - rect.left) * scaleX,
       y: (e.clientY - rect.top) * scaleY,
@@ -544,10 +563,10 @@ class RedactionCanvas {
 
   private redraw(): void {
     if (!this.canvas || !this.context) return;
-    
+
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.context.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    
+
     this.redactions.forEach((rect) => {
       this.context!.fillRect(rect.x, rect.y, rect.width, rect.height);
     });
@@ -563,6 +582,7 @@ class RedactionCanvas {
 ```
 
 **Benefits**:
+
 - ✅ Encapsulates all canvas logic
 - ✅ Type-safe coordinate handling
 - ✅ Clear API for activation/deactivation
@@ -589,19 +609,19 @@ class ScreenshotProcessor {
     const canvas = document.createElement('canvas');
     canvas.width = img.naturalWidth || img.width;
     canvas.height = img.naturalHeight || img.height;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return originalScreenshot;
 
     // Draw original image
     ctx.drawImage(img, 0, 0);
-    
+
     // Draw redactions
     ctx.fillStyle = '#000000';
     redactions.forEach((rect) => {
       ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     });
-    
+
     return canvas.toDataURL('image/png');
   }
 
@@ -617,6 +637,7 @@ class ScreenshotProcessor {
 ```
 
 **Benefits**:
+
 - ✅ Pure image processing logic
 - ✅ Static methods (no state)
 - ✅ Easy to test
@@ -635,13 +656,13 @@ export class BugReportModal {
   private container: HTMLDivElement;
   private shadow: ShadowRoot;
   private options: BugReportModalOptions;
-  
+
   // Component dependencies
   private elements!: DOMElementCache;
   private validator: FormValidator;
   private piiDisplay!: PIIDetectionDisplay;
   private redactionCanvas!: RedactionCanvas;
-  
+
   private originalScreenshot = '';
 
   constructor(options: BugReportModalOptions) {
@@ -655,12 +676,12 @@ export class BugReportModal {
   private render(): void {
     const html = StyleManager.generateStyles() + TemplateManager.getMainTemplate();
     this.shadow.innerHTML = html;
-    
+
     // Initialize components after DOM is ready
     this.elements = new DOMElementCache(this.shadow);
     this.piiDisplay = new PIIDetectionDisplay(this.elements);
     this.redactionCanvas = new RedactionCanvas(this.elements);
-    
+
     this.attachEventListeners();
   }
 
@@ -684,7 +705,7 @@ export class BugReportModal {
 
   show(screenshot: string, piiDetections?: PIIDetection[]): void {
     this.originalScreenshot = screenshot;
-    
+
     const img = this.elements.screenshot;
     if (img) {
       img.src = screenshot;
@@ -696,7 +717,7 @@ export class BugReportModal {
     }
 
     document.body.appendChild(this.container);
-    
+
     const titleInput = this.elements.titleInput;
     if (titleInput) {
       setTimeout(() => titleInput.focus(), 100);
@@ -787,26 +808,28 @@ export class BugReportModal {
 
 ## 📊 Comparison
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Main class LOC** | 580+ | ~120 | **-79%** |
-| **Methods in main class** | 20+ | 8 | **-60%** |
-| **Responsibilities** | 6 | 1 | **-83%** |
-| **Testability** | Low | High | ✅ |
-| **Reusability** | Low | High | ✅ |
-| **Maintainability** | Medium | High | ✅ |
+| Metric                    | Before | After | Improvement |
+| ------------------------- | ------ | ----- | ----------- |
+| **Main class LOC**        | 580+   | ~120  | **-79%**    |
+| **Methods in main class** | 20+    | 8     | **-60%**    |
+| **Responsibilities**      | 6      | 1     | **-83%**    |
+| **Testability**           | Low    | High  | ✅          |
+| **Reusability**           | Low    | High  | ✅          |
+| **Maintainability**       | Medium | High  | ✅          |
 
 ---
 
 ## ✅ Benefits of Refactored Design
 
 ### 1. **Single Responsibility Principle**
+
 - Each class has one reason to change
 - `FormValidator` only changes for validation logic
 - `RedactionCanvas` only changes for canvas features
 - `StyleManager` only changes for styling
 
 ### 2. **Testability**
+
 ```typescript
 // Before: Hard to test (needs DOM, shadow root, etc.)
 const modal = new BugReportModal({ onSubmit: jest.fn() });
@@ -821,11 +844,13 @@ expect(result.errors.title).toBe('Title is required');
 ```
 
 ### 3. **Reusability**
+
 - `FormValidator` can be used in other forms
 - `StyleManager` can generate styles for other modals
 - `RedactionCanvas` can be used standalone
 
 ### 4. **Extensibility**
+
 ```typescript
 // Easy to add new validation rules
 class CustomFormValidator extends FormValidator {
@@ -846,12 +871,14 @@ class DarkStyleManager extends StyleManager {
 ```
 
 ### 5. **Type Safety**
+
 - `RedactionRect` interface
 - `ValidationResult` interface
 - `CanvasCoordinate` interface
 - Typed element cache accessors
 
 ### 6. **Performance**
+
 - Element caching eliminates repeated `querySelector` calls
 - Clear separation allows for lazy loading
 
@@ -860,40 +887,47 @@ class DarkStyleManager extends StyleManager {
 ## 🚀 Migration Strategy
 
 ### Phase 1: Extract CSS & HTML
+
 1. Create `StyleManager` with current styles
 2. Create `TemplateManager` with current templates
 3. Update `render()` to use managers
 4. **Test**: All existing tests should still pass
 
 ### Phase 2: Extract Element Access
+
 1. Create `DOMElementCache`
 2. Replace all `querySelector` calls
 3. **Test**: All existing tests should still pass
 
 ### Phase 3: Extract Validation
+
 1. Create `FormValidator`
 2. Move validation logic
 3. Update `validateForm()` to use validator
 4. **Test**: Validation tests
 
 ### Phase 4: Extract PII Display
+
 1. Create `PIIDetectionDisplay`
 2. Move PII rendering logic
 3. Update `showPIIDetections()` to use display
 4. **Test**: PII display tests
 
 ### Phase 5: Extract Redaction Canvas
+
 1. Create `RedactionCanvas`
 2. Move all canvas logic
 3. Update redaction methods
 4. **Test**: Redaction tests
 
 ### Phase 6: Extract Screenshot Processing
+
 1. Create `ScreenshotProcessor`
 2. Move image processing logic
 3. **Test**: Screenshot processing tests
 
 ### Phase 7: Simplify Main Class
+
 1. Update `BugReportModal` to use components
 2. Remove extracted logic
 3. **Test**: Full integration tests
@@ -905,6 +939,7 @@ class DarkStyleManager extends StyleManager {
 If full refactoring is too much, start with these:
 
 ### 1. **Extract CSS to Constant** (15 minutes)
+
 ```typescript
 const MODAL_STYLES = `/* CSS here */`;
 
@@ -914,6 +949,7 @@ private render(): void {
 ```
 
 ### 2. **Create Element Cache** (30 minutes)
+
 ```typescript
 private getElements() {
   return {
@@ -925,6 +961,7 @@ private getElements() {
 ```
 
 ### 3. **Extract Validation** (45 minutes)
+
 ```typescript
 private validateFormData(title: string, desc: string, hasPII: boolean, confirmed: boolean) {
   const errors = {};
@@ -936,6 +973,7 @@ private validateFormData(title: string, desc: string, hasPII: boolean, confirmed
 ```
 
 ### 4. **Type Redaction Rect** (5 minutes)
+
 ```typescript
 interface RedactionRect {
   x: number;
@@ -965,10 +1003,12 @@ private redactionRects: RedactionRect[] = [];
 ## 🧪 Testing Improvements
 
 ### Current State
+
 - Integration tests only
 - Hard to test individual behaviors
 
 ### After Refactoring
+
 ```typescript
 describe('FormValidator', () => {
   it('should validate required fields', () => {

@@ -24,11 +24,13 @@ For production deployment, use the production-ready API server at `/packages/api
 ## Quick Start
 
 ### Install Dependencies
+
 ```bash
 pnpm install
 ```
 
 ### Start Server
+
 ```bash
 pnpm dev
 ```
@@ -38,6 +40,7 @@ The server will start on `http://localhost:3001`
 ## API Endpoints
 
 ### Health Check
+
 ```bash
 GET /health
 ```
@@ -47,6 +50,7 @@ Returns server status.
 ### Authentication Endpoints
 
 #### Refresh Token (Bearer Token Auth)
+
 ```bash
 POST /api/auth/refresh
 Content-Type: application/json
@@ -57,6 +61,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "accessToken": "refreshed-token-1234567890",
@@ -67,6 +72,7 @@ Content-Type: application/json
 ```
 
 #### OAuth Token (OAuth Flow)
+
 ```bash
 POST /api/auth/token
 Content-Type: application/json
@@ -87,6 +93,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "access_token": "oauth-token-1234567890",
@@ -97,6 +104,7 @@ Content-Type: application/json
 ```
 
 ### Submit Bug Report
+
 ```bash
 POST /api/bugs
 ```
@@ -104,34 +112,40 @@ POST /api/bugs
 **Authentication Methods:**
 
 1. **API Key (Deprecated, Backward Compatible)**
+
 ```bash
 POST /api/bugs
 X-API-Key: demo-api-key-12345
 ```
 
 2. **Bearer Token (Recommended)**
+
 ```bash
 POST /api/bugs
 Authorization: Bearer demo-access-token-12345
 ```
 
 3. **OAuth Token**
+
 ```bash
 POST /api/bugs
 Authorization: Bearer oauth-access-token
 ```
 
 4. **Custom Headers**
+
 ```bash
 POST /api/bugs
 X-Custom-Auth: custom-auth-value
 ```
 
 **Headers:**
+
 - `Content-Type: application/json`
 - One of the authentication methods above
 
 **Body:**
+
 ```json
 {
   "title": "Bug title",
@@ -147,6 +161,7 @@ X-Custom-Auth: custom-auth-value
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -157,6 +172,7 @@ X-Custom-Auth: custom-auth-value
 ```
 
 ### Get All Bug Reports
+
 ```bash
 GET /api/bugs
 ```
@@ -164,6 +180,7 @@ GET /api/bugs
 Returns all submitted bug reports.
 
 ### Get Single Bug Report
+
 ```bash
 GET /api/bugs/:id
 ```
@@ -171,6 +188,7 @@ GET /api/bugs/:id
 Returns a specific bug report by ID.
 
 ### Delete All Bug Reports
+
 ```bash
 DELETE /api/bugs
 ```
@@ -178,11 +196,13 @@ DELETE /api/bugs
 Clears all bug reports (for testing).
 
 ### Simulate Errors
+
 ```bash
 POST /api/bugs/error/:code
 ```
 
 Simulates HTTP error responses for testing. Supported codes:
+
 - `400` - Bad Request
 - `401` - Unauthorized
 - `403` - Forbidden
@@ -195,6 +215,7 @@ Simulates HTTP error responses for testing. Supported codes:
 ### Test Authentication Methods
 
 #### 1. API Key Auth (Deprecated)
+
 ```bash
 curl -X POST http://localhost:4000/api/bugs \
   -H "Content-Type: application/json" \
@@ -212,6 +233,7 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 #### 2. Bearer Token Auth (Recommended)
+
 ```bash
 curl -X POST http://localhost:4000/api/bugs \
   -H "Content-Type: application/json" \
@@ -229,6 +251,7 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 #### 3. Test Token Refresh
+
 ```bash
 # First, use an expired token (will get 401)
 curl -X POST http://localhost:4000/api/bugs \
@@ -249,6 +272,7 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 #### 4. OAuth Flow
+
 ```bash
 # Get OAuth token (client credentials)
 curl -X POST http://localhost:4000/api/auth/token \
@@ -267,6 +291,7 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 #### 5. Custom Headers
+
 ```bash
 curl -X POST http://localhost:4000/api/bugs \
   -H "Content-Type: application/json" \
@@ -275,6 +300,7 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 ### Submit a bug report:
+
 ```bash
 curl -X POST http://localhost:4000/api/bugs \
   -H "Content-Type: application/json" \
@@ -297,11 +323,13 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 ### View all bugs:
+
 ```bash
 curl http://localhost:4000/api/bugs
 ```
 
 ### Test error response:
+
 ```bash
 curl -X POST http://localhost:4000/api/bugs/error/500
 ```
@@ -315,18 +343,22 @@ curl -X POST http://localhost:4000/api/bugs/error/500
 For testing purposes, the following tokens are pre-configured:
 
 ### API Keys
+
 - `demo-api-key-12345` - Valid API key
 - `test-api-key` - Valid API key
 
 ### Bearer Tokens
+
 - `demo-access-token-12345` - Valid access token
 - `expired-token-will-trigger-401` - Expired token (tests refresh flow)
 
 ### Refresh Tokens
+
 - `demo-refresh-token-67890` - Valid refresh token
 - `valid-refresh-token` - Valid refresh token
 
 ### OAuth
+
 - **Client ID**: `demo-client-id`
 - **Client Secret**: `demo-client-secret`
 - **OAuth Token**: Generated via `/api/auth/token` endpoint

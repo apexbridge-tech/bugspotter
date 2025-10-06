@@ -51,11 +51,15 @@ const mockTokens = {
   // API Keys
   'demo-api-key-12345': { type: 'apiKey', valid: true },
   'test-api-key': { type: 'apiKey', valid: true },
-  
+
   // Bearer Tokens (access tokens)
   'demo-access-token-12345': { type: 'bearer', valid: true, expiresAt: null },
-  'expired-token-will-trigger-401': { type: 'bearer', valid: false, expiresAt: Date.now() - 3600000 },
-  
+  'expired-token-will-trigger-401': {
+    type: 'bearer',
+    valid: false,
+    expiresAt: Date.now() - 3600000,
+  },
+
   // OAuth Tokens
   'oauth-access-token': { type: 'oauth', valid: true, clientId: 'demo-client-id' },
 };
@@ -73,7 +77,7 @@ function authenticateRequest(req, res, next) {
   const customAuthHeader = req.headers['x-custom-auth'];
 
   console.log('🔐 Authentication Check:');
-  
+
   // Check for custom headers first
   if (customAuthHeader) {
     console.log(`  ✓ Custom Auth Header: ${customAuthHeader}`);
@@ -99,23 +103,23 @@ function authenticateRequest(req, res, next) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     console.log(`  ✓ Bearer Token: ${token.substring(0, 20)}...`);
-    
+
     const tokenData = mockTokens[token];
     if (!tokenData) {
       console.log('  ✗ Unknown token');
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Invalid token',
-        message: 'Token not recognized'
+        message: 'Token not recognized',
       });
     }
 
     // Check if token is expired
     if (!tokenData.valid || (tokenData.expiresAt && tokenData.expiresAt < Date.now())) {
       console.log('  ✗ Token expired - refresh required');
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Token expired',
         message: 'Access token has expired. Please refresh.',
-        code: 'TOKEN_EXPIRED'
+        code: 'TOKEN_EXPIRED',
       });
     }
 
@@ -157,30 +161,30 @@ app.get('/health', (req, res) => {
 app.post('/api/auth/refresh', (req, res) => {
   console.log('\n🔄 Token Refresh Request');
   console.log('─────────────────────────────────────');
-  
+
   const { refreshToken } = req.body;
-  
+
   if (!refreshToken) {
     console.log('✗ No refresh token provided');
     return res.status(400).json({ error: 'Refresh token is required' });
   }
 
   console.log(`Refresh Token: ${refreshToken.substring(0, 30)}...`);
-  
+
   const tokenData = mockRefreshTokens[refreshToken];
-  
+
   if (!tokenData || !tokenData.valid) {
     console.log('✗ Invalid refresh token');
-    return res.status(401).json({ 
+    return res.status(401).json({
       error: 'Invalid refresh token',
-      message: 'Refresh token is invalid or expired'
+      message: 'Refresh token is invalid or expired',
     });
   }
 
   // Generate new tokens
   const newAccessToken = `refreshed-token-${Date.now()}`;
   const newRefreshToken = `new-refresh-${Date.now()}`;
-  
+
   // Store new tokens (in production, this would be in database)
   mockTokens[newAccessToken] = { type: 'bearer', valid: true, expiresAt: Date.now() + 3600000 };
   mockRefreshTokens[newRefreshToken] = { accessToken: newAccessToken, valid: true };
@@ -194,7 +198,7 @@ app.post('/api/auth/refresh', (req, res) => {
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
     expiresIn: 3600,
-    tokenType: 'Bearer'
+    tokenType: 'Bearer',
   });
 });
 
@@ -202,9 +206,9 @@ app.post('/api/auth/refresh', (req, res) => {
 app.post('/api/auth/token', (req, res) => {
   console.log('\n🔐 OAuth Token Request');
   console.log('─────────────────────────────────────');
-  
+
   const { grant_type, client_id, client_secret, refresh_token } = req.body;
-  
+
   console.log(`Grant Type: ${grant_type}`);
   console.log(`Client ID: ${client_id}`);
 
@@ -225,14 +229,14 @@ app.post('/api/auth/token', (req, res) => {
     return res.json({
       access_token: accessToken,
       token_type: 'Bearer',
-      expires_in: 3600
+      expires_in: 3600,
     });
   }
 
   if (grant_type === 'refresh_token') {
     // OAuth refresh token flow
     const tokenData = mockRefreshTokens[refresh_token];
-    
+
     if (!tokenData || !tokenData.valid) {
       console.log('✗ Invalid refresh token');
       return res.status(401).json({ error: 'Invalid refresh token' });
@@ -240,7 +244,7 @@ app.post('/api/auth/token', (req, res) => {
 
     const newAccessToken = `oauth-refreshed-${Date.now()}`;
     const newRefreshToken = `oauth-refresh-${Date.now()}`;
-    
+
     mockTokens[newAccessToken] = { type: 'oauth', valid: true, clientId: client_id };
     mockRefreshTokens[newRefreshToken] = { accessToken: newAccessToken, valid: true };
 
@@ -251,7 +255,7 @@ app.post('/api/auth/token', (req, res) => {
       access_token: newAccessToken,
       refresh_token: newRefreshToken,
       token_type: 'Bearer',
-      expires_in: 3600
+      expires_in: 3600,
     });
   }
 
@@ -270,7 +274,9 @@ app.get('/api/bugs', (req, res) => {
 
 // Get single bug report
 app.get('/api/bugs/:id', (req, res) => {
-  const bug = db.bugs.find((b) => {return b.id === req.params.id});
+  const bug = db.bugs.find((b) => {
+    return b.id === req.params.id;
+  });
   if (!bug) {
     return res.status(404).json({ error: 'Bug report not found' });
   }
@@ -289,39 +295,39 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   // Validate required fields
   if (!title || !description) {
     console.log('✗ Missing required fields');
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       error: 'Validation Error',
-      details: 'Title and description are required' 
+      details: 'Title and description are required',
     });
   }
 
   // Validate title length
   if (title.length > 200) {
     console.log('✗ Title too long');
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       error: 'Validation Error',
-      details: 'Title must be 200 characters or less' 
+      details: 'Title must be 200 characters or less',
     });
   }
 
   if (!report) {
     console.log('✗ Missing report data');
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       error: 'Validation Error',
-      details: 'Report data is required' 
+      details: 'Report data is required',
     });
   }
 
   // Validate metadata is present
   if (!report.metadata || typeof report.metadata !== 'object') {
     console.log('✗ Missing metadata');
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       error: 'Validation Error',
-      details: 'Report metadata is required' 
+      details: 'Report metadata is required',
     });
   }
 
@@ -331,10 +337,10 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
     for (const log of report.console) {
       if (log.level && !validLogLevels.includes(log.level)) {
         console.log(`✗ Invalid console log level: ${log.level}`);
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
           error: 'Validation Error',
-          details: `Invalid console log level: ${log.level}` 
+          details: `Invalid console log level: ${log.level}`,
         });
       }
     }
@@ -346,10 +352,10 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
     for (const req of report.network) {
       if (req.method && !validMethods.includes(req.method)) {
         console.log(`✗ Invalid network method: ${req.method}`);
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
           error: 'Validation Error',
-          details: `Invalid network method: ${req.method}` 
+          details: `Invalid network method: ${req.method}`,
         });
       }
       // Validate URL format
@@ -358,10 +364,10 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
           new globalThis.URL(req.url);
         } catch (e) {
           console.log(`✗ Invalid network URL: ${req.url} - ${e.message}`);
-          return res.status(400).json({ 
+          return res.status(400).json({
             success: false,
             error: 'Validation Error',
-            details: `Invalid network request URL: ${req.url}` 
+            details: `Invalid network request URL: ${req.url}`,
           });
         }
       }
@@ -372,10 +378,10 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   const validPriorities = ['low', 'medium', 'high', 'critical'];
   if (priority && !validPriorities.includes(priority)) {
     console.log(`✗ Invalid priority: ${priority}`);
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       error: 'Validation Error',
-      details: `Invalid priority: ${priority}` 
+      details: `Invalid priority: ${priority}`,
     });
   }
 
@@ -406,15 +412,22 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   // Save to file
   const filename = `bug-${bugId}-${Date.now()}.json`;
   const filepath = path.join(REPORTS_DIR, filename);
-  
+
   try {
-    await fs.writeFile(filepath, JSON.stringify({
-      id: bugId,
-      title,
-      description,
-      report,
-      receivedAt: bugReport.receivedAt,
-    }, null, 2));
+    await fs.writeFile(
+      filepath,
+      JSON.stringify(
+        {
+          id: bugId,
+          title,
+          description,
+          report,
+          receivedAt: bugReport.receivedAt,
+        },
+        null,
+        2
+      )
+    );
     console.log(`💾 Saved to: ${filename}`);
   } catch (err) {
     console.error('Failed to save report to file:', err.message);
@@ -422,26 +435,39 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
 
   // Log summary
   console.log(`✓ Title: ${title}`);
-  console.log(`✓ Description: ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}`);
+  console.log(
+    `✓ Description: ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}`
+  );
   console.log(`✓ Console Logs: ${report.console?.length || 0} entries`);
   console.log(`✓ Network Requests: ${report.network?.length || 0} requests`);
   console.log(`✓ Screenshot: ${report.screenshot ? 'Captured' : 'Not available'}`);
-  
+
   // Session Replay info
   if (report.replay && report.replay.length > 0) {
-    const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
-    const eventTypes = [...new Set(report.replay.map(e => {return e.type}))];
+    const timeSpan = (
+      (report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) /
+      1000
+    ).toFixed(2);
+    const eventTypes = [
+      ...new Set(
+        report.replay.map((e) => {
+          return e.type;
+        })
+      ),
+    ];
     console.log(`✓ Session Replay: ${report.replay.length} events (${timeSpan}s span)`);
     console.log(`  Event Types: ${eventTypes.join(', ')}`);
   } else {
     console.log(`✓ Session Replay: Not available`);
   }
-  
+
   console.log(`✓ Browser: ${report.metadata?.browser || 'Unknown'}`);
   console.log(`✓ OS: ${report.metadata?.os || 'Unknown'}`);
   console.log(`✓ URL: ${report.metadata?.url || 'Unknown'}`);
-  console.log(`✓ Viewport: ${report.metadata?.viewport?.width}x${report.metadata?.viewport?.height}`);
-  
+  console.log(
+    `✓ Viewport: ${report.metadata?.viewport?.width}x${report.metadata?.viewport?.height}`
+  );
+
   // Log detailed console entries
   if (report.console && report.console.length > 0) {
     console.log('\n📋 Console Logs:');
@@ -449,13 +475,15 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
       const time = new Date(log.timestamp).toLocaleTimeString();
       const level = log.level.toUpperCase().padEnd(5);
       const message = log.message.substring(0, 80);
-      console.log(`  ${index + 1}. [${time}] ${level} ${message}${log.message.length > 80 ? '...' : ''}`);
+      console.log(
+        `  ${index + 1}. [${time}] ${level} ${message}${log.message.length > 80 ? '...' : ''}`
+      );
     });
     if (report.console.length > 10) {
       console.log(`  ... and ${report.console.length - 10} more entries`);
     }
   }
-  
+
   // Log detailed network requests
   if (report.network && report.network.length > 0) {
     console.log('\n🌐 Network Requests:');
@@ -470,42 +498,48 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
       console.log(`  ... and ${report.network.length - 5} more requests`);
     }
   }
-  
+
   // Log session replay details
   if (report.replay && report.replay.length > 0) {
     console.log('\n🎥 Session Replay Events:');
-    const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
+    const timeSpan = (
+      (report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) /
+      1000
+    ).toFixed(2);
     const eventTypeCounts = {};
-    report.replay.forEach(e => {
+    report.replay.forEach((e) => {
       eventTypeCounts[e.type] = (eventTypeCounts[e.type] || 0) + 1;
     });
-    
+
     console.log(`  Total Events: ${report.replay.length}`);
     console.log(`  Time Span: ${timeSpan} seconds`);
     console.log(`  First Event: ${new Date(report.replay[0].timestamp).toLocaleTimeString()}`);
-    console.log(`  Last Event: ${new Date(report.replay[report.replay.length - 1].timestamp).toLocaleTimeString()}`);
+    console.log(
+      `  Last Event: ${new Date(report.replay[report.replay.length - 1].timestamp).toLocaleTimeString()}`
+    );
     console.log(`  Event Type Breakdown:`);
     Object.entries(eventTypeCounts).forEach(([type, count]) => {
-      const typeName = {
-        0: 'DomContentLoaded',
-        1: 'Load',
-        2: 'FullSnapshot',
-        3: 'IncrementalSnapshot',
-        4: 'Meta',
-        5: 'Custom',
-        6: 'Plugin'
-      }[type] || `Type${type}`;
+      const typeName =
+        {
+          0: 'DomContentLoaded',
+          1: 'Load',
+          2: 'FullSnapshot',
+          3: 'IncrementalSnapshot',
+          4: 'Meta',
+          5: 'Custom',
+          6: 'Plugin',
+        }[type] || `Type${type}`;
       console.log(`    ${typeName}: ${count}`);
     });
   }
-  
+
   console.log('─────────────────────────────────────');
   console.log(`✓ Bug Report ID: ${bugId}`);
   console.log(`✓ Total Reports: ${db.bugs.length}\n`);
 
   // Simulate processing delay (optional)
   const simulateDelay = req.query.delay ? parseInt(req.query.delay) : 0;
-  
+
   globalThis.setTimeout(() => {
     res.status(201).json({
       success: true,

@@ -7,13 +7,15 @@ BugSpotter SDK includes built-in exponential backoff retry and offline queue sup
 ## Features
 
 ### ✅ Exponential Backoff Retry
+
 - Automatically retries failed requests with exponential backoff
 - Configurable retry attempts, delays, and retryable status codes
 - Respects `Retry-After` headers from servers
 - Adds jitter (±10%) to prevent thundering herd problems
 
 ### 💾 Offline Queue
-- Queues failed requests in localStorage when network is unavailable  
+
+- Queues failed requests in localStorage when network is unavailable
 - Automatically retries queued requests on next SDK initialization
 - Configurable queue size limit
 - Auto-expires requests after 7 days
@@ -25,10 +27,10 @@ BugSpotter SDK includes built-in exponential backoff retry and offline queue sup
 
 ```typescript
 interface RetryConfig {
-  maxRetries?: number;      // Default: 3
-  baseDelay?: number;       // Default: 1000ms
-  maxDelay?: number;        // Default: 30000ms (30s)
-  retryOn?: number[];       // Default: [502, 503, 504, 429]
+  maxRetries?: number; // Default: 3
+  baseDelay?: number; // Default: 1000ms
+  maxDelay?: number; // Default: 30000ms (30s)
+  retryOn?: number[]; // Default: [502, 503, 504, 429]
 }
 ```
 
@@ -36,8 +38,8 @@ interface RetryConfig {
 
 ```typescript
 interface OfflineConfig {
-  enabled: boolean;         // Enable offline queue
-  maxQueueSize?: number;    // Default: 10
+  enabled: boolean; // Enable offline queue
+  maxQueueSize?: number; // Default: 10
 }
 ```
 
@@ -51,12 +53,12 @@ import { BugSpotter } from '@bugspotter/sdk';
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   auth: { type: 'bearer', token: 'your-token' },
-  
+
   // Configure retry behavior
   retry: {
     maxRetries: 3,
-    baseDelay: 1000,      // Start with 1s delay
-    maxDelay: 30000,      // Max 30s delay
+    baseDelay: 1000, // Start with 1s delay
+    maxDelay: 30000, // Max 30s delay
     retryOn: [502, 503, 504, 429], // Retry on these status codes
   },
 });
@@ -68,11 +70,11 @@ BugSpotter.init({
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   auth: { type: 'api-key', apiKey: 'your-key' },
-  
+
   // Enable offline support
   offline: {
     enabled: true,
-    maxQueueSize: 20,  // Queue up to 20 failed requests
+    maxQueueSize: 20, // Queue up to 20 failed requests
   },
 });
 ```
@@ -83,7 +85,7 @@ BugSpotter.init({
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   auth: { type: 'bearer', token: 'your-token' },
-  
+
   // Retry configuration
   retry: {
     maxRetries: 5,
@@ -91,7 +93,7 @@ BugSpotter.init({
     maxDelay: 60000,
     retryOn: [429, 500, 502, 503, 504],
   },
-  
+
   // Offline queue
   offline: {
     enabled: true,
@@ -154,12 +156,12 @@ The SDK will wait 60 seconds before retrying, regardless of the calculated expon
 
 By default, the SDK retries on these HTTP status codes:
 
-| Code | Status | Description |
-|------|--------|-------------|
-| **429** | Too Many Requests | Rate limiting |
-| **502** | Bad Gateway | Upstream server error |
+| Code    | Status              | Description                    |
+| ------- | ------------------- | ------------------------------ |
+| **429** | Too Many Requests   | Rate limiting                  |
+| **502** | Bad Gateway         | Upstream server error          |
 | **503** | Service Unavailable | Server temporarily unavailable |
-| **504** | Gateway Timeout | Upstream timeout |
+| **504** | Gateway Timeout     | Upstream timeout               |
 
 You can customize this list:
 
@@ -176,6 +178,7 @@ retry: {
 Requests are stored in `localStorage` with key `bugspotter_offline_queue`.
 
 Each queued request includes:
+
 - `id`: Unique request identifier
 - `endpoint`: Target API endpoint
 - `body`: Serialized request body
@@ -186,6 +189,7 @@ Each queued request includes:
 ### Queue Processing
 
 The queue is automatically processed when:
+
 1. SDK is initialized (on page load)
 2. Any new bug report is submitted
 
@@ -274,6 +278,7 @@ NetworkError: Network request failed
 ### Non-Retryable Errors
 
 These errors are NOT retried by default:
+
 - `400 Bad Request` - Client error, won't succeed on retry
 - `401 Unauthorized` - Auth issue (unless token refresh is configured)
 - `403 Forbidden` - Permission denied
@@ -323,6 +328,7 @@ auth: {
 **Problem**: Queued requests aren't being sent
 
 **Solutions**:
+
 1. Check if `offline.enabled` is `true`
 2. Verify network is available
 3. Check browser console for errors
@@ -333,6 +339,7 @@ auth: {
 **Problem**: Requests aren't being retried
 
 **Solutions**:
+
 1. Check if status code is in `retryOn` list
 2. Verify `maxRetries` > 0
 3. Check network tab for retry attempts
@@ -343,6 +350,7 @@ auth: {
 **Problem**: Queue fills up quickly
 
 **Solutions**:
+
 1. Increase `maxQueueSize`
 2. Clear old requests: `clearOfflineQueue()`
 3. Reduce bug report payload size
@@ -352,19 +360,19 @@ auth: {
 
 ### RetryConfig
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `maxRetries` | `number` | `3` | Maximum retry attempts |
-| `baseDelay` | `number` | `1000` | Base delay in milliseconds |
-| `maxDelay` | `number` | `30000` | Maximum delay in milliseconds |
-| `retryOn` | `number[]` | `[502, 503, 504, 429]` | HTTP status codes to retry |
+| Property     | Type       | Default                | Description                   |
+| ------------ | ---------- | ---------------------- | ----------------------------- |
+| `maxRetries` | `number`   | `3`                    | Maximum retry attempts        |
+| `baseDelay`  | `number`   | `1000`                 | Base delay in milliseconds    |
+| `maxDelay`   | `number`   | `30000`                | Maximum delay in milliseconds |
+| `retryOn`    | `number[]` | `[502, 503, 504, 429]` | HTTP status codes to retry    |
 
 ### OfflineConfig
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `enabled` | `boolean` | `false` | Enable offline queue |
-| `maxQueueSize` | `number` | `10` | Maximum queued requests |
+| Property       | Type      | Default | Description             |
+| -------------- | --------- | ------- | ----------------------- |
+| `enabled`      | `boolean` | `false` | Enable offline queue    |
+| `maxQueueSize` | `number`  | `10`    | Maximum queued requests |
 
 ### Functions
 
@@ -386,14 +394,14 @@ clearOfflineQueue();
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   auth: { type: 'api-key', apiKey: process.env.API_KEY },
-  
+
   retry: {
     maxRetries: 5,
     baseDelay: 2000,
     maxDelay: 60000,
     retryOn: [408, 429, 500, 502, 503, 504],
   },
-  
+
   offline: {
     enabled: true,
     maxQueueSize: 30,
@@ -407,16 +415,16 @@ BugSpotter.init({
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   auth: { type: 'bearer', token: serverToken },
-  
+
   retry: {
     maxRetries: 1,
     baseDelay: 500,
     maxDelay: 5000,
     retryOn: [502, 503, 504],
   },
-  
+
   offline: {
-    enabled: false,  // No localStorage in Node.js
+    enabled: false, // No localStorage in Node.js
   },
 });
 ```
@@ -427,12 +435,12 @@ BugSpotter.init({
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   auth: { type: 'api-key', apiKey: 'limited-key' },
-  
+
   retry: {
     maxRetries: 3,
-    baseDelay: 5000,   // 5s base delay
-    maxDelay: 120000,  // Max 2 minutes
-    retryOn: [429],    // Only retry rate limits
+    baseDelay: 5000, // 5s base delay
+    maxDelay: 120000, // Max 2 minutes
+    retryOn: [429], // Only retry rate limits
   },
 });
 ```

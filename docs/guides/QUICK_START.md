@@ -26,6 +26,7 @@ pnpm run build
 ```
 
 You should see:
+
 ```
 ✓ Build complete: dist/bugspotter.min.js (~99 KB with session replay)
 ```
@@ -42,6 +43,7 @@ node server.js
 ```
 
 Expected output:
+
 ```
 ┌─────────────────────────────────────────┐
 │   BugSpotter Mock API Server Started   │
@@ -63,6 +65,7 @@ npx browser-sync start --config bs-config.json
 ```
 
 Expected output:
+
 ```
 [Browsersync] Access URLs:
  -------------------------------------
@@ -134,6 +137,7 @@ pnpm test
 ```
 
 Expected output:
+
 ```
 ✓ tests/api-submission.test.ts (12 tests)
 ✓ tests/index.test.ts (30 tests)
@@ -171,13 +175,13 @@ cp packages/sdk/dist/bugspotter.min.js /path/to/your/project/js/
   const bugSpotter = BugSpotter.BugSpotter.init({
     apiKey: 'your-api-key',
     endpoint: 'https://your-backend.com/api/bugs',
-    showWidget: true,  // Floating button appears automatically
+    showWidget: true, // Floating button appears automatically
     replay: {
       enabled: true,
-      duration: 30  // Record last 30 seconds
-    }
+      duration: 30, // Record last 30 seconds
+    },
   });
-  
+
   console.log('✅ BugSpotter ready with session replay!');
 </script>
 ```
@@ -191,21 +195,21 @@ cp packages/sdk/dist/bugspotter.min.js /path/to/your/project/js/
   const bugSpotter = BugSpotter.BugSpotter.init({
     apiKey: 'your-api-key',
     endpoint: 'https://your-backend.com/api/bugs',
-    showWidget: false
+    showWidget: false,
   });
-  
+
   // Create custom button
   const button = new BugSpotter.FloatingButton({
     position: 'bottom-right',
     icon: '⚡',
     backgroundColor: '#1a365d',
-    size: 48
+    size: 48,
   });
-  
+
   // Handle clicks
   button.onClick(async () => {
     const report = await bugSpotter.capture();
-    
+
     const modal = new BugSpotter.BugReportModal({
       onSubmit: async (data) => {
         // Submit to your API
@@ -213,24 +217,24 @@ cp packages/sdk/dist/bugspotter.min.js /path/to/your/project/js/
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${bugSpotter.getConfig().apiKey}`
+            Authorization: `Bearer ${bugSpotter.getConfig().apiKey}`,
           },
           body: JSON.stringify({
             title: data.title,
             description: data.description,
-            report: report
-          })
+            report: report,
+          }),
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to submit');
         }
-        
+
         const result = await response.json();
         console.log('✅ Submitted:', result.bugId);
-      }
+      },
     });
-    
+
     modal.show(report.screenshot);
   });
 </script>
@@ -274,7 +278,9 @@ When a user submits a bug report, you receive:
     "replay": [
       {
         "type": 2,
-        "data": { /* Full DOM snapshot */ },
+        "data": {
+          /* Full DOM snapshot */
+        },
         "timestamp": 1759487440000
       },
       {

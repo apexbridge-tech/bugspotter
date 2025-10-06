@@ -7,6 +7,7 @@ Thank you for your interest in contributing to BugSpotter! This document provide
 ### Reporting Bugs
 
 If you find a bug, please create an issue with:
+
 - **Clear title** describing the issue
 - **Steps to reproduce** the problem
 - **Expected behavior** vs actual behavior
@@ -17,6 +18,7 @@ If you find a bug, please create an issue with:
 ### Suggesting Features
 
 Feature requests are welcome! Please:
+
 - **Check existing issues** to avoid duplicates
 - **Describe the use case** - why is this needed?
 - **Provide examples** of how it would work
@@ -27,6 +29,7 @@ Feature requests are welcome! Please:
 We love pull requests! Here's how to contribute code:
 
 1. **Fork the repository**
+
    ```bash
    # Click "Fork" on GitHub
    git clone https://github.com/YOUR_USERNAME/bugspotter.git
@@ -34,16 +37,20 @@ We love pull requests! Here's how to contribute code:
    ```
 
 2. **Set up development environment**
+
    ```bash
-   # Install dependencies
+   # Install dependencies (this is a pnpm workspace monorepo)
    pnpm install
-   
-   # Build the SDK
-   cd packages/sdk
+
+   # Verify monorepo structure
+   ls -la packages/  # Should show: sdk, api, types, backend-mock
+
+   # Build all packages
    pnpm run build
    ```
 
 3. **Create a feature branch**
+
    ```bash
    git checkout -b feature/amazing-feature
    # or
@@ -57,25 +64,32 @@ We love pull requests! Here's how to contribute code:
    - Update documentation as needed
 
 5. **Test your changes**
+
    ```bash
-   # Run all tests
-   cd packages/sdk
-   pnpm test
-   
-   # Tests should pass: 129/129 ✅
+   # Run tests for all packages
+   pnpm run test
+
+   # Or test specific package
+   pnpm --filter @bugspotter/sdk run test
+   pnpm --filter @bugspotter/api run test
+
+   # Run linter
+   pnpm run lint
    ```
 
 6. **Build and verify**
+
    ```bash
    # Build the SDK
    pnpm run build
-   
+
    # Test in demo
    cd ../../apps/demo
    npx browser-sync start --config bs-config.json
    ```
 
 7. **Commit your changes**
+
    ```bash
    # Use conventional commits
    git commit -m "feat: add amazing feature"
@@ -102,6 +116,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) format:
 ```
 
 ### Types
+
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `docs:` - Documentation changes
@@ -112,6 +127,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) format:
 - `perf:` - Performance improvements
 
 ### Examples
+
 ```bash
 feat(sdk): add screenshot compression
 fix(modal): prevent close on outside click
@@ -151,10 +167,10 @@ describe('MyFeature', () => {
   it('should do something', () => {
     // Arrange
     const input = 'test';
-    
+
     // Act
     const result = myFunction(input);
-    
+
     // Assert
     expect(result).toBe('expected');
   });
@@ -204,10 +220,10 @@ function processUser(user) {
 ```javascript
 // Good
 const users = await fetchUsers();
-const names = users.map(u => u.name);
+const names = users.map((u) => u.name);
 
 // Bad
-var users = fetchUsers().then(function(users) {
+var users = fetchUsers().then(function (users) {
   var names = [];
   for (var i = 0; i < users.length; i++) {
     names.push(users[i].name);
@@ -236,22 +252,64 @@ pnpm eslint .
 
 ## 📁 Project Structure
 
+This is a **pnpm workspace monorepo**. Understanding the structure is important for contributing:
+
 ```
 bugspotter/
-├── packages/
-│   ├── sdk/              # Core SDK
-│   │   ├── src/          # Source code
+├── .github/
+│   └── workflows/
+│       └── ci.yml           # GitHub Actions CI/CD
+├── packages/                # Workspace packages
+│   ├── sdk/                 # @bugspotter/sdk - Core SDK
+│   │   ├── src/
 │   │   │   ├── index.ts
-│   │   │   ├── capture/  # Capture modules
-│   │   │   └── widget/   # UI components
-│   │   ├── tests/        # Test files
-│   │   └── dist/         # Build output
-│   └── backend/          # Mock API server
-├── apps/
-│   └── demo/             # Demo application
-├── docs/                 # Documentation
-└── scripts/              # Build scripts
+│   │   │   ├── capture/     # Screenshot, console, network
+│   │   │   ├── core/        # Transport, retry, queue
+│   │   │   └── widget/      # UI components
+│   │   ├── tests/           # Test files
+│   │   └── dist/            # Build output (gitignored)
+│   ├── api/                 # @bugspotter/api - Production API
+│   ├── types/               # @bugspotter/types - Shared types
+│   └── backend-mock/        # @bugspotter/backend-mock - Dev server
+├── apps/                    # Applications
+│   └── demo/                # Interactive demo
+├── docs/                    # Documentation
+├── pnpm-workspace.yaml      # Workspace configuration
+└── package.json             # Root package.json with scripts
 ```
+
+### Workspace Commands
+
+```bash
+# Install all dependencies
+pnpm install
+
+# Run command in all packages
+pnpm --recursive run build
+pnpm --recursive run test
+
+# Run command in specific package
+pnpm --filter @bugspotter/sdk run build
+pnpm --filter @bugspotter/api run test
+
+# Run command in all packages under a directory
+pnpm --filter "./packages/**" run lint
+
+# Add dependency to specific package
+pnpm --filter @bugspotter/sdk add vitest -D
+```
+
+### CI/CD Structure
+
+Our GitHub Actions workflow (`ci.yml`) verifies:
+
+1. **Monorepo structure exists** - Checks for `packages/` directory
+2. **Lint** - Runs ESLint across all packages
+3. **Test** - Runs tests on Node 18, 20, 22
+4. **Build** - Builds all packages and uploads artifacts
+5. **Coverage** - Generates coverage reports for SDK and API
+
+**Important:** The CI workflow expects the standard pnpm workspace structure. If you change directory structure, update `.github/workflows/ci.yml` accordingly.
 
 ## 🎯 Development Workflow
 
@@ -288,12 +346,14 @@ cd ../../apps/demo
 ### 3. Documentation
 
 Update documentation when:
+
 - Adding new features
 - Changing APIs
 - Fixing bugs that affect usage
 - Adding examples
 
 Files to update:
+
 - `README.md` - Main project docs
 - `packages/sdk/README.md` - SDK API docs
 - `docs/*.md` - Specialized guides

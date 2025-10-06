@@ -10,8 +10,6 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('⚠️  Supabase credentials not configured. Database features disabled.');
 }
 
-export const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default supabase;

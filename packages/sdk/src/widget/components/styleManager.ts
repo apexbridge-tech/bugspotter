@@ -1,6 +1,6 @@
 /**
  * StyleManager
- * 
+ *
  * Responsibility: Generate and manage CSS styles for the bug report modal
  * Follows SRP: Only handles style generation and theming
  */
@@ -21,7 +21,8 @@ export class StyleManager {
       primaryColor: config.primaryColor || '#007bff',
       dangerColor: config.dangerColor || '#dc3545',
       borderRadius: config.borderRadius || '4px',
-      fontFamily: config.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily:
+        config.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       zIndex: config.zIndex || 999999,
     };
   }

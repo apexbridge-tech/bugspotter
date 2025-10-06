@@ -125,12 +125,12 @@ describe('NetworkCapture', () => {
     it('should maintain separate request buffers per instance', async () => {
       const capture1 = new NetworkCapture();
       const capture2 = new NetworkCapture();
-      
+
       capture1.clear();
       capture2.clear();
 
       mockFetch.mockResolvedValue(new Response('', { status: 200 }));
-      
+
       // Both will capture the same request since they both intercept fetch
       await fetch('https://api.example.com/test1');
 

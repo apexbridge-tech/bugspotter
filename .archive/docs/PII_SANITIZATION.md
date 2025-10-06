@@ -10,14 +10,14 @@ BugSpotter's PII sanitization feature automatically detects and masks sensitive 
 
 ### Built-in PII Patterns
 
-| Pattern | Description | Example | Redacted |
-|---------|-------------|---------|----------|
-| **Email** | Standard email addresses | `user@example.com` | `[REDACTED-EMAIL]` |
-| **Phone** | International phone formats | `+1-555-123-4567` | `[REDACTED-PHONE]` |
+| Pattern         | Description                                       | Example               | Redacted                |
+| --------------- | ------------------------------------------------- | --------------------- | ----------------------- |
+| **Email**       | Standard email addresses                          | `user@example.com`    | `[REDACTED-EMAIL]`      |
+| **Phone**       | International phone formats                       | `+1-555-123-4567`     | `[REDACTED-PHONE]`      |
 | **Credit Card** | All major card formats (Visa, MC, Amex, Discover) | `4532-1488-0343-6467` | `[REDACTED-CREDITCARD]` |
-| **SSN** | US Social Security Numbers | `123-45-6789` | `[REDACTED-SSN]` |
-| **IIN/BIN** | Kazakhstan ID numbers with date validation | `950315300123` | `[REDACTED-IIN]` |
-| **IP Address** | IPv4 and IPv6 addresses | `192.168.1.100` | `[REDACTED-IP]` |
+| **SSN**         | US Social Security Numbers                        | `123-45-6789`         | `[REDACTED-SSN]`        |
+| **IIN/BIN**     | Kazakhstan ID numbers with date validation        | `950315300123`        | `[REDACTED-IIN]`        |
+| **IP Address**  | IPv4 and IPv6 addresses                           | `192.168.1.100`       | `[REDACTED-IP]`         |
 
 ### Sanitization Coverage
 
@@ -25,7 +25,7 @@ BugSpotter's PII sanitization feature automatically detects and masks sensitive 
 ✅ **Network Data** - URLs, headers, request/response bodies  
 ✅ **Error Stack Traces** - File paths and error messages  
 ✅ **DOM Content** - Text nodes in session replays  
-✅ **Metadata** - Page URLs and user agents  
+✅ **Metadata** - Page URLs and user agents
 
 ## Configuration
 
@@ -46,8 +46,8 @@ BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   sanitize: {
     enabled: true,
-    patterns: ['email', 'phone', 'creditcard']  // Only these patterns
-  }
+    patterns: ['email', 'phone', 'creditcard'], // Only these patterns
+  },
 });
 ```
 
@@ -62,18 +62,18 @@ BugSpotter.init({
     customPatterns: [
       {
         name: 'api-key',
-        regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi
+        regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi,
       },
       {
         name: 'session-token',
-        regex: /(?:SESSION[-_:]?\s*[\w\-]{32,})/gi
+        regex: /(?:SESSION[-_:]?\s*[\w\-]{32,})/gi,
       },
       {
         name: 'bearer-token',
-        regex: /Bearer\s+[\w\-\.]+/gi
-      }
-    ]
-  }
+        regex: /Bearer\s+[\w\-\.]+/gi,
+      },
+    ],
+  },
 });
 ```
 
@@ -87,12 +87,12 @@ BugSpotter.init({
   sanitize: {
     enabled: true,
     excludeSelectors: [
-      '.public-email',           // Support emails
-      '#contact-info',           // Public contact section
-      '[data-public="true"]',    // Elements marked as public
-      '.customer-service'        // CS contact information
-    ]
-  }
+      '.public-email', // Support emails
+      '#contact-info', // Public contact section
+      '[data-public="true"]', // Elements marked as public
+      '.customer-service', // CS contact information
+    ],
+  },
 });
 ```
 
@@ -100,14 +100,10 @@ Example HTML:
 
 ```html
 <!-- This email will be preserved -->
-<div class="public-email">
-  Contact us: support@example.com
-</div>
+<div class="public-email">Contact us: support@example.com</div>
 
 <!-- This email will be sanitized -->
-<div class="user-profile">
-  User email: john.doe@personal.com
-</div>
+<div class="user-profile">User email: john.doe@personal.com</div>
 ```
 
 ### Disable Sanitization (Not Recommended)
@@ -116,8 +112,8 @@ Example HTML:
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   sanitize: {
-    enabled: false  // ⚠️ All PII will be sent in clear text
-  }
+    enabled: false, // ⚠️ All PII will be sent in clear text
+  },
 });
 ```
 
@@ -139,8 +135,8 @@ fetch('/api/user', {
   method: 'POST',
   body: JSON.stringify({
     name: 'John',
-    phone: '+1-555-123-4567'
-  })
+    phone: '+1-555-123-4567',
+  }),
 });
 // Body captured as: { name: 'John', phone: '[REDACTED-PHONE]' }
 ```
@@ -155,11 +151,11 @@ throw new Error('Invalid card: 4532-1488-0343-6467');
 ### Kazakhstan IIN Numbers
 
 ```javascript
-const citizenIIN = '950315300123';  // Valid IIN (born 1995-03-15)
+const citizenIIN = '950315300123'; // Valid IIN (born 1995-03-15)
 console.log('Citizen IIN:', citizenIIN);
 // Captured as: "Citizen IIN: [REDACTED-IIN]"
 
-const invalid = '991340123456';  // Invalid (month 13 doesn't exist)
+const invalid = '991340123456'; // Invalid (month 13 doesn't exist)
 console.log('Invalid:', invalid);
 // Captured as-is: "Invalid: 991340123456"
 ```
@@ -171,7 +167,7 @@ const userData = {
   email: 'admin@example.com',
   phone: '+7-777-123-4567',
   ssn: '123-45-6789',
-  ip: '192.168.1.100'
+  ip: '192.168.1.100',
 };
 console.log('User data:', userData);
 // Captured as:
@@ -249,9 +245,9 @@ const data = {
   user: {
     profile: {
       email: 'user@test.com',
-      contacts: ['phone: +1-555-1234']
-    }
-  }
+      contacts: ['phone: +1-555-1234'],
+    },
+  },
 };
 
 // All nested values are sanitized
@@ -272,7 +268,7 @@ For session replays, the sanitizer hooks into rrweb's `maskTextFn`:
     }
     // Sanitize text content
     return sanitizer.sanitizeTextNode(text, element);
-  }
+  };
 }
 ```
 
@@ -286,7 +282,7 @@ BugSpotter.init({ endpoint: '/api/bugs' });
 
 // ❌ Bad - Disabled
 BugSpotter.init({
-  sanitize: { enabled: false }
+  sanitize: { enabled: false },
 });
 ```
 
@@ -295,11 +291,11 @@ BugSpotter.init({
 ```javascript
 // ✅ Good - Preserve intentional public data
 sanitize: {
-  excludeSelectors: ['.public-email', '.contact-us']
+  excludeSelectors: ['.public-email', '.contact-us'];
 }
 
 // ❌ Bad - Disabling entire pattern
-patterns: ['phone', 'creditcard']  // Missing email
+patterns: ['phone', 'creditcard']; // Missing email
 ```
 
 ### 3. Add Custom Patterns for App-Specific Data
@@ -308,8 +304,8 @@ patterns: ['phone', 'creditcard']  // Missing email
 // ✅ Good - Protect app-specific secrets
 customPatterns: [
   { name: 'api-key', regex: /API_KEY:\s*[\w-]{20,}/gi },
-  { name: 'session', regex: /sess_[\w-]{32,}/gi }
-]
+  { name: 'session', regex: /sess_[\w-]{32,}/gi },
+];
 ```
 
 ### 4. Test Your Configuration
@@ -319,7 +315,7 @@ customPatterns: [
 const testData = {
   email: 'test@example.com',
   phone: '+1-555-0000',
-  card: '4532-1488-0343-6467'
+  card: '4532-1488-0343-6467',
 };
 
 console.log('Test data:', testData);
@@ -331,6 +327,7 @@ console.log('Test data:', testData);
 ### GDPR (General Data Protection Regulation)
 
 PII sanitization helps with GDPR Article 25 (Data protection by design):
+
 - ✅ Minimizes personal data collection
 - ✅ Pseudonymization of data
 - ✅ Technical measures for data protection
@@ -338,6 +335,7 @@ PII sanitization helps with GDPR Article 25 (Data protection by design):
 ### CCPA (California Consumer Privacy Act)
 
 Helps meet CCPA requirements:
+
 - ✅ Data minimization
 - ✅ Reasonable security procedures
 - ✅ Protection of consumer information
@@ -345,6 +343,7 @@ Helps meet CCPA requirements:
 ### PCI DSS (Payment Card Industry)
 
 Credit card sanitization helps with:
+
 - ✅ Requirement 3: Protect stored cardholder data
 - ✅ Requirement 4: Encrypt transmission of cardholder data
 
@@ -359,7 +358,7 @@ If a pattern isn't being detected:
 ```javascript
 // 1. Check pattern is enabled
 sanitize: {
-  patterns: ['email', 'phone']  // Make sure pattern is in list
+  patterns: ['email', 'phone']; // Make sure pattern is in list
 }
 
 // 2. Test regex manually
@@ -367,9 +366,7 @@ const regex = /your-pattern/g;
 console.log('test-value'.match(regex));
 
 // 3. Add custom pattern if built-in doesn't work
-customPatterns: [
-  { name: 'custom-email', regex: /your-email-pattern/gi }
-]
+customPatterns: [{ name: 'custom-email', regex: /your-email-pattern/gi }];
 ```
 
 ### Excluded Element Still Sanitized
@@ -377,13 +374,13 @@ customPatterns: [
 ```javascript
 // Make sure selector is correct
 excludeSelectors: [
-  '.public-email',  // Class selector
-  '#contact',       // ID selector
-  '[data-public]'   // Attribute selector
-]
+  '.public-email', // Class selector
+  '#contact', // ID selector
+  '[data-public]', // Attribute selector
+];
 
 // Test selector in browser console
-document.querySelector('.public-email');  // Should match element
+document.querySelector('.public-email'); // Should match element
 ```
 
 ### Performance Issues
@@ -392,12 +389,12 @@ If sanitization is slow:
 
 ```javascript
 // 1. Reduce number of patterns
-patterns: ['email', 'phone']  // Only what you need
+patterns: ['email', 'phone']; // Only what you need
 
 // 2. Simplify custom patterns
 customPatterns: [
-  { name: 'simple', regex: /ABC-\d{8}/g }  // Specific, not greedy
-]
+  { name: 'simple', regex: /ABC-\d{8}/g }, // Specific, not greedy
+];
 
 // 3. Check for infinite loops in custom regex
 // Avoid: /(\w+)*/ - can cause catastrophic backtracking
@@ -411,19 +408,19 @@ customPatterns: [
 class Sanitizer {
   // Sanitize any value (string, object, array)
   sanitize(value: unknown): unknown;
-  
+
   // Sanitize console arguments
   sanitizeConsoleArgs(args: unknown[]): unknown[];
-  
+
   // Sanitize network request/response
   sanitizeNetworkData(data: NetworkData): NetworkData;
-  
+
   // Sanitize error object
   sanitizeError(error: ErrorObject): ErrorObject;
-  
+
   // Sanitize DOM text node
   sanitizeTextNode(text: string, element?: Element): string;
-  
+
   // Check if element should be excluded
   shouldExclude(element: Element): boolean;
 }
@@ -438,12 +435,12 @@ const sanitizer = createSanitizer({
   enabled: true,
   patterns: ['email', 'phone'],
   customPatterns: [],
-  excludeSelectors: []
+  excludeSelectors: [],
 });
 
 // Use manually
 const sanitized = sanitizer.sanitize('Email: user@test.com');
-console.log(sanitized);  // "Email: [REDACTED-EMAIL]"
+console.log(sanitized); // "Email: [REDACTED-EMAIL]"
 ```
 
 ## Testing
@@ -456,6 +453,7 @@ pnpm test utils/sanitize.test.ts
 ```
 
 Test coverage includes:
+
 - ✅ All built-in patterns (52 tests)
 - ✅ Custom patterns
 - ✅ Cyrillic text

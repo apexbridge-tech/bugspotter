@@ -5,13 +5,16 @@ The mock API server now provides detailed logging of all received bug reports wi
 ## Features
 
 ### 📋 Detailed Console Log Display
+
 When a bug report is received, the server displays each console entry with:
+
 - Timestamp (formatted as local time)
 - Log level (LOG, WARN, ERROR, INFO)
 - Message content (truncated to 80 characters for readability)
 - Shows first 10 entries, with count of remaining entries
 
 Example output:
+
 ```
 📋 Console Logs:
   1. [9:00:00 PM] LOG   Button clicked
@@ -20,7 +23,9 @@ Example output:
 ```
 
 ### 🌐 Network Request Summary
+
 Displays network activity with:
+
 - Request method (GET, POST, etc.)
 - HTTP status code
 - Request duration in milliseconds
@@ -28,6 +33,7 @@ Displays network activity with:
 - Shows first 5 requests, with count of remaining
 
 Example output:
+
 ```
 🌐 Network Requests:
   1. GET    200  145ms  https://api.example.com/users/123
@@ -36,7 +42,9 @@ Example output:
 ```
 
 ### 💾 Automatic File Saving
+
 Each bug report is automatically saved to:
+
 - **Directory**: `packages/backend-mock/bug-reports/`
 - **Filename**: `bug-{id}-{timestamp}.json`
 - **Format**: Pretty-printed JSON (2-space indentation)
@@ -45,7 +53,9 @@ Each bug report is automatically saved to:
 Example filename: `bug-bug-1-1759486038333.json`
 
 ### ✓ Enhanced Summary Output
+
 The terminal displays a comprehensive summary:
+
 ```
 📝 Bug Report Received!
 ─────────────────────────────────────
@@ -66,7 +76,7 @@ The terminal displays a comprehensive summary:
 
 🌐 Network Requests:
   [detailed list]
-  
+
 ─────────────────────────────────────
 ✓ Bug Report ID: bug-1
 ✓ Total Reports: 1
@@ -95,31 +105,37 @@ packages/backend-mock/
 ## Viewing Saved Reports
 
 ### View latest report:
+
 ```bash
 cat packages/backend-mock/bug-reports/$(ls -t packages/backend-mock/bug-reports/ | head -1)
 ```
 
 ### List all reports:
+
 ```bash
 ls -lh packages/backend-mock/bug-reports/
 ```
 
 ### Count reports:
+
 ```bash
 ls packages/backend-mock/bug-reports/*.json | wc -l
 ```
 
 ### Search reports by title:
+
 ```bash
 grep -l "title.*Login" packages/backend-mock/bug-reports/*.json
 ```
 
 ### View console logs from a report:
+
 ```bash
 cat packages/backend-mock/bug-reports/bug-bug-1-*.json | jq '.report.console'
 ```
 
 ### View network requests:
+
 ```bash
 cat packages/backend-mock/bug-reports/bug-bug-1-*.json | jq '.report.network'
 ```
@@ -133,11 +149,13 @@ To disable file saving (console logging only), comment out the file write sectio
 ## Cleanup
 
 To remove all saved reports:
+
 ```bash
 rm -rf packages/backend-mock/bug-reports/*.json
 ```
 
 Or use the API endpoint:
+
 ```bash
 curl -X DELETE http://localhost:4000/api/bugs
 ```

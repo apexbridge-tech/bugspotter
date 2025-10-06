@@ -28,10 +28,10 @@ pnpm add @bugspotter/types@workspace:*
 ### In SDK
 
 ```typescript
-import type { 
+import type {
   CapturedReport,
   CreateBugReportRequest,
-  CreateBugReportResponse
+  CreateBugReportResponse,
 } from '@bugspotter/types';
 
 export class BugSpotter {
@@ -57,48 +57,53 @@ export class BugSpotter {
 ### In API
 
 ```typescript
-import type { 
+import type {
   CreateBugReportRequest,
   CreateBugReportResponse,
-  ApiErrorResponse
+  ApiErrorResponse,
 } from '@bugspotter/types';
 import { Router, Request, Response } from 'express';
 
 const router = Router();
 
-router.post('/bugs', async (
-  req: Request<{}, CreateBugReportResponse | ApiErrorResponse, CreateBugReportRequest>,
-  res: Response<CreateBugReportResponse | ApiErrorResponse>
-) => {
-  const { title, description, report } = req.body;
-  
-  const response: CreateBugReportResponse = {
-    success: true,
-    data: {
-      id: generateId(),
-      title,
-      description,
-      status: 'open',
-      priority: 'medium',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    timestamp: new Date().toISOString(),
-  };
-  
-  res.json(response);
-});
+router.post(
+  '/bugs',
+  async (
+    req: Request<{}, CreateBugReportResponse | ApiErrorResponse, CreateBugReportRequest>,
+    res: Response<CreateBugReportResponse | ApiErrorResponse>
+  ) => {
+    const { title, description, report } = req.body;
+
+    const response: CreateBugReportResponse = {
+      success: true,
+      data: {
+        id: generateId(),
+        title,
+        description,
+        status: 'open',
+        priority: 'medium',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    res.json(response);
+  }
+);
 ```
 
 ## Type Categories
 
 ### Capture Types (`capture.ts`)
+
 - `ConsoleLog` - Browser console logs
 - `NetworkRequest` - Network requests
 - `BrowserMetadata` - Browser environment info
 - `CapturedReport` - Complete captured data
 
 ### API Contract Types (`api-contract.ts`)
+
 - `CreateBugReportRequest` - Request payload
 - `CreateBugReportResponse` - Success response
 - `ApiErrorResponse` - Error response
@@ -122,6 +127,7 @@ pnpm run clean
 ## Versioning
 
 This package follows semantic versioning:
+
 - **Major** - Breaking changes to existing types
 - **Minor** - New types added
 - **Patch** - Documentation or non-code changes

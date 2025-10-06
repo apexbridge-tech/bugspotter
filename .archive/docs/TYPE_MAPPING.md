@@ -2,15 +2,16 @@
 
 This document shows how data flows through BugSpotter's type system.
 
-
 ## � Where Types Live
 
 **Public Contracts** (`@bugspotter/types`):
+
 - Used by both SDK and API
 - Request/response types
 - Shared data structures
 
 **Database Schemas** (`packages/api/src/types/database.ts`):
+
 - API internal only
 - Database table structures
 - Service layer types
@@ -40,15 +41,18 @@ CreateBugReportResponse CreateBugReportResponse DatabaseBugReport      Supabase 
 ## 📦 Type Compatibility
 
 ### ConsoleLog
+
 - **SDK**: `{ level: string, message: string, timestamp: number }`
 - **API Contract**: `{ level: 'log'|'warn'|'error'|'info'|'debug', message: string, timestamp: number }`
 - **Database**: Same as API Contract + `id`, `bug_report_id`, `created_at`
 
 ### NetworkRequest
+
 - **SDK/API Contract**: Identical
 - **Database**: Same + `id`, `bug_report_id`, `created_at`
 
 ### BrowserMetadata
+
 - **SDK/API Contract**: Identical
 - **Database**: Same + `id`, `bug_report_id`, `created_at`
 
@@ -87,11 +91,13 @@ Database Tables:
 SDK types are **100% forward compatible** with API types.
 
 API adds:
+
 - Type safety (string literals instead of strings)
 - Optional fields (priority, project_id)
 - Server-side fields (id, created_at, status)
 
 **See:** `/TYPE_GUIDE.md` for usage examples.
+
 ````
 
 ## 🗄️ Database Normalization
@@ -285,3 +291,4 @@ These types exist only in API (not in SDK):
 | `BrowserMetadata` | `BrowserMetadata` | ✅ Identical | Exact match |
 
 **Result**: SDK types are **100% forward compatible** with API types. The API extends SDK types with additional fields for server-side features while maintaining full compatibility with incoming SDK data.
+````

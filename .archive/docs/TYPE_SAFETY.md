@@ -7,6 +7,7 @@ BugSpotter implements a **three-layer type safety system** to prevent SDK-API co
 ## 🎯 The Problem
 
 When SDK and API evolve independently, types can drift:
+
 - SDK sends `priority: "urgent"` but API expects `"high"`
 - API adds required field but SDK doesn't include it
 - Field names change (`description` → `details`)
@@ -32,11 +33,13 @@ import { CreateBugReportRequest } from '@bugspotter/types';
 ```
 
 **Benefits:**
+
 - Catches type mismatches before code runs
 - IDE autocomplete works perfectly
 - Refactoring is safe
 
 **Setup:**
+
 ```bash
 cd packages/types
 pnpm install
@@ -68,7 +71,7 @@ export function validateBody(schema: z.ZodSchema) {
     if (!result.success) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: result.error.errors
+        details: result.error.errors,
       });
     }
     next();
@@ -77,21 +80,20 @@ export function validateBody(schema: z.ZodSchema) {
 ```
 
 **Benefits:**
+
 - Catches malformed data from any source
 - Provides detailed error messages
 - Prevents invalid data from reaching database
 
 **Usage:**
+
 ```typescript
 import { validateBody } from './middleware/validate.js';
 import { CreateBugReportSchema } from './schemas/bug-report.schema.js';
 
-router.post('/bugs', 
-  validateBody(CreateBugReportSchema),
-  async (req, res) => {
-    // req.body is guaranteed to be valid here
-  }
-);
+router.post('/bugs', validateBody(CreateBugReportSchema), async (req, res) => {
+  // req.body is guaranteed to be valid here
+});
 ```
 
 ---
@@ -114,13 +116,13 @@ describe('SDK-API Contract', () => {
       capturedData: {
         consoleLogs: [{ level: 'error', message: 'Error', timestamp: Date.now() }],
         // ...
-      }
+      },
     };
 
     const response = await fetch('http://localhost:4000/api/bugs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     expect(response.status).toBe(201);
@@ -130,13 +132,13 @@ describe('SDK-API Contract', () => {
     const payload = {
       title: 'Test',
       capturedData: {
-        consoleLogs: [{ level: 'INVALID', message: 'test' }]
-      }
+        consoleLogs: [{ level: 'INVALID', message: 'test' }],
+      },
     };
 
     const response = await fetch('http://localhost:4000/api/bugs', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     expect(response.status).toBe(400);
@@ -145,11 +147,13 @@ describe('SDK-API Contract', () => {
 ```
 
 **Benefits:**
+
 - Tests real HTTP communication
 - Validates all enum values work
 - Catches edge cases
 
 **Run tests:**
+
 ```bash
 # Terminal 1: Start API server
 cd packages/api
@@ -187,35 +191,39 @@ Deploy with confidence 🚀
 When adding a field to the API:
 
 1. **Update shared types** (`@bugspotter/types`)
+
    ```typescript
    export interface CreateBugReportRequest {
      // ... existing fields
-     newField?: string;  // Add here
+     newField?: string; // Add here
    }
    ```
 
 2. **Update Zod schema** (`schemas/bug-report.schema.ts`)
+
    ```typescript
    const CreateBugReportSchema = z.object({
      // ... existing fields
-     newField: z.string().optional(),  // Add here
+     newField: z.string().optional(), // Add here
    });
    ```
 
 3. **Update database type** (`types/database.ts`)
+
    ```typescript
    export interface DatabaseBugReport {
      // ... existing fields
-     new_field?: string;  // Add here (snake_case)
+     new_field?: string; // Add here (snake_case)
    }
    ```
 
 4. **Add contract test** (`tests/contract/sdk-compatibility.test.ts`)
+
    ```typescript
    it('accepts new field', async () => {
      const payload: CreateBugReportRequest = {
        title: 'Test',
-       newField: 'value',  // Test here
+       newField: 'value', // Test here
        // ...
      };
      // ... assertions
@@ -233,15 +241,15 @@ When adding a field to the API:
 
 ## 🛡️ Protection Provided
 
-| Scenario | Layer 1 | Layer 2 | Layer 3 |
-|----------|---------|---------|---------|
-| Wrong type (string vs number) | ✅ | ✅ | ✅ |
-| Invalid enum value | ✅ | ✅ | ✅ |
-| Missing required field | ✅ | ✅ | ✅ |
-| Field name typo | ✅ | ❌ | ✅ |
-| Malformed JSON | ❌ | ✅ | ✅ |
-| Client sends extra fields | ❌ | ⚠️ | ✅ |
-| Valid but semantically wrong | ❌ | ❌ | ✅ |
+| Scenario                      | Layer 1 | Layer 2 | Layer 3 |
+| ----------------------------- | ------- | ------- | ------- |
+| Wrong type (string vs number) | ✅      | ✅      | ✅      |
+| Invalid enum value            | ✅      | ✅      | ✅      |
+| Missing required field        | ✅      | ✅      | ✅      |
+| Field name typo               | ✅      | ❌      | ✅      |
+| Malformed JSON                | ❌      | ✅      | ✅      |
+| Client sends extra fields     | ❌      | ⚠️      | ✅      |
+| Valid but semantically wrong  | ❌      | ❌      | ✅      |
 
 **Legend:** ✅ Caught | ❌ Not caught | ⚠️ Depends on config
 

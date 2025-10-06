@@ -1,6 +1,6 @@
 /**
  * ScreenshotProcessor
- * 
+ *
  * Responsibility: Handle screenshot image processing and manipulation
  * Follows SRP: Only handles image-related operations
  */
@@ -17,13 +17,13 @@ export class ScreenshotProcessor {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         try {
           const mergedCanvas = document.createElement('canvas');
           mergedCanvas.width = img.naturalWidth || img.width;
           mergedCanvas.height = img.naturalHeight || img.height;
-          
+
           const ctx = mergedCanvas.getContext('2d');
           if (!ctx) {
             reject(new Error('Failed to get canvas context'));
@@ -32,20 +32,20 @@ export class ScreenshotProcessor {
 
           // Draw original image
           ctx.drawImage(img, 0, 0);
-          
+
           // Draw redaction canvas on top
           ctx.drawImage(redactionCanvas, 0, 0);
-          
+
           resolve(mergedCanvas.toDataURL());
         } catch (error) {
           reject(error);
         }
       };
-      
+
       img.onerror = () => {
         reject(new Error('Failed to load screenshot image'));
       };
-      
+
       img.src = originalDataUrl;
     });
   }
@@ -60,13 +60,13 @@ export class ScreenshotProcessor {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
           canvas.width = img.naturalWidth || img.width;
           canvas.height = img.naturalHeight || img.height;
-          
+
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             reject(new Error('Failed to get canvas context'));
@@ -75,23 +75,23 @@ export class ScreenshotProcessor {
 
           // Draw original image
           ctx.drawImage(img, 0, 0);
-          
+
           // Apply redactions
           ctx.fillStyle = redactionColor;
           for (const rect of redactions) {
             ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
           }
-          
+
           resolve(canvas.toDataURL());
         } catch (error) {
           reject(error);
         }
       };
-      
+
       img.onerror = () => {
         reject(new Error('Failed to load image'));
       };
-      
+
       img.src = imageDataUrl;
     });
   }
@@ -99,23 +99,19 @@ export class ScreenshotProcessor {
   /**
    * Resize an image to maximum dimensions while maintaining aspect ratio
    */
-  async resize(
-    imageDataUrl: string,
-    maxWidth: number,
-    maxHeight: number
-  ): Promise<string> {
+  async resize(imageDataUrl: string, maxWidth: number, maxHeight: number): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         try {
           let width = img.naturalWidth || img.width;
           let height = img.naturalHeight || img.height;
-          
+
           // Calculate new dimensions maintaining aspect ratio
           if (width > maxWidth || height > maxHeight) {
             const aspectRatio = width / height;
-            
+
             if (width > height) {
               width = maxWidth;
               height = width / aspectRatio;
@@ -124,11 +120,11 @@ export class ScreenshotProcessor {
               width = height * aspectRatio;
             }
           }
-          
+
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
-          
+
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             reject(new Error('Failed to get canvas context'));
@@ -141,11 +137,11 @@ export class ScreenshotProcessor {
           reject(error);
         }
       };
-      
+
       img.onerror = () => {
         reject(new Error('Failed to load image'));
       };
-      
+
       img.src = imageDataUrl;
     });
   }
@@ -160,13 +156,13 @@ export class ScreenshotProcessor {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
           canvas.width = img.naturalWidth || img.width;
           canvas.height = img.naturalHeight || img.height;
-          
+
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             reject(new Error('Failed to get canvas context'));
@@ -179,11 +175,11 @@ export class ScreenshotProcessor {
           reject(error);
         }
       };
-      
+
       img.onerror = () => {
         reject(new Error('Failed to load image'));
       };
-      
+
       img.src = imageDataUrl;
     });
   }
@@ -194,18 +190,18 @@ export class ScreenshotProcessor {
   async getDimensions(imageDataUrl: string): Promise<{ width: number; height: number }> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       img.onload = () => {
         resolve({
           width: img.naturalWidth || img.width,
           height: img.naturalHeight || img.height,
         });
       };
-      
+
       img.onerror = () => {
         reject(new Error('Failed to load image'));
       };
-      
+
       img.src = imageDataUrl;
     });
   }

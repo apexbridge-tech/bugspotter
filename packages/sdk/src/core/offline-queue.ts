@@ -96,11 +96,7 @@ export class OfflineQueue {
   private storage: StorageAdapter;
   private requestCounter: number = 0;
 
-  constructor(
-    config: OfflineConfig,
-    logger?: Logger,
-    storage?: StorageAdapter
-  ) {
+  constructor(config: OfflineConfig, logger?: Logger, storage?: StorageAdapter) {
     this.config = { ...DEFAULT_OFFLINE_CONFIG, ...config };
     this.logger = logger || getLogger();
     this.storage = storage || new LocalStorageAdapter();
@@ -109,11 +105,7 @@ export class OfflineQueue {
   /**
    * Queue a request for offline retry
    */
-  enqueue(
-    endpoint: string,
-    body: BodyInit,
-    headers: Record<string, string>
-  ): void {
+  enqueue(endpoint: string, body: BodyInit, headers: Record<string, string>): void {
     try {
       const serializedBody = this.serializeBody(body);
       if (!serializedBody || !this.validateItemSize(serializedBody)) {
@@ -121,16 +113,18 @@ export class OfflineQueue {
       }
 
       const queue = this.getQueue();
-      
+
       // Ensure space in queue
       if (queue.length >= this.config.maxQueueSize) {
-        this.logger.warn(`Offline queue is full (${this.config.maxQueueSize}), removing oldest request`);
+        this.logger.warn(
+          `Offline queue is full (${this.config.maxQueueSize}), removing oldest request`
+        );
         queue.shift();
       }
 
       queue.push(this.createQueuedRequest(endpoint, serializedBody, headers));
       this.saveQueue(queue);
-      
+
       this.logger.log(`Request queued for offline retry (queue size: ${queue.length})`);
     } catch (error) {
       this.logger.error('Failed to queue request for offline retry:', error);
@@ -155,7 +149,9 @@ export class OfflineQueue {
     for (const request of queue) {
       // Check if request has exceeded max retry attempts
       if (request.attempts >= MAX_RETRY_ATTEMPTS) {
-        this.logger.warn(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for request (id: ${request.id}), removing`);
+        this.logger.warn(
+          `Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for request (id: ${request.id}), removing`
+        );
         continue;
       }
 
@@ -183,16 +179,23 @@ export class OfflineQueue {
           // Keep in queue for next attempt
           request.attempts++;
           failedRequests.push(request);
-          this.logger.warn(`Queued request failed with status ${response.status}, will retry later (id: ${request.id})`);
+          this.logger.warn(
+            `Queued request failed with status ${response.status}, will retry later (id: ${request.id})`
+          );
         } else {
           // Non-retryable error, remove from queue
-          this.logger.warn(`Queued request failed with non-retryable status ${response.status}, removing (id: ${request.id})`);
+          this.logger.warn(
+            `Queued request failed with non-retryable status ${response.status}, removing (id: ${request.id})`
+          );
         }
       } catch (error) {
         // Network error, keep in queue
         request.attempts++;
         failedRequests.push(request);
-        this.logger.warn(`Queued request failed with network error, will retry later (id: ${request.id}):`, error);
+        this.logger.warn(
+          `Queued request failed with network error, will retry later (id: ${request.id}):`,
+          error
+        );
       }
     }
 
@@ -200,7 +203,9 @@ export class OfflineQueue {
     this.saveQueue(failedRequests);
 
     if (successfulIds.length > 0 || failedRequests.length < queue.length) {
-      this.logger.log(`Offline queue processed: ${successfulIds.length} successful, ${failedRequests.length} remaining`);
+      this.logger.log(
+        `Offline queue processed: ${successfulIds.length} successful, ${failedRequests.length} remaining`
+      );
     }
   }
 
@@ -233,12 +238,12 @@ export class OfflineQueue {
     if (typeof body === 'string') {
       return body;
     }
-    
+
     if (body instanceof Blob) {
       this.logger.warn('Cannot queue Blob for offline retry, skipping');
       return null;
     }
-    
+
     return JSON.stringify(body);
   }
 
@@ -322,11 +327,7 @@ export class OfflineQueue {
 
     // Check error message as fallback (Firefox, Chrome variants)
     const message = error.message.toLowerCase();
-    return (
-      message.includes('quota') ||
-      message.includes('storage') ||
-      message.includes('exceeded')
-    );
+    return message.includes('quota') || message.includes('storage') || message.includes('exceeded');
   }
 
   /**
@@ -347,18 +348,21 @@ export class OfflineQueue {
   private generateRequestId(): string {
     // Increment counter for additional entropy
     this.requestCounter = (this.requestCounter + 1) % 10000;
-    
+
     // Use crypto.getRandomValues for better randomness (browser-safe fallback)
     let randomPart: string;
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
       const array = new Uint32Array(2);
       crypto.getRandomValues(array);
-      randomPart = Array.from(array, (num) => {return num.toString(36)}).join('');
+      randomPart = Array.from(array, (num) => {
+        return num.toString(36);
+      }).join('');
     } else {
       // Fallback to Math.random for environments without crypto
-      randomPart = Math.random().toString(36).substring(2, 9) + Math.random().toString(36).substring(2, 9);
+      randomPart =
+        Math.random().toString(36).substring(2, 9) + Math.random().toString(36).substring(2, 9);
     }
-    
+
     return `req_${Date.now()}_${this.requestCounter}_${randomPart}`;
   }
 }

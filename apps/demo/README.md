@@ -30,30 +30,34 @@ apps/demo/
 
 ## ✨ Features
 
-| Tab | Features |
-|-----|----------|
-| 📸 **Capture** | Console logs, network requests, screenshots, metadata |
-| 🎥 **Replay** | Live session playback, fetch reports, rrweb player |
-| 🔒 **Security** | PII sanitization, credential redaction |
-| ⚙️ **Advanced** | Auth methods (API Key, Bearer, OAuth), compression |
-| 🎨 **UI** | Floating button, modal customization |
+| Tab             | Features                                              |
+| --------------- | ----------------------------------------------------- |
+| 📸 **Capture**  | Console logs, network requests, screenshots, metadata |
+| 🎥 **Replay**   | Live session playback, fetch reports, rrweb player    |
+| 🔒 **Security** | PII sanitization, credential redaction                |
+| ⚙️ **Advanced** | Auth methods (API Key, Bearer, OAuth), compression    |
+| 🎨 **UI**       | Floating button, modal customization                  |
 
 ## 🛠️ Development
 
 **Auto-reload enabled** - changes to `.html`, `.css`, `.js` files reload automatically.
 
 ### Modifying the Demo
+
 - **Styles**: Edit `styles.css`
 - **Logic**: Edit `demo.js`
 - **Structure**: Edit `index.html`
 
 ### Code Quality
+
 Refactored for maintainability with:
+
 - ✅ Separation of concerns (HTML/CSS/JS)
 - ✅ Reusable helper functions
 - ✅ Eliminated ~170 lines of duplication
 
 **Helper Functions:**
+
 - `submitBugReport()` - Centralized API submission
 - `createReplayPlayer()` - Unified rrweb player creation
 - `reinitializeSDK()` - SDK reinitialization
