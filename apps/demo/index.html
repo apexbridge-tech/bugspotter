@@ -426,6 +426,21 @@
           </div>
         </div>
 
+        <!-- Compression Demo Section -->
+        <div class="section">
+          <h2>📦 Gzip Compression <span class="badge">New! 70-90% Reduction</span></h2>
+          <p>
+            Bug reports are automatically compressed using gzip before sending to the server. 
+            Screenshots are optimized to WebP format and resized. Test the compression below to see real-time size reduction!
+          </p>
+          <div class="button-grid">
+            <button class="btn-primary" onclick="testCompression()">Test Compression</button>
+            <button class="btn-success" onclick="testLargePayload()">Generate Large Payload</button>
+            <button class="btn-info" onclick="showCompressionInfo()">Show Compression Stats</button>
+          </div>
+          <div id="compression-output" style="display: none; margin-top: 1rem; padding: 1rem; background: white; border: 1px solid #3182ce; border-radius: 4px;"></div>
+        </div>
+
         <!-- Main Capture Button -->
         <div class="section">
           <h2>Generate Report</h2>
@@ -993,10 +1008,173 @@ SAFE DATA:
         setTimeout(() => showReplayInfo(), 500);
       }
 
+      // Compression Demo Functions
+      async function testCompression() {
+        console.log('📦 Testing compression...');
+        
+        try {
+          // Create a test payload
+          const testData = {
+            title: 'Compression Test',
+            description: 'Testing gzip compression',
+            logs: Array(50).fill(null).map((_, i) => ({
+              level: 'info',
+              message: `Test log entry ${i}`,
+              timestamp: Date.now() + i,
+            })),
+            metadata: {
+              browser: navigator.userAgent,
+              viewport: { width: window.innerWidth, height: window.innerHeight },
+            },
+          };
+          
+          // Use the SDK's compression utilities
+          const originalSize = BugSpotter.estimateSize(testData);
+          const compressed = await BugSpotter.compressData(testData);
+          const compressedSize = compressed.byteLength;
+          const ratio = BugSpotter.getCompressionRatio(originalSize, compressedSize);
+          
+          // Display results
+          const outputDiv = document.getElementById('compression-output');
+          outputDiv.style.display = 'block';
+          outputDiv.innerHTML = `
+            <strong>✅ Compression Test Results</strong><br><br>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+              <div style="background: #fff5f5; padding: 0.75rem; border-radius: 4px; border-left: 3px solid #e53e3e;">
+                <strong>📄 Original Size:</strong><br>
+                <span style="font-size: 1.5rem; color: #c53030;">${(originalSize / 1024).toFixed(2)} KB</span><br>
+                <em style="font-size: 0.85rem; color: #718096;">${originalSize.toLocaleString()} bytes</em>
+              </div>
+              <div style="background: #f0fff4; padding: 0.75rem; border-radius: 4px; border-left: 3px solid #38a169;">
+                <strong>📦 Compressed Size:</strong><br>
+                <span style="font-size: 1.5rem; color: #2f855a;">${(compressedSize / 1024).toFixed(2)} KB</span><br>
+                <em style="font-size: 0.85rem; color: #718096;">${compressedSize.toLocaleString()} bytes</em>
+              </div>
+            </div>
+            <div style="margin-top: 1rem; padding: 0.75rem; background: #ebf8ff; border-radius: 4px; text-align: center;">
+              <strong style="font-size: 1.1rem; color: #2c5282;">🎯 Size Reduction: ${ratio}%</strong><br>
+              <em style="font-size: 0.9rem; color: #2b6cb0;">Saved ${((originalSize - compressedSize) / 1024).toFixed(2)} KB</em>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: #718096;">
+              <strong>Test Data:</strong> 50 log entries + metadata<br>
+              <strong>Compression:</strong> Gzip level 6 (balanced speed/size)
+            </div>
+          `;
+          
+          console.log(`✅ Compression: ${(originalSize / 1024).toFixed(2)}KB → ${(compressedSize / 1024).toFixed(2)}KB (${ratio}% reduction)`);
+        } catch (error) {
+          console.error('❌ Compression test failed:', error);
+          document.getElementById('compression-output').innerHTML = 
+            '<strong style="color: #c53030;">❌ Compression test failed</strong><br>' + error.message;
+        }
+      }
+      
+      async function testLargePayload() {
+        console.log('📦 Generating large payload with compression test...');
+        
+        // Generate a lot of console logs
+        for (let i = 0; i < 100; i++) {
+          console.log(`Large payload test entry ${i}:`, {
+            index: i,
+            timestamp: Date.now(),
+            data: 'This is some repetitive data that should compress well',
+            metadata: { browser: 'test', version: '1.0.0' }
+          });
+        }
+        
+        // Capture the data
+        try {
+          const report = await bugSpotter.capture();
+          
+          // Calculate compression for the full report
+          const originalSize = BugSpotter.estimateSize(report);
+          const compressed = await BugSpotter.compressData(report);
+          const compressedSize = compressed.byteLength;
+          const ratio = BugSpotter.getCompressionRatio(originalSize, compressedSize);
+          
+          const outputDiv = document.getElementById('compression-output');
+          outputDiv.style.display = 'block';
+          outputDiv.innerHTML = `
+            <strong>✅ Large Payload Compression Results</strong><br><br>
+            <div style="background: #f7fafc; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+              <strong>📊 Payload Contents:</strong><br>
+              • Console Logs: ${report.console.length} entries<br>
+              • Network Requests: ${report.network.length} requests<br>
+              • Replay Events: ${report.replay.length} events<br>
+              • Screenshot: ${report.screenshot === 'SCREENSHOT_FAILED' ? 'Failed' : 'Captured'}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+              <div style="background: #fff5f5; padding: 0.75rem; border-radius: 4px; text-align: center;">
+                <strong>Original</strong><br>
+                <span style="font-size: 1.3rem; color: #c53030;">${(originalSize / 1024).toFixed(1)} KB</span>
+              </div>
+              <div style="background: #f0fff4; padding: 0.75rem; border-radius: 4px; text-align: center;">
+                <strong>Compressed</strong><br>
+                <span style="font-size: 1.3rem; color: #2f855a;">${(compressedSize / 1024).toFixed(1)} KB</span>
+              </div>
+              <div style="background: #ebf8ff; padding: 0.75rem; border-radius: 4px; text-align: center;">
+                <strong>Reduction</strong><br>
+                <span style="font-size: 1.3rem; color: #2c5282;">${ratio}%</span>
+              </div>
+            </div>
+            <div style="margin-top: 1rem; padding: 0.75rem; background: linear-gradient(90deg, #f0fff4 0%, #f0fff4 ${ratio}%, #fff5f5 ${ratio}%, #fff5f5 100%); border-radius: 4px; position: relative;">
+              <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #1a202c;">
+                📊 Compression Efficiency Bar
+              </div>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: #2f855a; text-align: center;">
+              <strong>💾 Bandwidth Saved: ${((originalSize - compressedSize) / 1024).toFixed(2)} KB per report</strong>
+            </div>
+          `;
+          
+          console.log(`✅ Large payload: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`);
+        } catch (error) {
+          console.error('❌ Large payload test failed:', error);
+        }
+      }
+      
+      async function showCompressionInfo() {
+        const outputDiv = document.getElementById('compression-output');
+        outputDiv.style.display = 'block';
+        outputDiv.innerHTML = `
+          <strong>📦 Gzip Compression Information</strong><br><br>
+          <div style="background: #f7fafc; padding: 1rem; border-radius: 4px; font-size: 0.9rem; line-height: 1.8;">
+            <strong>🔧 How It Works:</strong><br>
+            1. Screenshot images are optimized (resize to max 1920x1080, convert to WebP at 80% quality)<br>
+            2. Full payload is compressed using gzip at level 6 (balanced speed/size)<br>
+            3. Binary data is sent with <code>Content-Encoding: gzip</code> header<br>
+            4. Falls back to uncompressed if compression doesn't reduce size<br><br>
+            
+            <strong>📊 Expected Results:</strong><br>
+            • Screenshots: 2-4MB → 200-400KB (90%+ reduction)<br>
+            • Console logs: 500KB → 50KB (70-90% reduction on repetitive data)<br>
+            • Full reports: ~7.5MB → 1-2MB (total payload)<br><br>
+            
+            <strong>🎯 Benefits:</strong><br>
+            • ⚡ Faster uploads (less bandwidth)<br>
+            • 💰 Reduced server storage costs<br>
+            • 🌐 Better mobile experience<br>
+            • 📉 Lower network usage<br><br>
+            
+            <strong>🔬 Technical Details:</strong><br>
+            • Library: <code>pako</code> v2.1.0 (gzip implementation)<br>
+            • Compression: Level 6 (default, good balance)<br>
+            • Image format: WebP with 80% quality<br>
+            • Max image size: 1920x1080 (auto-resize)<br>
+          </div>
+          <div style="margin-top: 1rem; padding: 0.75rem; background: #e6fffa; border-radius: 4px; border-left: 3px solid #319795;">
+            <strong>💡 Tip:</strong> Click "Test Compression" or "Generate Large Payload" to see real compression stats!
+          </div>
+        `;
+        
+        console.log('ℹ️ Compression information displayed');
+      }
+
       // Add some test data on page load
       console.log('🎬 Demo page loaded successfully!');
       console.info('💡 Try clicking different buttons to test capture functionality');
       console.info('🎥 Session replay is active - all interactions are being recorded!');
+      console.info('📦 Gzip compression is enabled - payloads are automatically compressed!');
     </script>
   </body>
 </html>

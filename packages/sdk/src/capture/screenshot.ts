@@ -1,5 +1,6 @@
 import { toPng } from 'html-to-image';
 import { BaseCapture, type CaptureOptions } from './base-capture';
+import { compressImage } from '../core/compress';
 
 export interface ScreenshotCaptureOptions extends CaptureOptions {
   quality?: number;
@@ -62,7 +63,12 @@ export class ScreenshotCapture extends BaseCapture<Promise<string>, ScreenshotCa
       
       const options = this.buildCaptureOptions();
       const dataUrl = await toPng(element, options);
-      return dataUrl;
+      
+      // Compress the screenshot to reduce payload size
+      // Converts to WebP if supported, resizes if too large
+      const compressed = await compressImage(dataUrl);
+      
+      return compressed;
     } catch (error) {
       this.handleError('capturing screenshot', error);
       return this.getErrorPlaceholder();

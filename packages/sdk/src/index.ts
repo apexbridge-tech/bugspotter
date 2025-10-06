@@ -2,6 +2,7 @@ import { ScreenshotCapture } from './capture/screenshot';
 import { ConsoleCapture } from './capture/console';
 import { NetworkCapture } from './capture/network';
 import { MetadataCapture } from './capture/metadata';
+import { compressData, estimateSize, getCompressionRatio } from './core/compress';
 import type { BrowserMetadata } from './capture/metadata';
 import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
@@ -116,10 +117,38 @@ export class BugSpotter {
 
     console.warn(`Submitting bug report to ${this.config.endpoint}`);
 
+    let body: BodyInit;
+    let useCompression = false;
+
+    try {
+      // Try to compress the payload
+      const originalSize = estimateSize(payload);
+      const compressed = await compressData(payload);
+      const compressedSize = compressed.byteLength;
+      const ratio = getCompressionRatio(originalSize, compressedSize);
+
+      console.log(`Payload compression: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`);
+
+      // Use compression if it actually reduces size
+      if (compressedSize < originalSize) {
+        // Create a Blob from the compressed data for proper binary upload
+        body = new Blob([compressed.buffer as ArrayBuffer], { type: 'application/gzip' });
+        headers['Content-Encoding'] = 'gzip';
+        headers['Content-Type'] = 'application/gzip';
+        useCompression = true;
+      } else {
+        body = JSON.stringify(payload);
+      }
+    } catch (error) {
+      // Fallback to uncompressed if compression fails
+      console.warn('Compression failed, sending uncompressed payload:', error);
+      body = JSON.stringify(payload);
+    }
+
     const response = await fetch(this.config.endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload),
+      body,
     });
 
     console.warn(`${JSON.stringify(response)}`);
@@ -236,6 +265,9 @@ export type { DOMCollectorConfig } from './collectors';
 // Export core utilities
 export { CircularBuffer } from './core/buffer';
 export type { CircularBufferConfig } from './core/buffer';
+
+// Export compression utilities
+export { compressData, decompressData, compressImage, estimateSize, getCompressionRatio } from './core/compress';
 
 // Export sanitization utilities
 export { createSanitizer, Sanitizer } from './utils/sanitize';
