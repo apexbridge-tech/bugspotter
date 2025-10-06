@@ -131,8 +131,9 @@ export class BugSpotter {
 
       // Use compression if it actually reduces size
       if (compressedSize < originalSize) {
-        // Create a Blob from the compressed data for proper binary upload
-        body = new Blob([compressed.buffer as ArrayBuffer], { type: 'application/gzip' });
+        // Create a Blob from the compressed Uint8Array for proper binary upload
+        // Use Uint8Array constructor to ensure clean ArrayBuffer (no extra padding bytes)
+        body = new Blob([new Uint8Array(compressed)], { type: 'application/gzip' });
         headers['Content-Encoding'] = 'gzip';
         headers['Content-Type'] = 'application/gzip';
         useCompression = true;
