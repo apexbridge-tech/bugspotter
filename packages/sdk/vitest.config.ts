@@ -5,6 +5,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: [],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     server: {
       deps: {
         inline: ['rrweb', 'rrweb-snapshot', '@rrweb/types'],
