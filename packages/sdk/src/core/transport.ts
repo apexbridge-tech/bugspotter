@@ -4,6 +4,37 @@
  */
 
 import { getLogger, type Logger } from '../utils/logger';
+import { OfflineQueue, type OfflineConfig } from './offline-queue';
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const TOKEN_REFRESH_STATUS = 401;
+const JITTER_PERCENTAGE = 0.1;
+const DEFAULT_ENABLE_RETRY = true;
+
+// ============================================================================
+// CUSTOM ERROR TYPES
+// ============================================================================
+
+export class TransportError extends Error {
+  constructor(
+    message: string,
+    public readonly endpoint: string,
+    public readonly cause?: Error
+  ) {
+    super(message);
+    this.name = 'TransportError';
+  }
+}
+
+export class TokenRefreshError extends TransportError {
+  constructor(endpoint: string, cause?: Error) {
+    super('Failed to refresh authentication token', endpoint, cause);
+    this.name = 'TokenRefreshError';
+  }
+}
 
 // ============================================================================
 // TYPE DEFINITIONS - Flexible auth config with runtime validation
@@ -27,13 +58,6 @@ export interface RetryConfig {
   retryOn?: number[];
 }
 
-export interface OfflineConfig {
-  /** Enable offline queue (default: false) */
-  enabled: boolean;
-  /** Maximum number of requests to queue (default: 10) */
-  maxQueueSize?: number;
-}
-
 export interface TransportOptions {
   /** Authentication configuration */
   auth?: AuthConfig | string;
@@ -45,16 +69,6 @@ export interface TransportOptions {
   retry?: RetryConfig;
   /** Offline queue configuration */
   offline?: OfflineConfig;
-}
-
-/** Queued request for offline retry */
-interface QueuedRequest {
-  id: string;
-  endpoint: string;
-  body: string; // Serialized body
-  headers: Record<string, string>;
-  timestamp: number;
-  attempts: number;
 }
 
 // Default configurations
@@ -69,9 +83,6 @@ const DEFAULT_OFFLINE_CONFIG: Required<OfflineConfig> = {
   enabled: false,
   maxQueueSize: 10,
 };
-
-const QUEUE_STORAGE_KEY = 'bugspotter_offline_queue';
-const QUEUE_EXPIRY_DAYS = 7;
 
 // ============================================================================
 // AUTHENTICATION STRATEGIES - Strategy Pattern
@@ -104,6 +115,168 @@ const authStrategies: Record<AuthConfig['type'], AuthHeaderStrategy> = {
   
   'none': (): Record<string, string> => ({}),
 };
+
+// ============================================================================
+// RETRY HANDLER - Exponential Backoff Logic
+// ============================================================================
+
+class RetryHandler {
+  constructor(
+    private config: Required<RetryConfig>,
+    private logger: Logger
+  ) {}
+
+  /**
+   * Execute operation with exponential backoff retry
+   */
+  async executeWithRetry(
+    operation: () => Promise<Response>,
+    shouldRetryStatus: (status: number) => boolean
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
+      try {
+        const response = await operation();
+        
+        // Check if we should retry based on status code
+        if (shouldRetryStatus(response.status) && attempt < this.config.maxRetries) {
+          const delay = this.calculateDelay(attempt, response);
+          this.logger.warn(`Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.maxRetries})`);
+          await sleep(delay);
+          continue;
+        }
+        
+        // Success or non-retryable status
+        return response;
+        
+      } catch (error) {
+        lastError = error as Error;
+        
+        // Retry on network errors
+        if (attempt < this.config.maxRetries) {
+          const delay = this.calculateDelay(attempt);
+          this.logger.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.maxRetries}):`, error);
+          await sleep(delay);
+          continue;
+        }
+      }
+    }
+    
+    // All retries exhausted
+    throw lastError || new Error('Request failed after all retry attempts');
+  }
+
+  /**
+   * Calculate retry delay with exponential backoff and jitter
+   */
+  private calculateDelay(attempt: number, response?: Response): number {
+    // Check for Retry-After header
+    if (response?.headers?.has?.('Retry-After')) {
+      const retryAfter = response.headers.get('Retry-After')!;
+      const retryAfterSeconds = parseInt(retryAfter, 10);
+      
+      if (!isNaN(retryAfterSeconds)) {
+        return Math.min(retryAfterSeconds * 1000, this.config.maxDelay);
+      }
+    }
+    
+    // Exponential backoff: baseDelay * 2^attempt
+    const exponentialDelay = this.config.baseDelay * Math.pow(2, attempt);
+    
+    // Add jitter: ±10% randomization
+    const jitter = exponentialDelay * JITTER_PERCENTAGE * (Math.random() * 2 - 1);
+    const delayWithJitter = exponentialDelay + jitter;
+    
+    // Cap at maxDelay
+    return Math.min(delayWithJitter, this.config.maxDelay);
+  }
+}
+
+// ============================================================================
+// INTERNAL HELPERS - Parameter Parsing
+// ============================================================================
+
+interface ParsedTransportParams {
+  auth?: AuthConfig | string;
+  logger: Logger;
+  enableRetry: boolean;
+  retryConfig: Required<RetryConfig>;
+  offlineConfig: Required<OfflineConfig>;
+}
+
+/**
+ * Type guard to check if parameter is TransportOptions
+ */
+function isTransportOptions(obj: unknown): obj is TransportOptions {
+  return typeof obj === 'object' && obj !== null && 
+    ('auth' in obj || 'retry' in obj || 'offline' in obj || 
+     'logger' in obj || 'enableRetry' in obj);
+}
+
+/**
+ * Parse transport parameters, supporting both legacy and new API signatures
+ */
+function parseTransportParams(authOrOptions?: AuthConfig | string | TransportOptions): ParsedTransportParams {
+  if (isTransportOptions(authOrOptions)) {
+    // Type guard ensures authOrOptions is TransportOptions
+    return {
+      auth: authOrOptions.auth,
+      logger: authOrOptions.logger || getLogger(),
+      enableRetry: authOrOptions.enableRetry ?? DEFAULT_ENABLE_RETRY,
+      retryConfig: { ...DEFAULT_RETRY_CONFIG, ...authOrOptions.retry },
+      offlineConfig: { ...DEFAULT_OFFLINE_CONFIG, ...authOrOptions.offline },
+    };
+  }
+  
+  return {
+    auth: authOrOptions as AuthConfig | string | undefined,
+    logger: getLogger(),
+    enableRetry: DEFAULT_ENABLE_RETRY,
+    retryConfig: DEFAULT_RETRY_CONFIG,
+    offlineConfig: DEFAULT_OFFLINE_CONFIG,
+  };
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Process offline queue in background
+ */
+async function processQueueInBackground(
+  offlineConfig: Required<OfflineConfig>,
+  retryConfig: Required<RetryConfig>,
+  logger: Logger
+): Promise<void> {
+  if (!offlineConfig.enabled) return;
+  
+  const queue = new OfflineQueue(offlineConfig, logger);
+  queue.process(retryConfig.retryOn).catch((error: unknown) => {
+    logger.warn('Failed to process offline queue:', error);
+  });
+}
+
+/**
+ * Handle offline failure by queueing request
+ */
+async function handleOfflineFailure(
+  error: unknown,
+  endpoint: string,
+  body: BodyInit,
+  contentHeaders: Record<string, string>,
+  auth: AuthConfig | string | undefined,
+  offlineConfig: Required<OfflineConfig>,
+  logger: Logger
+): Promise<void> {
+  if (!offlineConfig.enabled || !isNetworkError(error)) return;
+  
+  logger.warn('Network error detected, queueing request for offline retry');
+  const queue = new OfflineQueue(offlineConfig, logger);
+  const authHeaders = getAuthHeaders(auth);
+  await queue.enqueue(endpoint, body, { ...contentHeaders, ...authHeaders });
+}
 
 // ============================================================================
 // PUBLIC API
@@ -148,32 +321,10 @@ export async function submitWithAuth(
   authOrOptions?: AuthConfig | string | TransportOptions
 ): Promise<Response> {
   // Parse options (support both old signature and new options-based API)
-  let auth: AuthConfig | string | undefined;
-  let logger: Logger = getLogger();
-  let enableRetry = true;
-  let retryConfig: Required<RetryConfig> = DEFAULT_RETRY_CONFIG;
-  let offlineConfig: Required<OfflineConfig> = DEFAULT_OFFLINE_CONFIG;
-  
-  if (authOrOptions && typeof authOrOptions === 'object' && 
-      ('auth' in authOrOptions || 'retry' in authOrOptions || 'offline' in authOrOptions || 'logger' in authOrOptions || 'enableRetry' in authOrOptions)) {
-    // New options-based API
-    const options = authOrOptions as TransportOptions;
-    auth = options.auth;
-    logger = options.logger || getLogger();
-    enableRetry = options.enableRetry ?? true;
-    retryConfig = { ...DEFAULT_RETRY_CONFIG, ...options.retry };
-    offlineConfig = { ...DEFAULT_OFFLINE_CONFIG, ...options.offline };
-  } else {
-    // Legacy API: direct auth parameter
-    auth = authOrOptions as AuthConfig | string | undefined;
-  }
+  const { auth, logger, enableRetry, retryConfig, offlineConfig } = parseTransportParams(authOrOptions);
   
   // Process offline queue on each request (don't await - run in background)
-  if (offlineConfig.enabled) {
-    processOfflineQueue(auth, logger, retryConfig).catch((error: unknown) => {
-      logger.warn('Failed to process offline queue:', error);
-    });
-  }
+  await processQueueInBackground(offlineConfig, retryConfig, logger);
   
   try {
     // Send with retry logic
@@ -190,10 +341,15 @@ export async function submitWithAuth(
     return response;
   } catch (error) {
     // Queue for offline retry if enabled
-    if (offlineConfig.enabled && isNetworkError(error)) {
-      logger.warn('Network error detected, queueing request for offline retry');
-      await queueOfflineRequest(endpoint, body, contentHeaders, auth, logger, offlineConfig);
-    }
+    await handleOfflineFailure(
+      error,
+      endpoint,
+      body,
+      contentHeaders,
+      auth,
+      offlineConfig,
+      logger
+    );
     throw error;
   }
 }
@@ -246,15 +402,17 @@ async function sendWithRetry(
   logger: Logger,
   enableTokenRetry: boolean
 ): Promise<Response> {
-  let lastError: Error | null = null;
+  const retryHandler = new RetryHandler(retryConfig, logger);
+  let hasAttemptedRefresh = false;
   
-  for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
-    try {
-      // Make the request
+  // Use retry handler with token refresh support
+  return retryHandler.executeWithRetry(
+    async () => {
       const response = await makeRequest(endpoint, body, contentHeaders, auth);
       
-      // Check for 401 and retry with token refresh if applicable
-      if (response.status === 401 && enableTokenRetry && shouldRetryWithRefresh(auth) && attempt === 0) {
+      // Check for 401 and retry with token refresh if applicable (only once)
+      if (response.status === TOKEN_REFRESH_STATUS && enableTokenRetry && !hasAttemptedRefresh && shouldRetryWithRefresh(auth)) {
+        hasAttemptedRefresh = true;
         const refreshedResponse = await retryWithTokenRefresh(
           endpoint,
           body,
@@ -262,70 +420,13 @@ async function sendWithRetry(
           auth as TokenBasedAuth,
           logger
         );
-        
-        // If refresh succeeded, return the response
-        if (refreshedResponse.status !== 401) {
-          return refreshedResponse;
-        }
-        // If still 401, don't retry further
         return refreshedResponse;
       }
       
-      // Check if we should retry based on status code
-      if (retryConfig.retryOn.includes(response.status) && attempt < retryConfig.maxRetries) {
-        const delay = calculateRetryDelay(attempt, retryConfig, response);
-        logger.warn(`Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${retryConfig.maxRetries})`);
-        await sleep(delay);
-        continue;
-      }
-      
-      // Success or non-retryable status
       return response;
-      
-    } catch (error) {
-      lastError = error as Error;
-      
-      // Retry on network errors
-      if (attempt < retryConfig.maxRetries) {
-        const delay = calculateRetryDelay(attempt, retryConfig);
-        logger.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${retryConfig.maxRetries}):`, error);
-        await sleep(delay);
-        continue;
-      }
-    }
-  }
-  
-  // All retries exhausted
-  throw lastError || new Error('Request failed after all retry attempts');
-}
-
-/**
- * Calculate retry delay with exponential backoff and jitter
- */
-function calculateRetryDelay(
-  attempt: number,
-  config: Required<RetryConfig>,
-  response?: Response
-): number {
-  // Check for Retry-After header
-  if (response?.headers?.has?.('Retry-After')) {
-    const retryAfter = response.headers.get('Retry-After')!;
-    const retryAfterSeconds = parseInt(retryAfter, 10);
-    
-    if (!isNaN(retryAfterSeconds)) {
-      return Math.min(retryAfterSeconds * 1000, config.maxDelay);
-    }
-  }
-  
-  // Exponential backoff: baseDelay * 2^attempt
-  const exponentialDelay = config.baseDelay * Math.pow(2, attempt);
-  
-  // Add jitter: ±10% randomization
-  const jitter = exponentialDelay * 0.1 * (Math.random() * 2 - 1);
-  const delayWithJitter = exponentialDelay + jitter;
-  
-  // Cap at maxDelay
-  return Math.min(delayWithJitter, config.maxDelay);
+    },
+    (status) => retryConfig.retryOn.includes(status)
+  );
 }
 
 /**
@@ -383,185 +484,9 @@ async function retryWithTokenRefresh(
     logger.error('Token refresh failed:', error);
     
     // Return original 401 - caller should handle
-    return new Response(null, { status: 401, statusText: 'Unauthorized' });
+    return new Response(null, { status: TOKEN_REFRESH_STATUS, statusText: 'Unauthorized' });
   }
 }
 
-// ============================================================================
-// OFFLINE QUEUE MANAGEMENT
-// ============================================================================
-
-/**
- * Queue request for offline retry
- */
-async function queueOfflineRequest(
-  endpoint: string,
-  body: BodyInit,
-  headers: Record<string, string>,
-  auth: AuthConfig | string | undefined,
-  logger: Logger,
-  config: Required<OfflineConfig>
-): Promise<void> {
-  try {
-    // Serialize body
-    let serializedBody: string;
-    if (typeof body === 'string') {
-      serializedBody = body;
-    } else if (body instanceof Blob) {
-      logger.warn('Cannot queue Blob for offline retry, skipping');
-      return;
-    } else {
-      serializedBody = JSON.stringify(body);
-    }
-    
-    // Get existing queue
-    const queue = getOfflineQueue();
-    
-    // Check queue size limit
-    if (queue.length >= config.maxQueueSize) {
-      logger.warn(`Offline queue is full (${config.maxQueueSize}), removing oldest request`);
-      queue.shift();
-    }
-    
-    // Create queued request
-    const authHeaders = getAuthHeaders(auth);
-    const queuedRequest: QueuedRequest = {
-      id: generateRequestId(),
-      endpoint,
-      body: serializedBody,
-      headers: { ...headers, ...authHeaders },
-      timestamp: Date.now(),
-      attempts: 0,
-    };
-    
-    // Add to queue
-    queue.push(queuedRequest);
-    
-    // Save to localStorage
-    saveOfflineQueue(queue);
-    
-    logger.log(`Request queued for offline retry (queue size: ${queue.length})`);
-  } catch (error) {
-    logger.error('Failed to queue request for offline retry:', error);
-  }
-}
-
-/**
- * Process offline queue
- */
-async function processOfflineQueue(
-  auth: AuthConfig | string | undefined,
-  logger: Logger,
-  retryConfig: Required<RetryConfig>
-): Promise<void> {
-  const queue = getOfflineQueue();
-  
-  if (queue.length === 0) {
-    return;
-  }
-  
-  logger.log(`Processing offline queue (${queue.length} requests)`);
-  
-  const successfulIds: string[] = [];
-  const failedRequests: QueuedRequest[] = [];
-  
-  for (const request of queue) {
-    // Check if request has expired (7 days)
-    const age = Date.now() - request.timestamp;
-    const maxAge = QUEUE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-    
-    if (age > maxAge) {
-      logger.warn(`Removing expired queued request (id: ${request.id})`);
-      continue;
-    }
-    
-    try {
-      // Attempt to send
-      const response = await fetch(request.endpoint, {
-        method: 'POST',
-        headers: request.headers,
-        body: request.body,
-      });
-      
-      if (response.ok) {
-        logger.log(`Successfully sent queued request (id: ${request.id})`);
-        successfulIds.push(request.id);
-      } else if (retryConfig.retryOn.includes(response.status)) {
-        // Keep in queue for next attempt
-        request.attempts++;
-        failedRequests.push(request);
-        logger.warn(`Queued request failed with status ${response.status}, will retry later (id: ${request.id})`);
-      } else {
-        // Non-retryable error, remove from queue
-        logger.warn(`Queued request failed with non-retryable status ${response.status}, removing (id: ${request.id})`);
-      }
-    } catch (error) {
-      // Network error, keep in queue
-      request.attempts++;
-      failedRequests.push(request);
-      logger.warn(`Queued request failed with network error, will retry later (id: ${request.id}):`, error);
-    }
-  }
-  
-  // Update queue (remove successful and expired, keep failed)
-  saveOfflineQueue(failedRequests);
-  
-  if (successfulIds.length > 0 || failedRequests.length < queue.length) {
-    logger.log(`Offline queue processed: ${successfulIds.length} successful, ${failedRequests.length} remaining`);
-  }
-}
-
-/**
- * Get offline queue from localStorage
- */
-function getOfflineQueue(): QueuedRequest[] {
-  try {
-    if (typeof localStorage === 'undefined') {
-      return [];
-    }
-    
-    const stored = localStorage.getItem(QUEUE_STORAGE_KEY);
-    if (!stored) {
-      return [];
-    }
-    
-    return JSON.parse(stored) as QueuedRequest[];
-  } catch (error) {
-    return [];
-  }
-}
-
-/**
- * Save offline queue to localStorage
- */
-function saveOfflineQueue(queue: QueuedRequest[]): void {
-  try {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-    
-    localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
-  } catch (error) {
-    // Ignore storage errors
-  }
-}
-
-/**
- * Generate unique request ID
- */
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * Clear offline queue (useful for testing or manual cleanup)
- */
-export function clearOfflineQueue(): void {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(QUEUE_STORAGE_KEY);
-    }
-  } catch (error) {
-    // Ignore storage errors
-  }
-}
+// Re-export for backwards compatibility
+export { clearOfflineQueue, type OfflineConfig } from './offline-queue';

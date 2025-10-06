@@ -3,7 +3,6 @@ import { ConsoleCapture } from './capture/console';
 import { NetworkCapture } from './capture/network';
 import { MetadataCapture } from './capture/metadata';
 import { compressData, estimateSize, getCompressionRatio } from './core/compress';
-import { submitWithAuth, type AuthConfig, type RetryConfig, type OfflineConfig } from './core/transport';
 import type { BrowserMetadata } from './capture/metadata';
 import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
@@ -11,6 +10,8 @@ import { DOMCollector } from './collectors';
 import type { eventWithTime } from '@rrweb/types';
 import { createSanitizer, type Sanitizer, type SanitizeConfig } from './utils/sanitize';
 import { getLogger } from './utils/logger';
+import { submitWithAuth, type AuthConfig, type RetryConfig, type TransportOptions } from './core/transport';
+import type { OfflineConfig } from './core/offline-queue';
 
 const logger = getLogger();
 
@@ -287,7 +288,8 @@ export { compressData, decompressData, compressImage, estimateSize, getCompressi
 
 // Export transport and authentication
 export { submitWithAuth, getAuthHeaders, clearOfflineQueue } from './core/transport';
-export type { AuthConfig, TransportOptions, RetryConfig, OfflineConfig } from './core/transport';
+export type { AuthConfig, TransportOptions, RetryConfig } from './core/transport';
+export type { OfflineConfig } from './core/offline-queue';
 export type { Logger, LogLevel, LoggerConfig } from './utils/logger';
 export { getLogger, configureLogger, createLogger } from './utils/logger';
 
