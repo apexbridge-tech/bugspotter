@@ -33,15 +33,10 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   setItem(key: string, value: string): void {
-    try {
-      if (typeof localStorage === 'undefined') {
-        return;
-      }
-      localStorage.setItem(key, value);
-    } catch (error) {
-      // Re-throw error so caller can handle QuotaExceededError and other storage errors
-      throw error;
+    if (typeof localStorage === 'undefined') {
+      return;
     }
+    localStorage.setItem(key, value);
   }
 
   removeItem(key: string): void {
@@ -215,7 +210,7 @@ export class OfflineQueue {
   clear(): void {
     try {
       this.storage.removeItem(QUEUE_STORAGE_KEY);
-    } catch (error) {
+    } catch (_error) {
       // Ignore storage errors
     }
   }
@@ -342,7 +337,7 @@ export class OfflineQueue {
       const trimmedQueue = queue.slice(Math.floor(queue.length / 2));
       this.storage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(trimmedQueue));
       this.logger.log(`Trimmed offline queue to ${trimmedQueue.length} items due to quota`);
-    } catch (error) {
+    } catch (_error) {
       // If still failing, clear everything
       this.logger.error('Failed to save even after trimming, clearing queue');
       this.clear();
@@ -358,7 +353,7 @@ export class OfflineQueue {
     if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
       const array = new Uint32Array(2);
       crypto.getRandomValues(array);
-      randomPart = Array.from(array, (num) => num.toString(36)).join('');
+      randomPart = Array.from(array, (num) => {return num.toString(36)}).join('');
     } else {
       // Fallback to Math.random for environments without crypto
       randomPart = Math.random().toString(36).substring(2, 9) + Math.random().toString(36).substring(2, 9);

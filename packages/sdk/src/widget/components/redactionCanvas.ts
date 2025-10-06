@@ -83,7 +83,7 @@ export class RedactionCanvas {
    * Enable redaction mode
    */
   enableRedactionMode(): void {
-    if (this.isRedactionMode) return;
+    if (this.isRedactionMode) {return;}
 
     this.isRedactionMode = true;
     this.canvas.style.display = 'block';
@@ -101,7 +101,7 @@ export class RedactionCanvas {
    * Disable redaction mode
    */
   disableRedactionMode(): void {
-    if (!this.isRedactionMode) return;
+    if (!this.isRedactionMode) {return;}
 
     this.isRedactionMode = false;
     this.isDrawing = false;
@@ -195,7 +195,7 @@ export class RedactionCanvas {
   // Private event handlers
 
   private onMouseDown(e: MouseEvent): void {
-    if (!this.isRedactionMode) return;
+    if (!this.isRedactionMode) {return;}
 
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
@@ -207,7 +207,7 @@ export class RedactionCanvas {
   }
 
   private onMouseMove(e: MouseEvent): void {
-    if (!this.isDrawing || !this.isRedactionMode) return;
+    if (!this.isDrawing || !this.isRedactionMode) {return;}
 
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
@@ -221,7 +221,7 @@ export class RedactionCanvas {
   }
 
   private onMouseUp(e: MouseEvent): void {
-    if (!this.isDrawing || !this.isRedactionMode) return;
+    if (!this.isDrawing || !this.isRedactionMode) {return;}
 
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;

@@ -15,7 +15,7 @@ describe('FloatingButton', () => {
       const buttons = document.querySelectorAll('button');
       expect(buttons.length).toBeGreaterThan(0);
       
-      const button = Array.from(buttons).find(btn => btn.textContent === '🐛');
+      const button = Array.from(buttons).find(btn => {return btn.textContent === '🐛'});
       expect(button).toBeDefined();
       expect(button?.getAttribute('aria-label')).toBe('Report Bug');
       expect(button?.getAttribute('data-bugspotter-exclude')).toBe('true');
@@ -25,7 +25,7 @@ describe('FloatingButton', () => {
       floatingButton = new FloatingButton({ icon: '🚨' });
       
       const button = Array.from(document.querySelectorAll('button')).find(
-        btn => btn.textContent === '🚨'
+        btn => {return btn.textContent === '🚨'}
       );
       expect(button).toBeDefined();
     });

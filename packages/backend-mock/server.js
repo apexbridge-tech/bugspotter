@@ -270,7 +270,7 @@ app.get('/api/bugs', (req, res) => {
 
 // Get single bug report
 app.get('/api/bugs/:id', (req, res) => {
-  const bug = db.bugs.find((b) => b.id === req.params.id);
+  const bug = db.bugs.find((b) => {return b.id === req.params.id});
   if (!bug) {
     return res.status(404).json({ error: 'Bug report not found' });
   }
@@ -430,7 +430,7 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   // Session Replay info
   if (report.replay && report.replay.length > 0) {
     const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
-    const eventTypes = [...new Set(report.replay.map(e => e.type))];
+    const eventTypes = [...new Set(report.replay.map(e => {return e.type}))];
     console.log(`✓ Session Replay: ${report.replay.length} events (${timeSpan}s span)`);
     console.log(`  Event Types: ${eventTypes.join(', ')}`);
   } else {
@@ -475,7 +475,7 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   if (report.replay && report.replay.length > 0) {
     console.log('\n🎥 Session Replay Events:');
     const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
-    const eventTypes = [...new Set(report.replay.map(e => e.type))];
+    const eventTypes = [...new Set(report.replay.map(e => {return e.type}))];
     const eventTypeCounts = {};
     report.replay.forEach(e => {
       eventTypeCounts[e.type] = (eventTypeCounts[e.type] || 0) + 1;

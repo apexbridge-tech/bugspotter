@@ -163,7 +163,7 @@ export class BugReportModal {
     const elements = this.domCache.get();
 
     // Close button
-    elements.closeButton.addEventListener('click', () => this.close());
+    elements.closeButton.addEventListener('click', () => {return this.close()});
     
     // Escape key to close
     document.addEventListener('keydown', this.handleEscapeKey);
@@ -171,7 +171,7 @@ export class BugReportModal {
     // Note: Overlay click does NOT close modal (improved UX to prevent accidental data loss)
     
     // Form submission
-    elements.form.addEventListener('submit', (e) => this.handleSubmit(e));
+    elements.form.addEventListener('submit', (e) => {return this.handleSubmit(e)});
 
     // Submit button click (manually trigger form submit for test compatibility)
     elements.submitButton.addEventListener('click', () => {
@@ -180,10 +180,10 @@ export class BugReportModal {
     });
 
     // Cancel button
-    elements.cancelButton.addEventListener('click', () => this.close());
+    elements.cancelButton.addEventListener('click', () => {return this.close()});
 
     // Real-time validation
-    elements.titleInput.addEventListener('input', () => this.validateField('title'));
+    elements.titleInput.addEventListener('input', () => {return this.validateField('title')});
     elements.descriptionTextarea.addEventListener('input', () => {
       this.validateField('description');
       this.checkForPII();
@@ -191,15 +191,15 @@ export class BugReportModal {
 
     // Redaction controls
     if (elements.redactButton && this.redactionCanvas) {
-      elements.redactButton.addEventListener('click', () => this.toggleRedactionMode());
+      elements.redactButton.addEventListener('click', () => {return this.toggleRedactionMode()});
     }
 
     if (elements.clearButton && this.redactionCanvas) {
-      elements.clearButton.addEventListener('click', () => this.clearRedactions());
+      elements.clearButton.addEventListener('click', () => {return this.clearRedactions()});
     }
 
     // PII confirmation
-    elements.piiConfirmCheckbox.addEventListener('change', () => this.updateSubmitButton());
+    elements.piiConfirmCheckbox.addEventListener('change', () => {return this.updateSubmitButton()});
   }
 
   private validateField(fieldName: keyof FormData): void {
@@ -227,10 +227,10 @@ export class BugReportModal {
     const detections = sanitizer.detectPII(text);
 
     // Convert to PIIDetection array
-    this.piiDetections = Array.from(detections.entries()).map(([type, count]) => ({
+    this.piiDetections = Array.from(detections.entries()).map(([type, count]) => {return {
       type,
       count,
-    }));
+    }});
 
     if (this.piiDetections.length > 0) {
       elements.piiSection.style.display = 'block';

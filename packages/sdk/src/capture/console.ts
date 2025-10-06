@@ -28,15 +28,15 @@ export class ConsoleCapture extends BaseCapture<LogEntry[], ConsoleCaptureOption
   }
 
   private formatMessage(args: unknown[]): string {
-    if (!args || args.length === 0) return '';
+    if (!args || args.length === 0) {return '';}
     
     // Sanitize args if sanitizer is enabled
     const sanitizedArgs = this.sanitizer ? this.sanitizer.sanitizeConsoleArgs(args) : args;
     
     return sanitizedArgs
       .map((arg) => {
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
+        if (arg === null) {return 'null';}
+        if (arg === undefined) {return 'undefined';}
         if (typeof arg === 'object') {
           try {
             return JSON.stringify(arg);

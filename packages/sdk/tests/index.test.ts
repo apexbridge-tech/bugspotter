@@ -112,7 +112,7 @@ describe('BugSpotter', () => {
       });
 
       // Wait a bit for some events to be recorded
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
 
       const report = await bugspotter.capture();
 
@@ -338,7 +338,7 @@ describe('BugSpotter', () => {
       button.click();
       
       // Wait for async capture to be called
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => {return setTimeout(resolve, 0)});
       
       expect(captureSpy).toHaveBeenCalled();
       
@@ -369,11 +369,11 @@ describe('BugSpotter', () => {
       widgetButton.click();
       
       // Wait for async capture and modal display
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       // Check if modal is displayed
       const modalContainer = Array.from(document.body.children).find(
-        el => el.shadowRoot?.querySelector('.overlay')
+        el => {return el.shadowRoot?.querySelector('.overlay')}
       );
       expect(modalContainer).toBeTruthy();
       
@@ -394,10 +394,10 @@ describe('BugSpotter', () => {
       widgetButton.click();
       
       // Wait for modal to appear
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const modalContainer = Array.from(document.body.children).find(
-        el => el.shadowRoot?.querySelector('.overlay')
+        el => {return el.shadowRoot?.querySelector('.overlay')}
       ) as HTMLElement;
       
       const shadow = modalContainer.shadowRoot;
@@ -434,7 +434,7 @@ describe('BugSpotter', () => {
     it('should not show modal when showWidget is false', async () => {
       // Count existing modals before test
       const initialModalCount = Array.from(document.body.children).filter(
-        el => el.shadowRoot?.querySelector('.overlay')
+        el => {return el.shadowRoot?.querySelector('.overlay')}
       ).length;
       
       const bugspotter = BugSpotter.init({ 
@@ -446,11 +446,11 @@ describe('BugSpotter', () => {
       await bugspotter.capture();
       
       // Wait a bit to ensure no modal appears
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       // Check that no new modal was created
       const finalModalCount = Array.from(document.body.children).filter(
-        el => el.shadowRoot?.querySelector('.overlay')
+        el => {return el.shadowRoot?.querySelector('.overlay')}
       ).length;
       expect(finalModalCount).toBe(initialModalCount);
       

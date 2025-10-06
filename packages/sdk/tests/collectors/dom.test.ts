@@ -71,7 +71,7 @@ describe('DOMCollector', () => {
       collector.startRecording();
       
       // Wait for initial events to be captured
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(Array.isArray(events)).toBe(true);
@@ -87,7 +87,7 @@ describe('DOMCollector', () => {
 
     it('should clear buffer', async () => {
       collector.startRecording();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       expect(collector.getBufferSize()).toBeGreaterThan(0);
       
@@ -104,7 +104,7 @@ describe('DOMCollector', () => {
 
     it('should get buffer size', async () => {
       collector.startRecording();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const size = collector.getBufferSize();
       expect(typeof size).toBe('number');
@@ -115,7 +115,7 @@ describe('DOMCollector', () => {
   describe('Cleanup', () => {
     it('should destroy collector and clean up', async () => {
       collector.startRecording();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       expect(collector.isCurrentlyRecording()).toBe(true);
       expect(collector.getBufferSize()).toBeGreaterThan(0);
@@ -130,7 +130,7 @@ describe('DOMCollector', () => {
   describe('Event Serialization', () => {
     it('should produce JSON-serializable events', async () => {
       collector.startRecording();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(events.length).toBeGreaterThan(0);
@@ -154,12 +154,12 @@ describe('DOMCollector', () => {
       div.innerHTML = '<span>Test</span>';
       document.body.appendChild(div);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       
       // Verify serialization works
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(div);
@@ -167,12 +167,12 @@ describe('DOMCollector', () => {
 
     it('should not include circular references', async () => {
       collector.startRecording();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       
       // JSON.stringify will throw if there are circular references
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
     });
   });
 
@@ -191,13 +191,13 @@ describe('DOMCollector', () => {
       
       document.body.appendChild(host);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(events.length).toBeGreaterThan(0);
       
       // Should be serializable even with Shadow DOM
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(host);
@@ -218,11 +218,11 @@ describe('DOMCollector', () => {
       document.body.appendChild(host1);
       document.body.appendChild(host2);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(events.length).toBeGreaterThan(0);
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(host1);
@@ -239,13 +239,13 @@ describe('DOMCollector', () => {
       iframe.setAttribute('id', 'test-iframe');
       document.body.appendChild(iframe);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(events.length).toBeGreaterThan(0);
       
       // Should be serializable
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(iframe);
@@ -264,11 +264,11 @@ describe('DOMCollector', () => {
         iframe.contentDocument.body?.appendChild(iframeDiv);
       }
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       // Should not throw
-      expect(() => collector.getEvents()).not.toThrow();
-      expect(() => JSON.stringify(collector.getEvents())).not.toThrow();
+      expect(() => {return collector.getEvents()}).not.toThrow();
+      expect(() => {return JSON.stringify(collector.getEvents())}).not.toThrow();
       
       // Clean up
       document.body.removeChild(iframe);
@@ -291,13 +291,13 @@ describe('DOMCollector', () => {
       
       document.body.appendChild(container);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(events.length).toBeGreaterThan(0);
       
       // Should handle serialization of large structures
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(container);
@@ -316,11 +316,11 @@ describe('DOMCollector', () => {
         container.appendChild(el);
       }
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
       expect(events.length).toBeGreaterThan(0);
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(container);
@@ -332,7 +332,7 @@ describe('DOMCollector', () => {
       
       const events = emptyCollector.getEvents();
       expect(Array.isArray(events)).toBe(true);
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       emptyCollector.destroy();
     });
@@ -345,10 +345,10 @@ describe('DOMCollector', () => {
       div.textContent = 'Special chars: <>&"\' 中文 🎉';
       document.body.appendChild(div);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(div);
@@ -361,10 +361,10 @@ describe('DOMCollector', () => {
       div.textContent = 'A'.repeat(10000); // 10k characters
       document.body.appendChild(div);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
       
       const events = collector.getEvents();
-      expect(() => JSON.stringify(events)).not.toThrow();
+      expect(() => {return JSON.stringify(events)}).not.toThrow();
       
       // Clean up
       document.body.removeChild(div);

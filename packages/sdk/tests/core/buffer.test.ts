@@ -3,7 +3,7 @@ import { CircularBuffer } from '../../src/core/buffer';
 import type { eventWithTime } from '@rrweb/types';
 
 // Mock event with time
-const createMockEvent = (timestamp: number): eventWithTime => ({
+const createMockEvent = (timestamp: number): eventWithTime => {return {
   type: 3,
   data: {
     source: 0,
@@ -13,7 +13,7 @@ const createMockEvent = (timestamp: number): eventWithTime => ({
     adds: [],
   },
   timestamp,
-} as eventWithTime);
+} as eventWithTime};
 
 describe('CircularBuffer', () => {
   let buffer: CircularBuffer;

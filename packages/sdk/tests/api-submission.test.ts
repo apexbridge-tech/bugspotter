@@ -34,7 +34,7 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true, id: 'bug-123' }),
+        json: async () => {return { success: true, id: 'bug-123' }},
       });
 
       const bugSpotter = BugSpotter.init({
@@ -83,7 +83,7 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true }),
+        json: async () => {return { success: true }},
       });
 
       const bugSpotter = BugSpotter.init({
@@ -114,7 +114,7 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 201,
-        json: async () => mockResponse,
+        json: async () => {return mockResponse},
       });
 
       const bugSpotter = BugSpotter.init({
@@ -173,7 +173,7 @@ describe('API Submission', () => {
         ok: false,
         status: 400,
         statusText: 'Bad Request',
-        text: async () => 'Invalid payload',
+        text: async () => {return 'Invalid payload'},
       });
 
       const bugSpotter = BugSpotter.init({
@@ -194,7 +194,7 @@ describe('API Submission', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        text: async () => 'Server error occurred',
+        text: async () => {return 'Server error occurred'},
       });
 
       const bugSpotter = BugSpotter.init({
@@ -253,9 +253,9 @@ describe('API Submission', () => {
     it('should handle timeout errors', async () => {
       fetchMock.mockImplementationOnce(
         () =>
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timeout')), 100)
-          )
+          {return new Promise((_, reject) =>
+            {return setTimeout(() => {return reject(new Error('Request timeout'))}, 100)}
+          )}
       );
 
       const bugSpotter = BugSpotter.init({
@@ -278,7 +278,7 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({}),
+        json: async () => {return {}},
       });
 
       const bugSpotter = BugSpotter.init({
@@ -351,7 +351,7 @@ describe('API Submission', () => {
         fetchMock.mockResolvedValueOnce({
           ok: true,
           status: 200,
-          json: async () => ({}),
+          json: async () => {return {}},
         });
 
         const bugSpotter = BugSpotter.init({

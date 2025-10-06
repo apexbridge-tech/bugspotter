@@ -299,7 +299,7 @@ describe('BugReportModal', () => {
       submitButton.click();
 
       // Wait for async submission to complete
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise(resolve => {return setTimeout(resolve, 0)});
 
       expect(document.body.contains(container)).toBe(false);
       expect(onClose).toHaveBeenCalled();

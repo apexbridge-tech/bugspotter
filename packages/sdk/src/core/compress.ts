@@ -266,7 +266,7 @@ export async function compressImage(
  * @returns Compression ratio as percentage (0-100)
  */
 export function getCompressionRatio(originalSize: number, compressedSize: number): number {
-  if (originalSize <= 0) return 0;
+  if (originalSize <= 0) {return 0;}
   return Math.round((1 - compressedSize / originalSize) * 100);
 }
 

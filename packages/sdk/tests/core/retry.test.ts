@@ -51,7 +51,7 @@ describe('Retry and Offline Queue', () => {
         .mockResolvedValueOnce({ 
           ok: true, 
           status: 200, 
-          json: async () => ({ success: true }),
+          json: async () => {return { success: true }},
           headers: new Headers()
         });
 
@@ -279,7 +279,7 @@ describe('Retry and Offline Queue', () => {
       );
 
       // Give processOfflineQueue time to run (it's async)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {return setTimeout(resolve, 100)});
 
       // Queue should be empty now
       const storedAfter = localStorage.getItem('bugspotter_offline_queue');
@@ -382,7 +382,7 @@ describe('Retry and Offline Queue', () => {
       );
 
       // Give processOfflineQueue time to run
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => {return setTimeout(resolve, 200)});
 
       // Expired request should be removed
       const queue = JSON.parse(localStorage.getItem('bugspotter_offline_queue') || '[]');

@@ -13,8 +13,8 @@ describe('CircularBuffer', () => {
     });
 
     it('should throw error for invalid maxSize', () => {
-      expect(() => new CircularBuffer(0)).toThrow('maxSize must be greater than 0');
-      expect(() => new CircularBuffer(-1)).toThrow('maxSize must be greater than 0');
+      expect(() => {return new CircularBuffer(0)}).toThrow('maxSize must be greater than 0');
+      expect(() => {return new CircularBuffer(-1)}).toThrow('maxSize must be greater than 0');
     });
   });
 

@@ -162,13 +162,13 @@ export class BugSpotter {
     logger.warn(`${JSON.stringify(response)}`);
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
+      const errorText = await response.text().catch(() => {return 'Unknown error'});
       throw new Error(
         `Failed to submit bug report: ${response.status} ${response.statusText}. ${errorText}`
       );
     }
 
-    return response.json().catch(() => undefined);
+    return response.json().catch(() => {return undefined});
   }
 
   getConfig(): Readonly<BugSpotterConfig> {

@@ -48,7 +48,7 @@ export class PIIDetectionDisplay {
     const badges: string[] = [];
 
     for (const [type, items] of Object.entries(grouped)) {
-      const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+      const totalCount = items.reduce((sum, item) => {return sum + item.count}, 0);
       badges.push(this.createBadge(type, totalCount));
     }
 
@@ -60,7 +60,7 @@ export class PIIDetectionDisplay {
       html += '<ul class="bugspotter-pii-list">';
       
       for (const [type, items] of Object.entries(grouped)) {
-        const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+        const totalCount = items.reduce((sum, item) => {return sum + item.count}, 0);
         html += `<li><strong>${this.escapeHtml(type)}:</strong> ${totalCount} occurrence${totalCount !== 1 ? 's' : ''}</li>`;
       }
       
@@ -132,14 +132,14 @@ export class PIIDetectionDisplay {
    * Check if PII detections contain a specific type
    */
   hasType(piiDetections: PIIDetection[], type: string): boolean {
-    return piiDetections.some(d => d.type === type);
+    return piiDetections.some(d => {return d.type === type});
   }
 
   /**
    * Filter PII detections by type
    */
   filterByType(piiDetections: PIIDetection[], type: string): PIIDetection[] {
-    return piiDetections.filter(d => d.type === type);
+    return piiDetections.filter(d => {return d.type === type});
   }
 
   /**

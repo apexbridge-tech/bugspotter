@@ -69,12 +69,12 @@ class PatternManager {
     } else {
       // It's an array of pattern names
       patternNames = selectedPatterns.filter(
-        (p): p is PIIPatternName => p !== 'custom'
+        (p): p is PIIPatternName => {return p !== 'custom'}
       );
     }
 
     // Get pattern definitions and sort by priority
-    const patternDefs = patternNames.map((name) => DEFAULT_PATTERNS[name]);
+    const patternDefs = patternNames.map((name) => {return DEFAULT_PATTERNS[name]});
     const sortedPatterns = getPatternsByPriority(patternDefs);
 
     // Add built-in patterns in priority order
@@ -134,7 +134,7 @@ class ValueSanitizer {
 
     // Handle arrays
     if (Array.isArray(value)) {
-      return value.map((item) => this.sanitize(item));
+      return value.map((item) => {return this.sanitize(item)});
     }
 
     // Handle objects
@@ -223,7 +223,7 @@ export class Sanitizer {
    */
   public sanitize(value: unknown): unknown {
     const guarded = this.guardDisabled(value);
-    if (guarded !== undefined) return guarded;
+    if (guarded !== undefined) {return guarded;}
 
     return this.valueSanitizer.sanitize(value);
   }
@@ -233,9 +233,9 @@ export class Sanitizer {
    */
   public sanitizeConsoleArgs(args: unknown[]): unknown[] {
     const guarded = this.guardDisabled(args);
-    if (guarded !== undefined) return guarded;
+    if (guarded !== undefined) {return guarded;}
 
-    return args.map((arg) => this.sanitize(arg));
+    return args.map((arg) => {return this.sanitize(arg)});
   }
 
   /**
@@ -243,7 +243,7 @@ export class Sanitizer {
    */
   public sanitizeNetworkData<T extends Record<string, unknown>>(data: T): T {
     const guarded = this.guardDisabled(data);
-    if (guarded !== undefined) return guarded;
+    if (guarded !== undefined) {return guarded;}
 
     return this.sanitize(data) as T;
   }
@@ -255,7 +255,7 @@ export class Sanitizer {
     error: T
   ): T {
     const guarded = this.guardDisabled(error);
-    if (guarded !== undefined) return guarded;
+    if (guarded !== undefined) {return guarded;}
 
     return this.sanitize(error) as T;
   }
@@ -264,7 +264,7 @@ export class Sanitizer {
    * Check if element should be excluded
    */
   public shouldExclude(element: Element): boolean {
-    if (!this.enabled) return false;
+    if (!this.enabled) {return false;}
     return this.elementMatcher.shouldExclude(element);
   }
 
@@ -273,7 +273,7 @@ export class Sanitizer {
    */
   public sanitizeTextNode(text: string, element?: Element): string {
     const guarded = this.guardDisabled(text);
-    if (guarded !== undefined) return guarded;
+    if (guarded !== undefined) {return guarded;}
 
     if (this.elementMatcher.shouldExclude(element)) {
       return text;

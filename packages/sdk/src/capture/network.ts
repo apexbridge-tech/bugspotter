@@ -204,7 +204,7 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
   }
 
   destroy() {
-    if (!this.isIntercepting) return;
+    if (!this.isIntercepting) {return;}
     
     try {
       window.fetch = this.originalFetch;

@@ -108,12 +108,12 @@ const authStrategies: Record<AuthConfig['type'], AuthHeaderStrategy> = {
   
   'custom': (config): Record<string, string> => {
     const customHeader = (config as Extract<AuthConfig, { type: 'custom' }>).customHeader;
-    if (!customHeader) return {};
+    if (!customHeader) {return {};}
     const { name, value } = customHeader;
     return name && value ? { [name]: value } : {};
   },
   
-  'none': (): Record<string, string> => ({}),
+  'none': (): Record<string, string> => {return {}},
 };
 
 // ============================================================================
@@ -214,7 +214,7 @@ function isTransportOptions(obj: unknown): obj is TransportOptions {
   }
   
   const has = (prop: string, ...types: string[]) => 
-    prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop]);
+    {return prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop])};
   
   return (
     has('auth', 'object', 'string') ||
@@ -261,7 +261,7 @@ async function processQueueInBackground(
   retryConfig: Required<RetryConfig>,
   logger: Logger
 ): Promise<void> {
-  if (!offlineConfig.enabled) return;
+  if (!offlineConfig.enabled) {return;}
   
   const queue = new OfflineQueue(offlineConfig, logger);
   queue.process(retryConfig.retryOn).catch((error: unknown) => {
@@ -281,7 +281,7 @@ async function handleOfflineFailure(
   offlineConfig: Required<OfflineConfig>,
   logger: Logger
 ): Promise<void> {
-  if (!offlineConfig.enabled || !isNetworkError(error)) return;
+  if (!offlineConfig.enabled || !isNetworkError(error)) {return;}
   
   logger.warn('Network error detected, queueing request for offline retry');
   const queue = new OfflineQueue(offlineConfig, logger);
@@ -436,7 +436,7 @@ async function sendWithRetry(
       
       return response;
     },
-    (status) => retryConfig.retryOn.includes(status)
+    (status) => {return retryConfig.retryOn.includes(status)}
   );
 }
 
@@ -444,7 +444,7 @@ async function sendWithRetry(
  * Sleep for specified milliseconds
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {return setTimeout(resolve, ms)});
 }
 
 /**

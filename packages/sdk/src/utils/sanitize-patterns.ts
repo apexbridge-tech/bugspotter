@@ -166,7 +166,7 @@ export const PATTERN_CATEGORIES = {
 export function getPatternsByPriority(
   patterns: PatternDefinition[]
 ): PatternDefinition[] {
-  return [...patterns].sort((a, b) => a.priority - b.priority);
+  return [...patterns].sort((a, b) => {return a.priority - b.priority});
 }
 
 /**
@@ -182,7 +182,7 @@ export function getPattern(name: PIIPatternName): PatternDefinition {
 export function getPatternsByCategory(
   category: keyof typeof PATTERN_CATEGORIES
 ): PatternDefinition[] {
-  return PATTERN_CATEGORIES[category].map((name) => DEFAULT_PATTERNS[name]);
+  return PATTERN_CATEGORIES[category].map((name) => {return DEFAULT_PATTERNS[name]});
 }
 
 /**
@@ -286,7 +286,7 @@ export function createPatternConfig(
   preset: keyof typeof PATTERN_PRESETS | PIIPatternName[]
 ): PatternDefinition[] {
   const names = typeof preset === 'string' ? PATTERN_PRESETS[preset] : preset;
-  return names.map((name) => DEFAULT_PATTERNS[name]);
+  return names.map((name) => {return DEFAULT_PATTERNS[name]});
 }
 
 /**

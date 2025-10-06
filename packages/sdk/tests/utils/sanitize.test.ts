@@ -413,11 +413,11 @@ describe('Sanitizer', () => {
   describe('Performance', () => {
     it('should sanitize large objects efficiently', () => {
       const largeObject = {
-        users: Array.from({ length: 100 }, (_, i) => ({
+        users: Array.from({ length: 100 }, (_, i) => {return {
           id: i,
           email: `user${i}@test.com`,
           phone: `+1-555-${String(i).padStart(4, '0')}`,
-        })),
+        }}),
       };
 
       const startTime = performance.now();
@@ -433,7 +433,7 @@ describe('Sanitizer', () => {
 
     it('should sanitize long strings efficiently', () => {
       const longString = 'Contact info: ' + Array.from({ length: 100 }, (_, i) => 
-        `user${i}@test.com`
+        {return `user${i}@test.com`}
       ).join(', ');
 
       const startTime = performance.now();

@@ -51,7 +51,7 @@ export class ScreenshotCapture extends BaseCapture<Promise<string>, ScreenshotCa
       backgroundColor: this.options.backgroundColor ?? DEFAULT_SCREENSHOT_OPTIONS.backgroundColor,
       ...(this.options.width && { width: this.options.width }),
       ...(this.options.height && { height: this.options.height }),
-      filter: (node: Node) => this.shouldIncludeNode(node),
+      filter: (node: Node) => {return this.shouldIncludeNode(node)},
     };
   }
 
