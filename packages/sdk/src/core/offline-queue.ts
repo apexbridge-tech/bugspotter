@@ -373,10 +373,11 @@ export class OfflineQueue {
  */
 export function clearOfflineQueue(): void {
   try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(QUEUE_STORAGE_KEY);
-    }
+    const storage = new LocalStorageAdapter();
+    storage.removeItem(QUEUE_STORAGE_KEY);
   } catch (error) {
-    // Ignore storage errors
+    // Log error for debugging purposes
+    const logger = getLogger();
+    logger.warn('Failed to clear offline queue:', error);
   }
 }
