@@ -6,6 +6,9 @@ import { PIIDetectionDisplay } from './components/piiDetectionDisplay';
 import { RedactionCanvas } from './components/redactionCanvas';
 import { ScreenshotProcessor } from './components/screenshotProcessor';
 import { createSanitizer } from '../utils/sanitize';
+import { getLogger } from '../utils/logger';
+
+const logger = getLogger();
 
 export interface BugReportData {
   title: string;
@@ -151,7 +154,7 @@ export class BugReportModal {
     } catch (error) {
       // Canvas 2D context not available (e.g., in test environment)
       // Redaction features will be disabled
-      console.warn('Canvas redaction not available:', error);
+      getLogger().warn('Canvas redaction not available:', error);
       this.redactionCanvas = null;
     }
   }
@@ -320,12 +323,10 @@ export class BugReportModal {
     
     if (this.redactionCanvas && this.redactionCanvas.getRedactions().length > 0) {
       try {
-        finalScreenshot = await this.screenshotProcessor.mergeRedactions(
-          this.originalScreenshot,
-          this.redactionCanvas.getCanvas()
-        );
-      } catch (error) {
-        console.error('Failed to merge redactions:', error);
+        finalScreenshot = await this.screenshotProcessor.mergeRedactions(this.originalScreenshot, this.redactionCanvas.getCanvas());
+      } catch (mergeError) {
+        logger.error('Failed to merge redactions:', mergeError);
+        finalScreenshot = this.originalScreenshot;
       }
     }
 
@@ -342,7 +343,7 @@ export class BugReportModal {
       await this.options.onSubmit(bugReportData);
       this.close();
     } catch (error) {
-      console.error('Error submitting bug report:', error);
+      getLogger().error('Error submitting bug report:', error);
       alert('Failed to submit bug report. Please try again.');
     }
   }

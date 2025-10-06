@@ -1,9 +1,12 @@
 import pako from 'pako';
+import { getLogger } from '../utils/logger';
 
 /**
- * Compression utilities for reducing payload sizes
- * Uses gzip compression with balanced speed/size ratio
+ * Compression utilities for BugSpotter SDK
+ * Handles payload and image compression using browser-native APIs
  */
+
+const logger = getLogger();
 
 // Configuration constants
 const COMPRESSION_DEFAULTS = {
@@ -75,12 +78,11 @@ export async function compressData(
     const gzipLevel = config?.gzipLevel ?? COMPRESSION_DEFAULTS.GZIP_LEVEL;
     
     // pako.gzip already returns Uint8Array, no need to wrap it
-    return pako.gzip(uint8Data, { level: gzipLevel });
+    const compressed = pako.gzip(uint8Data, { level: gzipLevel });
+    return compressed;
   } catch (error) {
-    if (config?.verbose !== false) {
-      console.error('Compression failed:', error);
-    }
-    throw new Error(`Failed to compress data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.error('Compression failed:', error);
+    throw error;
   }
 }
 
@@ -114,7 +116,7 @@ export function decompressData(
     return tryParseJSON(jsonString);
   } catch (error) {
     if (config?.verbose !== false) {
-      console.error('Decompression failed:', error);
+      getLogger().error('Decompression failed:', error);
     }
     throw new Error(`Failed to decompress data: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -251,7 +253,7 @@ export async function compressImage(
     }
   } catch (error) {
     if (config?.verbose !== false) {
-      console.error('Image compression failed:', error);
+      getLogger().error('Image compression failed:', error);
     }
     return base64;
   }

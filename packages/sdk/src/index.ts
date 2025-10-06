@@ -3,12 +3,16 @@ import { ConsoleCapture } from './capture/console';
 import { NetworkCapture } from './capture/network';
 import { MetadataCapture } from './capture/metadata';
 import { compressData, estimateSize, getCompressionRatio } from './core/compress';
+import { submitWithAuth, type AuthConfig } from './core/transport';
 import type { BrowserMetadata } from './capture/metadata';
 import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
 import { DOMCollector } from './collectors';
 import type { eventWithTime } from '@rrweb/types';
 import { createSanitizer, type Sanitizer, type SanitizeConfig } from './utils/sanitize';
+import { getLogger } from './utils/logger';
+
+const logger = getLogger();
 
 export class BugSpotter {
   private static instance: BugSpotter | undefined;
@@ -83,15 +87,15 @@ export class BugSpotter {
     const report = await this.capture();
     const modal = new BugReportModal({
       onSubmit: async (data) => {
-        console.log('Submitting bug:', { ...data, report });
+        logger.log('Submitting bug:', { ...data, report });
         
         // Send to endpoint if configured
         if (this.config.endpoint) {
           try {
             await this.submitBugReport({ ...data, report });
-            console.log('Bug report submitted successfully');
+            logger.log('Bug report submitted successfully');
           } catch (error) {
-            console.error('Failed to submit bug report:', error);
+            logger.error('Failed to submit bug report:', error);
             // Re-throw to allow UI to handle errors if needed
             throw error;
           }
@@ -106,19 +110,13 @@ export class BugSpotter {
       throw new Error('No endpoint configured for bug report submission');
     }
 
-    const headers: Record<string, string> = {
+    const contentHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Add API key to headers if configured
-    if (this.config.apiKey) {
-      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-    }
-
-    console.warn(`Submitting bug report to ${this.config.endpoint}`);
+    logger.warn(`Submitting bug report to ${this.config.endpoint}`);
 
     let body: BodyInit;
-    let useCompression = false;
 
     try {
       // Try to compress the payload
@@ -127,32 +125,36 @@ export class BugSpotter {
       const compressedSize = compressed.byteLength;
       const ratio = getCompressionRatio(originalSize, compressedSize);
 
-      console.log(`Payload compression: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`);
+      logger.log(`Payload compression: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`);
 
       // Use compression if it actually reduces size
       if (compressedSize < originalSize) {
         // Create a Blob from the compressed Uint8Array for proper binary upload
         // Use Uint8Array constructor to ensure clean ArrayBuffer (no extra padding bytes)
         body = new Blob([new Uint8Array(compressed)], { type: 'application/gzip' });
-        headers['Content-Encoding'] = 'gzip';
-        headers['Content-Type'] = 'application/gzip';
-        useCompression = true;
+        contentHeaders['Content-Encoding'] = 'gzip';
+        contentHeaders['Content-Type'] = 'application/gzip';
       } else {
         body = JSON.stringify(payload);
       }
     } catch (error) {
       // Fallback to uncompressed if compression fails
-      console.warn('Compression failed, sending uncompressed payload:', error);
+      logger.warn('Compression failed, sending uncompressed payload:', error);
       body = JSON.stringify(payload);
     }
 
-    const response = await fetch(this.config.endpoint, {
-      method: 'POST',
-      headers,
-      body,
-    });
+    // Determine auth configuration (backward compatible)
+    const auth = this.config.auth || this.config.apiKey;
 
-    console.warn(`${JSON.stringify(response)}`);
+    // Submit with authentication and retry logic
+    const response = await submitWithAuth(
+      this.config.endpoint,
+      body,
+      contentHeaders,
+      auth
+    );
+
+    logger.warn(`${JSON.stringify(response)}`);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
@@ -178,10 +180,15 @@ export class BugSpotter {
 }
 
 export interface BugSpotterConfig {
+  /** @deprecated Use auth.apiKey instead */
   apiKey?: string;
   endpoint?: string;
   showWidget?: boolean;
   widgetOptions?: FloatingButtonOptions;
+  
+  /** Authentication configuration */
+  auth?: AuthConfig;
+  
   replay?: {
     /** Enable session replay recording (default: true) */
     enabled?: boolean;
@@ -269,6 +276,12 @@ export type { CircularBufferConfig } from './core/buffer';
 
 // Export compression utilities
 export { compressData, decompressData, compressImage, estimateSize, getCompressionRatio } from './core/compress';
+
+// Export transport and authentication
+export { submitWithAuth, getAuthHeaders } from './core/transport';
+export type { AuthConfig, TransportOptions } from './core/transport';
+export type { Logger, LogLevel, LoggerConfig } from './utils/logger';
+export { getLogger, configureLogger, createLogger } from './utils/logger';
 
 // Export sanitization utilities
 export { createSanitizer, Sanitizer } from './utils/sanitize';

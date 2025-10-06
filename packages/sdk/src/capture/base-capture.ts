@@ -1,5 +1,8 @@
 import type { Sanitizer } from '../utils/sanitize';
 import type { CaptureLifecycle } from './capture-lifecycle';
+import { getLogger } from '../utils/logger';
+
+const logger = getLogger();
 
 /**
  * Base options for all capture implementations
@@ -28,7 +31,7 @@ export abstract class BaseCapture<TResult, TOptions extends CaptureOptions = Cap
    */
   protected handleError(context: string, error: unknown): void {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`${this.constructor.name} ${context}:`, err);
+    logger.error(`${this.constructor.name} ${context}:`, err);
   }
 
   /**

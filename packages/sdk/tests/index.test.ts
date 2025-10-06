@@ -416,7 +416,7 @@ describe('BugSpotter', () => {
       
       // Check if console.log was called with bug report data
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        'Submitting bug:',
+        '[BugSpotter] Submitting bug:',
         expect.objectContaining({
           title: 'Test Bug Title',
           description: 'Test Bug Description',

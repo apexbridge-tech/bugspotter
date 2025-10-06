@@ -52,7 +52,7 @@ describe('DOMCollector', () => {
       collector.startRecording();
       collector.startRecording();
       
-      expect(consoleWarnSpy).toHaveBeenCalledWith('DOMCollector: Recording already in progress');
+      expect(consoleWarnSpy).toHaveBeenCalledWith('[BugSpotter] DOMCollector: Recording already in progress');
       
       consoleWarnSpy.mockRestore();
     });
@@ -62,7 +62,7 @@ describe('DOMCollector', () => {
       
       collector.stopRecording();
       
-      expect(consoleWarnSpy).toHaveBeenCalledWith('DOMCollector: No recording in progress');
+      expect(consoleWarnSpy).toHaveBeenCalledWith('[BugSpotter] DOMCollector: No recording in progress');
       
       consoleWarnSpy.mockRestore();
     });
