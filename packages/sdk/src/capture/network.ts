@@ -47,10 +47,10 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
 
   private parseFetchArgs(args: Parameters<typeof fetch>): { url: string; method: HttpMethod } {
     const [input, init] = args;
-    
+
     let url: string;
     let method: HttpMethod = 'GET';
-    
+
     if (typeof input === 'string') {
       url = input;
     } else if (input instanceof Request) {
@@ -59,11 +59,11 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
     } else {
       url = input.toString();
     }
-    
+
     if (init?.method) {
       method = init.method.toUpperCase() as HttpMethod;
     }
-    
+
     return { url, method };
   }
 
@@ -82,7 +82,7 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
       timestamp: startTime,
       ...(error && { error }),
     };
-    
+
     // Sanitize network data if sanitizer is enabled
     if (this.sanitizer) {
       const sanitized = this.sanitizer.sanitizeNetworkData({
@@ -97,7 +97,7 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
         error: sanitized.error as string | undefined,
       };
     }
-    
+
     return request;
   }
 
@@ -105,32 +105,27 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
     if (this.filterUrls && !this.filterUrls(request.url)) {
       return; // Skip filtered URLs
     }
-    
+
     this.buffer.add(request);
   }
 
   private interceptFetch() {
     const originalFetch = this.originalFetch;
-    
+
     window.fetch = async (...args) => {
       const startTime = Date.now();
       let url = '';
       let method: HttpMethod = 'GET';
-      
+
       try {
         ({ url, method } = this.parseFetchArgs(args));
       } catch (error) {
         this.handleError('parsing fetch arguments', error);
       }
-      
+
       try {
         const response = await originalFetch(...args);
-        const request = this.createNetworkRequest(
-          url,
-          method,
-          response.status,
-          startTime
-        );
+        const request = this.createNetworkRequest(url, method, response.status, startTime);
         this.addRequest(request);
         return response;
       } catch (error) {
@@ -150,6 +145,7 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
   private interceptXHR() {
     const originalOpen = this.originalXHR.open;
     const originalSend = this.originalXHR.send;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const captureInstance = this;
 
     XMLHttpRequest.prototype.open = function (
@@ -175,7 +171,7 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
         );
         captureInstance.addRequest(request);
       };
-      
+
       const onError = () => {
         const request = captureInstance.createNetworkRequest(
           this._url || '',
@@ -186,10 +182,10 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
         );
         captureInstance.addRequest(request);
       };
-      
+
       this.addEventListener('load', onLoad);
       this.addEventListener('error', onError);
-      
+
       // Type assertion needed for rest params compatibility
       return originalSend.apply(this, args as Parameters<typeof originalSend>);
     };
@@ -204,8 +200,10 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
   }
 
   destroy() {
-    if (!this.isIntercepting) return;
-    
+    if (!this.isIntercepting) {
+      return;
+    }
+
     try {
       window.fetch = this.originalFetch;
       XMLHttpRequest.prototype.open = this.originalXHR.open;

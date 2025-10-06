@@ -1,6 +1,6 @@
 /**
  * FormValidator
- * 
+ *
  * Responsibility: Validate form input and manage error states
  * Follows SRP: Only handles validation logic (pure functions)
  */
@@ -29,12 +29,14 @@ export class FormValidator {
   private minDescriptionLength: number;
   private maxDescriptionLength: number;
 
-  constructor(config: {
-    minTitleLength?: number;
-    maxTitleLength?: number;
-    minDescriptionLength?: number;
-    maxDescriptionLength?: number;
-  } = {}) {
+  constructor(
+    config: {
+      minTitleLength?: number;
+      maxTitleLength?: number;
+      minDescriptionLength?: number;
+      maxDescriptionLength?: number;
+    } = {}
+  ) {
     this.minTitleLength = config.minTitleLength || 3;
     this.maxTitleLength = config.maxTitleLength || 200;
     this.minDescriptionLength = config.minDescriptionLength || 10;
@@ -115,20 +117,24 @@ export class FormValidator {
   /**
    * Validate single field by name
    */
-  validateField(fieldName: keyof FormData, value: any, formData?: Partial<FormData>): string | null {
+  validateField(
+    fieldName: keyof FormData,
+    value: unknown,
+    formData?: Partial<FormData>
+  ): string | null {
     switch (fieldName) {
       case 'title':
         return this.validateTitle(value as string);
-      
+
       case 'description':
         return this.validateDescription(value as string);
-      
+
       case 'piiConfirmed':
         if (formData?.piiDetected && !value) {
           return 'Please confirm you have reviewed sensitive information';
         }
         return null;
-      
+
       default:
         return null;
     }

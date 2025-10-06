@@ -25,7 +25,7 @@ The built SDK will be available at `dist/bugspotter.min.js` (~99 KB minified wit
   const bugSpotter = BugSpotter.BugSpotter.init({
     apiKey: 'your-api-key',
     endpoint: 'https://api.example.com/bugs',
-    showWidget: true
+    showWidget: true,
   });
 </script>
 ```
@@ -37,7 +37,7 @@ The built SDK will be available at `dist/bugspotter.min.js` (~99 KB minified wit
 const bugSpotter = BugSpotter.BugSpotter.init({
   apiKey: 'your-api-key',
   endpoint: 'https://api.example.com/bugs',
-  showWidget: false
+  showWidget: false,
 });
 
 // Capture bug report manually
@@ -62,8 +62,8 @@ const bugSpotter = BugSpotter.BugSpotter.init({
     position: 'bottom-right',
     icon: '⚡',
     backgroundColor: '#1a365d',
-    size: 48
-  }
+    size: 48,
+  },
 });
 ```
 
@@ -79,14 +79,14 @@ const button = new BugSpotter.FloatingButton({
   offset: { x: 24, y: 24 },
   style: {
     boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-    border: '2px solid white'
-  }
+    border: '2px solid white',
+  },
 });
 
 // Handle click
 button.onClick(async () => {
   const report = await bugSpotter.capture();
-  
+
   const modal = new BugSpotter.BugReportModal({
     onSubmit: async (data) => {
       // data.title, data.description
@@ -94,20 +94,20 @@ button.onClick(async () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           ...data,
-          report
-        })
+          report,
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Submission failed');
       }
-    }
+    },
   });
-  
+
   modal.show(report.screenshot);
 });
 
@@ -126,18 +126,19 @@ Protect sensitive user data with automatic PII detection and sanitization before
 
 The SDK automatically detects and masks common PII types:
 
-| Pattern Type | Example | Redacted As |
-|-------------|---------|-------------|
-| Email | `user@example.com` | `[REDACTED-EMAIL]` |
-| Phone | `+1-555-123-4567` | `[REDACTED-PHONE]` |
-| Credit Card | `4532-1488-0343-6467` | `[REDACTED-CREDITCARD]` |
-| SSN | `123-45-6789` | `[REDACTED-SSN]` |
-| Kazakhstan IIN | `950315300123` | `[REDACTED-IIN]` |
-| IP Address | `192.168.1.100` | `[REDACTED-IP]` |
+| Pattern Type   | Example               | Redacted As             |
+| -------------- | --------------------- | ----------------------- |
+| Email          | `user@example.com`    | `[REDACTED-EMAIL]`      |
+| Phone          | `+1-555-123-4567`     | `[REDACTED-PHONE]`      |
+| Credit Card    | `4532-1488-0343-6467` | `[REDACTED-CREDITCARD]` |
+| SSN            | `123-45-6789`         | `[REDACTED-SSN]`        |
+| Kazakhstan IIN | `950315300123`        | `[REDACTED-IIN]`        |
+| IP Address     | `192.168.1.100`       | `[REDACTED-IP]`         |
 
 ### Configuration Examples
 
 #### Default (All Patterns Enabled)
+
 ```javascript
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
@@ -146,17 +147,19 @@ BugSpotter.init({
 ```
 
 #### Custom Pattern Selection
+
 ```javascript
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   sanitize: {
     enabled: true,
-    patterns: ['email', 'phone', 'creditcard']  // Only these patterns
-  }
+    patterns: ['email', 'phone', 'creditcard'], // Only these patterns
+  },
 });
 ```
 
 #### Custom Regex Patterns
+
 ```javascript
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
@@ -166,39 +169,41 @@ BugSpotter.init({
     customPatterns: [
       {
         name: 'api-key',
-        regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi
+        regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi,
       },
       {
         name: 'token',
-        regex: /(?:TOKEN[-_:]?\s*[\w\-]{32,})/gi
-      }
-    ]
-  }
+        regex: /(?:TOKEN[-_:]?\s*[\w\-]{32,})/gi,
+      },
+    ],
+  },
 });
 ```
 
 #### Exclude Public Data
+
 ```javascript
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   sanitize: {
     enabled: true,
     excludeSelectors: [
-      '.public-email',      // Support emails you want to keep
-      '#contact-info',      // Public contact information
-      '[data-public="true"]' // Elements marked as public
-    ]
-  }
+      '.public-email', // Support emails you want to keep
+      '#contact-info', // Public contact information
+      '[data-public="true"]', // Elements marked as public
+    ],
+  },
 });
 ```
 
 #### Disable Sanitization (Not Recommended)
+
 ```javascript
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   sanitize: {
-    enabled: false  // ⚠️ All PII will be sent in clear text
-  }
+    enabled: false, // ⚠️ All PII will be sent in clear text
+  },
 });
 ```
 
@@ -219,6 +224,7 @@ BugSpotter.init({
 ### International Support
 
 Full support for:
+
 - 🇺🇸 English text
 - 🇷🇺 Russian Cyrillic
 - 🇰🇿 Kazakh Cyrillic and IIN/BIN numbers
@@ -233,30 +239,35 @@ Full support for:
 Initialize the SDK.
 
 **Parameters:**
+
 ```typescript
 interface BugSpotterConfig {
-  apiKey?: string;              // API key for authentication
-  endpoint?: string;            // Backend API URL
-  showWidget?: boolean;         // Auto-show widget (default: true)
+  apiKey?: string; // API key for authentication
+  endpoint?: string; // Backend API URL
+  showWidget?: boolean; // Auto-show widget (default: true)
   widgetOptions?: FloatingButtonOptions;
-  replay?: {                    // Session replay configuration
-    enabled?: boolean;          // Enable replay (default: true)
-    duration?: number;          // Buffer duration in seconds (default: 15)
+  replay?: {
+    // Session replay configuration
+    enabled?: boolean; // Enable replay (default: true)
+    duration?: number; // Buffer duration in seconds (default: 15)
     sampling?: {
-      mousemove?: number;       // Mousemove throttle in ms (default: 50)
-      scroll?: number;          // Scroll throttle in ms (default: 100)
+      mousemove?: number; // Mousemove throttle in ms (default: 50)
+      scroll?: number; // Scroll throttle in ms (default: 100)
     };
   };
-  sanitize?: {                  // PII sanitization configuration
-    enabled?: boolean;          // Enable PII sanitization (default: true)
-    patterns?: Array<           // PII patterns to detect
+  sanitize?: {
+    // PII sanitization configuration
+    enabled?: boolean; // Enable PII sanitization (default: true)
+    patterns?: Array<
+      // PII patterns to detect
       'email' | 'phone' | 'creditcard' | 'ssn' | 'iin' | 'ip' | 'custom'
     >;
-    customPatterns?: Array<{    // Custom regex patterns
-      name: string;             // Pattern name for [REDACTED-NAME]
-      regex: RegExp;            // Detection regex
+    customPatterns?: Array<{
+      // Custom regex patterns
+      name: string; // Pattern name for [REDACTED-NAME]
+      regex: RegExp; // Detection regex
     }>;
-    excludeSelectors?: string[];// CSS selectors to exclude from sanitization
+    excludeSelectors?: string[]; // CSS selectors to exclude from sanitization
   };
 }
 ```
@@ -268,38 +279,39 @@ interface BugSpotterConfig {
 Capture current bug report data.
 
 **Returns:** `Promise<BugReport>`
+
 ```typescript
 interface BugReport {
-  screenshot: string;          // Base64 PNG data URL
-  console: ConsoleLog[];       // Array of console entries
-  network: NetworkRequest[];   // Array of network requests
-  metadata: BrowserMetadata;   // Browser/system info
-  replay: eventWithTime[];     // Session replay events (rrweb format)
+  screenshot: string; // Base64 PNG data URL
+  console: ConsoleLog[]; // Array of console entries
+  network: NetworkRequest[]; // Array of network requests
+  metadata: BrowserMetadata; // Browser/system info
+  replay: eventWithTime[]; // Session replay events (rrweb format)
 }
 
 interface ConsoleLog {
-  level: string;      // 'log', 'warn', 'error', 'info', 'debug'
-  message: string;    // Formatted message
-  timestamp: number;  // Unix timestamp
-  stack?: string;     // Error stack trace (for errors)
+  level: string; // 'log', 'warn', 'error', 'info', 'debug'
+  message: string; // Formatted message
+  timestamp: number; // Unix timestamp
+  stack?: string; // Error stack trace (for errors)
 }
 
 interface NetworkRequest {
-  url: string;        // Request URL
-  method: string;     // HTTP method
-  status: number;     // HTTP status code
-  duration: number;   // Request duration in ms
-  timestamp: number;  // Unix timestamp
-  error?: string;     // Error message if failed
+  url: string; // Request URL
+  method: string; // HTTP method
+  status: number; // HTTP status code
+  duration: number; // Request duration in ms
+  timestamp: number; // Unix timestamp
+  error?: string; // Error message if failed
 }
 
 interface BrowserMetadata {
   userAgent: string;
   viewport: { width: number; height: number };
-  browser: string;    // Detected browser name
-  os: string;         // Detected OS
-  url: string;        // Current page URL
-  timestamp: number;  // Capture timestamp
+  browser: string; // Detected browser name
+  os: string; // Detected OS
+  url: string; // Current page URL
+  timestamp: number; // Capture timestamp
 }
 ```
 
@@ -364,6 +376,7 @@ interface BugReportData {
 - `modal.destroy()` - Remove modal from DOM
 
 **Features:**
+
 - Form validation (title and description required)
 - Loading state during async submission
 - Error handling with user feedback
@@ -379,11 +392,11 @@ interface BugReportData {
 import { DOMCollector } from '@bugspotter/sdk';
 
 const collector = new DOMCollector({
-  duration: 30,           // Keep last 30 seconds
+  duration: 30, // Keep last 30 seconds
   sampling: {
-    mousemove: 100,       // Throttle mousemove
-    scroll: 200,          // Throttle scroll
-  }
+    mousemove: 100, // Throttle mousemove
+    scroll: 200, // Throttle scroll
+  },
 });
 
 collector.startRecording();
@@ -391,6 +404,7 @@ const events = collector.getEvents();
 ```
 
 **Features:**
+
 - **Circular buffer** - Automatically maintains last 15-30 seconds
 - **DOM mutations** - Records all DOM changes
 - **User interactions** - Mouse movements, clicks, scrolls
@@ -411,6 +425,7 @@ const screenshot = await screenshotCapture.capture();
 ```
 
 **Features:**
+
 - CSP-safe using `html-to-image`
 - Full page capture
 - Automatic error handling
@@ -426,6 +441,7 @@ const logs = consoleCapture.getLogs();
 ```
 
 **Features:**
+
 - Captures: log, warn, error, info, debug
 - Stack traces for errors
 - Timestamps for all entries
@@ -443,6 +459,7 @@ const requests = networkCapture.getRequests();
 ```
 
 **Features:**
+
 - Captures fetch() and XMLHttpRequest
 - Request/response timing
 - HTTP status codes
@@ -459,6 +476,7 @@ const metadata = metadataCapture.capture();
 ```
 
 **Features:**
+
 - Browser detection (Chrome, Firefox, Safari, Edge, etc.)
 - OS detection (Windows, macOS, Linux, iOS, Android)
 - Viewport dimensions
@@ -483,6 +501,7 @@ pnpm test --coverage
 ```
 
 **Test Coverage:**
+
 - 162 tests total
 - All passing ✅
 - Unit tests for all modules
@@ -502,6 +521,7 @@ pnpm run build
 ```
 
 **Output:**
+
 - `dist/bugspotter.min.js` (~99 KB with session replay)
 - `dist/*.d.ts` (TypeScript definitions)
 
@@ -552,7 +572,7 @@ All exports include TypeScript definitions.
 // Just add the script and initialize
 BugSpotter.BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
-  apiKey: 'your-key'
+  apiKey: 'your-key',
 });
 // Users can now report bugs via the floating button
 ```
@@ -563,7 +583,7 @@ BugSpotter.BugSpotter.init({
 // Initialize without widget
 const bugSpotter = BugSpotter.BugSpotter.init({
   showWidget: false,
-  endpoint: 'https://api.example.com/bugs'
+  endpoint: 'https://api.example.com/bugs',
 });
 
 // Trigger from your own button
@@ -587,8 +607,8 @@ window.addEventListener('error', async (event) => {
       body: JSON.stringify({
         title: 'Unhandled Error',
         description: event.message,
-        report
-      })
+        report,
+      }),
     });
   }
 });

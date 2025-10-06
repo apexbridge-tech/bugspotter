@@ -1,6 +1,6 @@
 /**
  * PIIDetectionDisplay
- * 
+ *
  * Responsibility: Render PII detection UI and manage PII-related display logic
  * Follows SRP: Only handles PII visualization
  */
@@ -48,7 +48,9 @@ export class PIIDetectionDisplay {
     const badges: string[] = [];
 
     for (const [type, items] of Object.entries(grouped)) {
-      const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+      const totalCount = items.reduce((sum, item) => {
+        return sum + item.count;
+      }, 0);
       badges.push(this.createBadge(type, totalCount));
     }
 
@@ -56,14 +58,17 @@ export class PIIDetectionDisplay {
 
     if (this.config.showExamples) {
       html += '<div class="bugspotter-pii-details">';
-      html += '<p style="margin: 10px 0 5px 0; font-size: 13px; color: #856404;">Detected types:</p>';
+      html +=
+        '<p style="margin: 10px 0 5px 0; font-size: 13px; color: #856404;">Detected types:</p>';
       html += '<ul class="bugspotter-pii-list">';
-      
+
       for (const [type, items] of Object.entries(grouped)) {
-        const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+        const totalCount = items.reduce((sum, item) => {
+          return sum + item.count;
+        }, 0);
         html += `<li><strong>${this.escapeHtml(type)}:</strong> ${totalCount} occurrence${totalCount !== 1 ? 's' : ''}</li>`;
       }
-      
+
       html += '</ul></div>';
     }
 
@@ -75,11 +80,11 @@ export class PIIDetectionDisplay {
    */
   private renderListPII(piiDetections: PIIDetection[]): string {
     let html = '<ul class="bugspotter-pii-list">';
-    
+
     for (const detection of piiDetections) {
       html += `<li>${this.escapeHtml(detection.type)}: ${detection.count} occurrence${detection.count !== 1 ? 's' : ''}</li>`;
     }
-    
+
     html += '</ul>';
     return html;
   }
@@ -116,7 +121,7 @@ export class PIIDetectionDisplay {
     types: string[];
   } {
     const types = new Set<string>();
-    
+
     for (const detection of piiDetections) {
       types.add(detection.type);
     }
@@ -132,14 +137,18 @@ export class PIIDetectionDisplay {
    * Check if PII detections contain a specific type
    */
   hasType(piiDetections: PIIDetection[], type: string): boolean {
-    return piiDetections.some(d => d.type === type);
+    return piiDetections.some((d) => {
+      return d.type === type;
+    });
   }
 
   /**
    * Filter PII detections by type
    */
   filterByType(piiDetections: PIIDetection[], type: string): PIIDetection[] {
-    return piiDetections.filter(d => d.type === type);
+    return piiDetections.filter((d) => {
+      return d.type === type;
+    });
   }
 
   /**

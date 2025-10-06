@@ -5,11 +5,11 @@
 
 import { Router } from 'express';
 import type { Request, Response, Router as ExpressRouter } from 'express';
-import type { 
+import type {
   CreateBugReportRequest,
   CreateBugReportResponse,
   ApiErrorResponse,
-  BugReportData
+  BugReportData,
 } from '@bugspotter/types';
 import { CreateBugReportSchema } from '../schemas/bug-report.schema.js';
 import { validateBody } from '../middleware/validate.js';
@@ -24,11 +24,11 @@ router.post(
   '/',
   validateBody(CreateBugReportSchema),
   async (
-    req: Request<{}, CreateBugReportResponse | ApiErrorResponse, CreateBugReportRequest>,
+    req: Request<object, CreateBugReportResponse | ApiErrorResponse, CreateBugReportRequest>,
     res: Response<CreateBugReportResponse | ApiErrorResponse>
   ) => {
     try {
-      const { title, description, report, priority, project_id } = req.body;
+      const { title, description, priority, project_id } = req.body;
 
       // TODO: Save to Supabase database
       // For now, return mock response

@@ -5,12 +5,14 @@ This guide explains how to test the BugSpotter API integration.
 ## Setup
 
 ### 1. Start the Mock API Server
+
 ```bash
 cd packages/backend-mock
 PORT=4000 pnpm dev
 ```
 
 The server will start on `http://localhost:4000` and display:
+
 ```
 ┌─────────────────────────────────────────┐
 │   BugSpotter Mock API Server Started   │
@@ -25,6 +27,7 @@ The server will start on `http://localhost:4000` and display:
 ```
 
 ### 2. Start the Demo
+
 ```bash
 cd apps/demo
 npx browser-sync start --config bs-config.json
@@ -64,6 +67,7 @@ Visit: `http://localhost:3000/apps/demo/index.html`
 ```
 
 7. Check the browser console - you should see:
+
 ```
 Bug report submitted successfully
 ```
@@ -79,6 +83,7 @@ pnpm test -- api-submission.test.ts
 ```
 
 All 162 tests should pass, including:
+
 - ✅ Successful submission with API key
 - ✅ Submission without API key
 - ✅ JSON response handling
@@ -118,6 +123,7 @@ curl -X POST http://localhost:4000/api/bugs \
 ```
 
 Expected response:
+
 ```json
 {
   "success": true,
@@ -133,7 +139,7 @@ Expected response:
 # Test 400 Bad Request
 curl -X POST http://localhost:4000/api/bugs/error/400
 
-# Test 401 Unauthorized  
+# Test 401 Unauthorized
 curl -X POST http://localhost:4000/api/bugs/error/401
 
 # Test 500 Internal Server Error
@@ -162,18 +168,21 @@ curl -X DELETE http://localhost:4000/api/bugs
 ## What to Look For
 
 ### ✅ Successful Submission
+
 - Server logs show formatted bug report details
 - HTTP 201 status returned
 - Bug ID assigned
 - Data stored and retrievable via GET
 
 ### ✅ Error Handling
+
 - Invalid API key → 401 Unauthorized
 - Missing fields → 400 Bad Request
 - Network errors caught and logged
 - User-friendly error messages
 
 ### ✅ Data Integrity
+
 - Screenshot captured (or SCREENSHOT_FAILED)
 - Console logs preserved
 - Network requests recorded
@@ -182,23 +191,29 @@ curl -X DELETE http://localhost:4000/api/bugs
 ## Troubleshooting
 
 ### Port Already in Use
+
 If port 4000 is busy, change it:
+
 ```bash
 PORT=5000 pnpm dev
 ```
 
 Then update `apps/demo/index.html`:
+
 ```javascript
-endpoint: 'http://localhost:5000/api/bugs'
+endpoint: 'http://localhost:5000/api/bugs';
 ```
 
 ### CORS Errors
+
 The mock server has CORS enabled. If you see CORS errors:
+
 1. Check the server is running
 2. Verify the endpoint URL matches
 3. Clear browser cache
 
 ### API Not Receiving Data
+
 1. Check server terminal for errors
 2. Open browser DevTools → Network tab
 3. Look for the POST request to `/api/bugs`

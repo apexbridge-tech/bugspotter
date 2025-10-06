@@ -1,0 +1,185 @@
+name: CI
+
+# This workflow runs CI checks for the BugSpotter monorepo
+# Structure: pnpm workspace with packages/ and apps/ directories
+# Packages: @bugspotter/sdk, @bugspotter/api, @bugspotter/types, @bugspotter/backend-mock
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        run: pnpm run lint
+
+      - name: Check formatting
+        run: pnpm run format:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify monorepo structure
+        run: |
+          echo "Verifying monorepo structure..."
+          if [ ! -d "packages" ]; then
+            echo "❌ Error: 'packages' directory not found"
+            echo "This workflow requires a pnpm workspace with packages/ directory"
+            exit 1
+          fi
+          echo "✅ packages/ directory exists"
+          echo ""
+          echo "Available packages:"
+          ls -1 packages/ | sed 's/^/  - /'
+
+      - name: Run tests
+        run: |
+          # Run SDK tests (full test suite)
+          pnpm --filter @bugspotter/sdk run test
+          
+          # Skip API contract tests in CI (they require running server)
+          # API contract tests should be run locally or in integration test environment
+          echo "⏭️  Skipping API contract tests (require running server)"
+
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify monorepo structure
+        run: |
+          echo "Verifying monorepo structure..."
+          if [ ! -d "packages" ]; then
+            echo "❌ Error: 'packages' directory not found"
+            echo "This workflow requires a pnpm workspace with packages/ directory"
+            exit 1
+          fi
+          echo "✅ packages/ directory exists"
+
+      - name: Build packages
+        run: |
+          # Build all packages that have a build script
+          # This respects the dependency order defined in pnpm-workspace.yaml
+          pnpm --recursive --filter "./packages/**" run build
+
+      - name: Upload SDK build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-build
+          path: packages/sdk/dist/
+          retention-days: 7
+
+  test-coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify packages directory exists
+        run: |
+          if [ ! -d "packages" ]; then
+            echo "Error: packages directory not found. This workflow expects a monorepo structure with packages/"
+            exit 1
+          fi
+          echo "Found packages directory with the following packages:"
+          ls -1 packages/
+
+      - name: Run tests with coverage
+        run: |
+          # Run SDK tests with coverage
+          pnpm --filter "@bugspotter/sdk" run test -- --coverage
+          
+          # Skip API tests in CI (contract tests require running server)
+          echo "⏭️  Skipping API tests in CI environment"
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./packages/*/coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

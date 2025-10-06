@@ -7,17 +7,20 @@ The BugReportModal now includes PII detection preview and manual screenshot reda
 ## ✨ New Features
 
 ### 1. **PII Detection Display**
+
 - Shows detected sensitive data types and counts
 - Visual indicators for: emails, phones, credit cards, SSNs, IPs, etc.
 - Warns users when sensitive data is detected
 
 ### 2. **Manual Redaction Tool**
+
 - Draw black rectangles over sensitive areas in screenshots
 - Interactive canvas overlay for precise redaction
 - Clear button to remove all redactions
 - Live preview of redacted areas
 
 ### 3. **PII Confirmation Checkbox**
+
 - Required confirmation when PII is detected
 - Prevents accidental submission of sensitive data
 - User must explicitly confirm no sensitive data remains
@@ -25,6 +28,7 @@ The BugReportModal now includes PII detection preview and manual screenshot reda
 ## 🎨 UI Components
 
 ### PII Detection Section
+
 ```
 ┌──────────────────────────────────────┐
 │ Detected Sensitive Data              │
@@ -39,6 +43,7 @@ The BugReportModal now includes PII detection preview and manual screenshot reda
 ```
 
 ### Redaction Canvas
+
 - Transparent overlay on screenshot
 - Crosshair cursor when active
 - Draw black rectangles by click-and-drag
@@ -54,14 +59,14 @@ import { BugReportModal, PIIDetection } from '@bugspotter/sdk';
 const modal = new BugReportModal({
   onSubmit: async (data) => {
     // Submit bug report
-  }
+  },
 });
 
 // Show with PII detections
 const piiDetections: PIIDetection[] = [
   { type: 'email', count: 3 },
   { type: 'phone', count: 2 },
-  { type: 'ip', count: 1 }
+  { type: 'ip', count: 1 },
 ];
 
 modal.show(screenshot, piiDetections);
@@ -75,7 +80,7 @@ import { BugSpotter, Sanitizer, createSanitizer } from '@bugspotter/sdk';
 // Create sanitizer
 const sanitizer = createSanitizer({
   enabled: true,
-  patterns: 'all'
+  patterns: 'all',
 });
 
 // Analyze bug report data for PII
@@ -96,7 +101,7 @@ modal.show(bugReport.screenshot, piiDetections);
 interface PIIDetection {
   /** PII type (e.g., 'email', 'phone', 'creditcard') */
   type: string;
-  
+
   /** Number of instances detected */
   count: number;
 }
@@ -206,11 +211,13 @@ private getRedactedScreenshot(): string
 ## 🔒 Security Benefits
 
 ### Prevents Accidental Data Leaks
+
 - **Visual Warning**: Users see exactly what PII is detected
 - **Manual Control**: Users can redact any additional sensitive areas
 - **Forced Confirmation**: Cannot submit with PII unless explicitly confirmed
 
 ### Layered Protection
+
 1. **Automatic Sanitization**: Text-based PII in logs, network data, etc.
 2. **PII Detection Display**: Visual feedback about detected sensitive data
 3. **Manual Redaction**: User-controlled screenshot redaction
@@ -219,11 +226,10 @@ private getRedactedScreenshot(): string
 ## 📊 Example Scenarios
 
 ### Scenario 1: Email Addresses in Screenshot
+
 ```typescript
 // PII detected in screenshot showing inbox
-const piiDetections = [
-  { type: 'email', count: 5 }
-];
+const piiDetections = [{ type: 'email', count: 5 }];
 
 modal.show(screenshot, piiDetections);
 
@@ -235,6 +241,7 @@ modal.show(screenshot, piiDetections);
 ```
 
 ### Scenario 2: No PII Detected
+
 ```typescript
 // Clean screenshot
 modal.show(screenshot, []);
@@ -245,12 +252,13 @@ modal.show(screenshot, []);
 ```
 
 ### Scenario 3: Multiple PII Types
+
 ```typescript
 const piiDetections = [
   { type: 'email', count: 2 },
   { type: 'phone', count: 1 },
   { type: 'creditcard', count: 1 },
-  { type: 'ip', count: 3 }
+  { type: 'ip', count: 3 },
 ];
 
 modal.show(screenshot, piiDetections);
@@ -264,6 +272,7 @@ modal.show(screenshot, piiDetections);
 ## 🧪 Testing
 
 All existing tests pass (226/226) with the new features:
+
 - ✅ Modal initialization
 - ✅ Form validation
 - ✅ Submit handling
@@ -277,9 +286,7 @@ All existing tests pass (226/226) with the new features:
 modal.show(screenshot);
 
 // Modal shows with PII detections
-modal.show(screenshot, [
-  { type: 'email', count: 2 }
-]);
+modal.show(screenshot, [{ type: 'email', count: 2 }]);
 
 // Redaction canvas initialized on image load
 // Redaction tools can be activated/deactivated
@@ -291,6 +298,7 @@ modal.show(screenshot, [
 ## 🚀 Future Enhancements
 
 ### Possible Additions
+
 1. **Auto-detect PII in Screenshots**: OCR-based text detection in images
 2. **Smart Redaction Suggestions**: Highlight areas with likely PII
 3. **Blur Instead of Black**: Option for blur instead of solid rectangles

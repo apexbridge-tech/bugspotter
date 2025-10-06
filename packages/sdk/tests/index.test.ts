@@ -103,16 +103,18 @@ describe('BugSpotter', () => {
     });
 
     it('should capture replay events when enabled', async () => {
-      const bugspotter = BugSpotter.init({ 
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
         replay: {
           enabled: true,
-          duration: 15
-        }
+          duration: 15,
+        },
       });
 
       // Wait a bit for some events to be recorded
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 100);
+      });
 
       const report = await bugspotter.capture();
 
@@ -123,11 +125,11 @@ describe('BugSpotter', () => {
     });
 
     it('should not capture replay events when disabled', async () => {
-      const bugspotter = BugSpotter.init({ 
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
         replay: {
-          enabled: false
-        }
+          enabled: false,
+        },
       });
 
       const report = await bugspotter.capture();
@@ -138,12 +140,12 @@ describe('BugSpotter', () => {
     });
 
     it('should respect replay duration configuration', async () => {
-      const bugspotter = BugSpotter.init({ 
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
         replay: {
           enabled: true,
-          duration: 20
-        }
+          duration: 20,
+        },
       });
 
       const config = bugspotter.getConfig();
@@ -275,54 +277,56 @@ describe('BugSpotter', () => {
   describe('Widget Integration', () => {
     it('should create widget by default', () => {
       const bugspotter = BugSpotter.init({ auth: { type: 'api-key', apiKey: 'test-key' } });
-      
+
       // Check if button element was added to the body
       const button = document.querySelector('button[style*="position: fixed"]');
       expect(button).toBeTruthy();
-      
+
       bugspotter.destroy();
     });
 
     it('should not create widget when showWidget is false', () => {
-      const bugspotter = BugSpotter.init({ 
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
-        showWidget: false 
+        showWidget: false,
       });
-      
+
       // Check if button element was NOT added
       const button = document.querySelector('button[style*="position: fixed"]');
       expect(button).toBeNull();
-      
+
       bugspotter.destroy();
     });
 
     it('should pass widget options correctly', () => {
-      const bugspotter = BugSpotter.init({ 
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
         widgetOptions: {
           position: 'top-left',
           icon: '🚨',
           backgroundColor: '#8b5cf6',
-          size: 70
-        }
+          size: 70,
+        },
       });
-      
-      const button = document.querySelector('button[style*="position: fixed"]') as HTMLButtonElement;
+
+      const button = document.querySelector(
+        'button[style*="position: fixed"]'
+      ) as HTMLButtonElement;
       expect(button).toBeTruthy();
       expect(button.textContent).toContain('🚨');
       expect(button.style.backgroundColor).toBe('rgb(139, 92, 246)'); // #8b5cf6 in rgb
-      
+
       bugspotter.destroy();
     });
 
     it('should destroy widget when BugSpotter is destroyed', () => {
       const bugspotter = BugSpotter.init({ auth: { type: 'api-key', apiKey: 'test-key' } });
-      
+
       const buttonBefore = document.querySelector('button[style*="position: fixed"]');
       expect(buttonBefore).toBeTruthy();
-      
+
       bugspotter.destroy();
-      
+
       const buttonAfter = document.querySelector('button[style*="position: fixed"]');
       expect(buttonAfter).toBeNull();
     });
@@ -330,30 +334,34 @@ describe('BugSpotter', () => {
     it('should call capture when widget button is clicked', async () => {
       const bugspotter = BugSpotter.init({ auth: { type: 'api-key', apiKey: 'test-key' } });
       const captureSpy = vi.spyOn(bugspotter, 'capture');
-      
-      const button = document.querySelector('button[style*="position: fixed"]') as HTMLButtonElement;
+
+      const button = document.querySelector(
+        'button[style*="position: fixed"]'
+      ) as HTMLButtonElement;
       expect(button).toBeTruthy();
-      
+
       // Click the button
       button.click();
-      
+
       // Wait for async capture to be called
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 0);
+      });
+
       expect(captureSpy).toHaveBeenCalled();
-      
+
       bugspotter.destroy();
     });
 
     it('should handle widget configuration with showWidget true explicitly', () => {
-      const bugspotter = BugSpotter.init({ 
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
-        showWidget: true
+        showWidget: true,
       });
-      
+
       const button = document.querySelector('button[style*="position: fixed"]');
       expect(button).toBeTruthy();
-      
+
       bugspotter.destroy();
     });
   });
@@ -361,57 +369,65 @@ describe('BugSpotter', () => {
   describe('Bug Report Modal Integration', () => {
     it('should show modal with screenshot when widget button is clicked', async () => {
       const bugspotter = BugSpotter.init({ auth: { type: 'api-key', apiKey: 'test-key' } });
-      
-      const widgetButton = document.querySelector('button[style*="position: fixed"]') as HTMLButtonElement;
+
+      const widgetButton = document.querySelector(
+        'button[style*="position: fixed"]'
+      ) as HTMLButtonElement;
       expect(widgetButton).toBeTruthy();
-      
+
       // Click the widget button
       widgetButton.click();
-      
+
       // Wait for async capture and modal display
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 100);
+      });
+
       // Check if modal is displayed
-      const modalContainer = Array.from(document.body.children).find(
-        el => el.shadowRoot?.querySelector('.overlay')
-      );
+      const modalContainer = Array.from(document.body.children).find((el) => {
+        return el.shadowRoot?.querySelector('.overlay');
+      });
       expect(modalContainer).toBeTruthy();
-      
+
       // Check if screenshot is displayed in modal
       const shadow = (modalContainer as HTMLElement).shadowRoot;
       const screenshot = shadow?.querySelector('#screenshot') as HTMLImageElement;
       expect(screenshot).toBeTruthy();
       expect(screenshot.src).toBeTruthy();
-      
+
       bugspotter.destroy();
     });
 
     it('should log bug report data when modal is submitted', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log');
       const bugspotter = BugSpotter.init({ auth: { type: 'api-key', apiKey: 'test-key' } });
-      
-      const widgetButton = document.querySelector('button[style*="position: fixed"]') as HTMLButtonElement;
+
+      const widgetButton = document.querySelector(
+        'button[style*="position: fixed"]'
+      ) as HTMLButtonElement;
       widgetButton.click();
-      
+
       // Wait for modal to appear
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const modalContainer = Array.from(document.body.children).find(
-        el => el.shadowRoot?.querySelector('.overlay')
-      ) as HTMLElement;
-      
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 100);
+      });
+
+      const modalContainer = Array.from(document.body.children).find((el) => {
+        return el.shadowRoot?.querySelector('.overlay');
+      }) as HTMLElement;
+
       const shadow = modalContainer.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
       const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
-      
+
       // Fill in the form
       titleInput.value = 'Test Bug Title';
       descriptionInput.value = 'Test Bug Description';
-      
+
       // Submit the form
       submitButton.click();
-      
+
       // Check if console.log was called with bug report data
       expect(consoleLogSpy).toHaveBeenCalledWith(
         '[BugSpotter] Submitting bug:',
@@ -426,34 +442,36 @@ describe('BugSpotter', () => {
           }),
         })
       );
-      
+
       consoleLogSpy.mockRestore();
       bugspotter.destroy();
     });
 
     it('should not show modal when showWidget is false', async () => {
       // Count existing modals before test
-      const initialModalCount = Array.from(document.body.children).filter(
-        el => el.shadowRoot?.querySelector('.overlay')
-      ).length;
-      
-      const bugspotter = BugSpotter.init({ 
+      const initialModalCount = Array.from(document.body.children).filter((el) => {
+        return el.shadowRoot?.querySelector('.overlay');
+      }).length;
+
+      const bugspotter = BugSpotter.init({
         auth: { type: 'api-key', apiKey: 'test-key' },
-        showWidget: false 
+        showWidget: false,
       });
-      
+
       // Manually call capture (no widget to click)
       await bugspotter.capture();
-      
+
       // Wait a bit to ensure no modal appears
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 100);
+      });
+
       // Check that no new modal was created
-      const finalModalCount = Array.from(document.body.children).filter(
-        el => el.shadowRoot?.querySelector('.overlay')
-      ).length;
+      const finalModalCount = Array.from(document.body.children).filter((el) => {
+        return el.shadowRoot?.querySelector('.overlay');
+      }).length;
       expect(finalModalCount).toBe(initialModalCount);
-      
+
       bugspotter.destroy();
     });
   });

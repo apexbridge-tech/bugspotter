@@ -35,11 +35,11 @@ export class ScreenshotCapture extends BaseCapture<Promise<string>, ScreenshotCa
     if (!('hasAttribute' in node)) {
       return true;
     }
-    
+
     const element = node as Element;
-    const excludeAttr = this.options.excludeAttribute || 
-                        DEFAULT_SCREENSHOT_OPTIONS.excludeAttribute;
-    
+    const excludeAttr =
+      this.options.excludeAttribute || DEFAULT_SCREENSHOT_OPTIONS.excludeAttribute;
+
     return !element.hasAttribute(excludeAttr);
   }
 
@@ -51,23 +51,23 @@ export class ScreenshotCapture extends BaseCapture<Promise<string>, ScreenshotCa
       backgroundColor: this.options.backgroundColor ?? DEFAULT_SCREENSHOT_OPTIONS.backgroundColor,
       ...(this.options.width && { width: this.options.width }),
       ...(this.options.height && { height: this.options.height }),
-      filter: (node: Node) => this.shouldIncludeNode(node),
+      filter: (node: Node) => {
+        return this.shouldIncludeNode(node);
+      },
     };
   }
 
   async capture(targetElement?: HTMLElement): Promise<string> {
     try {
-      const element = targetElement || 
-                      this.options.targetElement || 
-                      document.body;
-      
+      const element = targetElement || this.options.targetElement || document.body;
+
       const options = this.buildCaptureOptions();
       const dataUrl = await toPng(element, options);
-      
+
       // Compress the screenshot to reduce payload size
       // Converts to WebP if supported, resizes if too large
       const compressed = await compressImage(dataUrl);
-      
+
       return compressed;
     } catch (error) {
       this.handleError('capturing screenshot', error);

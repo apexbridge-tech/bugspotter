@@ -8,24 +8,27 @@ Capture screenshots, console logs, network requests, **session replays**, and me
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
-| �� **Session Replay** | Record and replay user interactions (rrweb) |
-| 🔒 **PII Sanitization** | Auto-redact emails, phones, cards, SSNs, etc. |
-| 📸 **Screenshots** | CSP-safe visual capture |
-| 📝 **Console Logs** | Track all console output |
-| 🌐 **Network Monitoring** | Capture fetch/XHR with timing |
-| 🎨 **Professional UI** | Customizable button + modal |
-| ⚡ **Lightweight** | ~99 KB minified |
+| Feature                   | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| �� **Session Replay**     | Record and replay user interactions (rrweb)   |
+| 🔒 **PII Sanitization**   | Auto-redact emails, phones, cards, SSNs, etc. |
+| 📸 **Screenshots**        | CSP-safe visual capture                       |
+| 📝 **Console Logs**       | Track all console output                      |
+| 🌐 **Network Monitoring** | Capture fetch/XHR with timing                 |
+| 🎨 **Professional UI**    | Customizable button + modal                   |
+| ⚡ **Lightweight**        | ~99 KB minified                               |
 
 ## 🚀 Quick Start
 
 \`\`\`bash
+
 # Install & Build
+
 pnpm install
 cd packages/sdk && pnpm run build
 
 # Try Demo
+
 cd ../../apps/demo
 npx browser-sync start --server --port 3000
 \`\`\`
@@ -33,6 +36,7 @@ npx browser-sync start --server --port 3000
 ### Basic Integration
 
 \`\`\`html
+
 <script src="bugspotter.min.js"></script>
 <script>
   BugSpotter.BugSpotter.init({
@@ -43,29 +47,30 @@ npx browser-sync start --server --port 3000
     sanitize: { enabled: true, patterns: ['email', 'phone'] }
   });
 </script>
+
 \`\`\`
 
 ## 📖 Documentation
 
-| Resource | Link |
-|----------|------|
-| **Detailed README** | [DETAILED_README.md](./DETAILED_README.md) |
-| **Quick Start** | [docs/QUICK_START.md](./docs/QUICK_START.md) |
-| **Session Replay** | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md) |
-| **SDK API** | [packages/sdk/README.md](./packages/sdk/README.md) |
-| **Demo Guide** | [apps/demo/README.md](./apps/demo/README.md) |
-| **API Testing** | [docs/API_TESTING.md](./docs/API_TESTING.md) |
+| Resource            | Link                                                                         |
+| ------------------- | ---------------------------------------------------------------------------- |
+| **Detailed README** | [DETAILED_README.md](./DETAILED_README.md)                                   |
+| **Quick Start**     | [docs/QUICK_START.md](./docs/QUICK_START.md)                                 |
+| **Session Replay**  | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md) |
+| **SDK API**         | [packages/sdk/README.md](./packages/sdk/README.md)                           |
+| **Demo Guide**      | [apps/demo/README.md](./apps/demo/README.md)                                 |
+| **API Testing**     | [docs/API_TESTING.md](./docs/API_TESTING.md)                                 |
 
 ## 🎬 Session Replay
 
 \`\`\`javascript
 replay: {
-  enabled: true,
-  duration: 30,  // Keep last 30 seconds
-  sampling: {
-    mousemove: 50,  // Throttle to 50ms
-    scroll: 100     // Throttle to 100ms
-  }
+enabled: true,
+duration: 30, // Keep last 30 seconds
+sampling: {
+mousemove: 50, // Throttle to 50ms
+scroll: 100 // Throttle to 100ms
+}
 }
 \`\`\`
 
@@ -77,11 +82,11 @@ Auto-redact sensitive data before submission:
 
 \`\`\`javascript
 sanitize: {
-  enabled: true,
-  patterns: ['email', 'phone', 'creditcard', 'ssn', 'iin', 'ip'],
-  customPatterns: [
-    { name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }
-  ]
+enabled: true,
+patterns: ['email', 'phone', 'creditcard', 'ssn', 'iin', 'ip'],
+customPatterns: [
+{ name: 'api-key', regex: /API[-_]KEY:\s\*[\w-]{20,}/gi }
+]
 }
 \`\`\`
 
@@ -89,15 +94,47 @@ sanitize: {
 
 ## 📦 Project Structure
 
+This is a **pnpm workspace monorepo** with the following structure:
+
 \`\`\`
 bugspotter/
+├── .github/
+│ └── workflows/
+│ └── ci.yml # CI/CD pipeline
 ├── packages/
-│   ├── sdk/          # Core SDK + Session Replay
-│   ├── types/        # Shared TypeScript types
-│   ├── backend-mock/ # Mock API server
-│   └── api/          # Production API (Supabase)
-├── apps/demo/        # Interactive demo
-└── docs/             # Documentation
+│ ├── sdk/ # @bugspotter/sdk - Core SDK + Session Replay
+│ ├── types/ # @bugspotter/types - Shared TypeScript types
+│ ├── backend-mock/ # @bugspotter/backend-mock - Mock API server
+│ └── api/ # @bugspotter/api - Production API (Supabase)
+├── apps/
+│ └── demo/ # Interactive demo application
+├── docs/ # Documentation
+├── pnpm-workspace.yaml # Workspace configuration
+└── package.json # Root package.json
+\`\`\`
+
+### Workspace Commands
+
+\`\`\`bash
+
+# Install all dependencies
+
+pnpm install
+
+# Run commands across all packages
+
+pnpm run build # Build all packages
+pnpm run test # Test all packages
+pnpm run lint # Lint all packages
+
+# Run commands for specific package
+
+pnpm --filter @bugspotter/sdk run build
+pnpm --filter @bugspotter/api run test
+
+# Run commands for all packages in a directory
+
+pnpm --recursive --filter "./packages/\*\*" run test
 \`\`\`
 
 ## 📖 API Reference
@@ -119,14 +156,14 @@ const report = await bugSpotter.capture();
 
 \`\`\`javascript
 const button = new BugSpotter.FloatingButton({
-  position: 'bottom-right',
-  icon: '⚡',
-  backgroundColor: '#1a365d'
+position: 'bottom-right',
+icon: '⚡',
+backgroundColor: '#1a365d'
 });
 
 button.onClick(async () => {
-  const report = await bugSpotter.capture();
-  // Handle submission
+const report = await bugSpotter.capture();
+// Handle submission
 });
 \`\`\`
 
@@ -136,9 +173,9 @@ button.onClick(async () => {
 
 \`\`\`bash
 cd packages/sdk
-pnpm test           # 226 tests
-pnpm test --watch   # Watch mode
-pnpm test --ui      # Visual UI
+pnpm test # 226 tests
+pnpm test --watch # Watch mode
+pnpm test --ui # Visual UI
 \`\`\`
 
 ## 🏗️ Tech Stack

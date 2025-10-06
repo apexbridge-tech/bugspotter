@@ -1,7 +1,7 @@
 /**
  * A generic circular buffer implementation for storing a fixed number of items.
  * When the buffer is full, new items overwrite the oldest items.
- * 
+ *
  * @template T The type of items stored in the buffer
  */
 export class CircularBuffer<T> {
@@ -37,10 +37,7 @@ export class CircularBuffer<T> {
       return [...this.items];
     }
     // Return items in chronological order when buffer is full
-    return [
-      ...this.items.slice(this.index),
-      ...this.items.slice(0, this.index)
-    ];
+    return [...this.items.slice(this.index), ...this.items.slice(0, this.index)];
   }
 
   /**

@@ -27,7 +27,7 @@ export interface BugReportModalOptions {
 
 /**
  * BugReportModal
- * 
+ *
  * Refactored to follow SOLID principles
  * Acts as a lightweight coordinator for specialized components
  */
@@ -35,7 +35,7 @@ export class BugReportModal {
   private container: HTMLDivElement;
   private shadow: ShadowRoot;
   private options: BugReportModalOptions;
-  
+
   // Component instances
   private styleManager: StyleManager;
   private templateManager: TemplateManager;
@@ -44,12 +44,12 @@ export class BugReportModal {
   private piiDisplay: PIIDetectionDisplay;
   private redactionCanvas: RedactionCanvas | null = null;
   private screenshotProcessor: ScreenshotProcessor;
-  
+
   // State
   private originalScreenshot: string = '';
   private styleElement: HTMLStyleElement | null = null;
   private piiDetections: PIIDetection[] = [];
-  
+
   // Event handler (bound to this for proper removal)
   private handleEscapeKey: (e: KeyboardEvent) => void;
 
@@ -57,7 +57,7 @@ export class BugReportModal {
     this.options = options;
     this.container = document.createElement('div');
     this.shadow = this.container.attachShadow({ mode: 'open' });
-    
+
     // Initialize components
     this.styleManager = new StyleManager();
     this.templateManager = new TemplateManager();
@@ -65,7 +65,7 @@ export class BugReportModal {
     this.validator = new FormValidator();
     this.piiDisplay = new PIIDetectionDisplay();
     this.screenshotProcessor = new ScreenshotProcessor();
-    
+
     // Bind event handler
     this.handleEscapeKey = this.onEscapeKey.bind(this);
   }
@@ -85,19 +85,19 @@ export class BugReportModal {
       </style>
       ${this.templateManager.generateModalHTML(this.originalScreenshot)}
     `;
-    
+
     // Cache DOM elements
     this.domCache.initialize(this.shadow);
-    
+
     // Initialize error display states
     const elements = this.domCache.get();
     elements.titleError.style.display = 'none';
     elements.descriptionError.style.display = 'none';
-    
+
     // Setup components
     this.setupRedactionCanvas();
     this.attachEventListeners();
-    
+
     // Add to DOM
     document.body.appendChild(this.container);
 
@@ -111,7 +111,7 @@ export class BugReportModal {
   close(): void {
     // Remove keyboard listener
     document.removeEventListener('keydown', this.handleEscapeKey);
-    
+
     // Cleanup components
     if (this.redactionCanvas) {
       this.redactionCanvas.destroy();
@@ -143,7 +143,7 @@ export class BugReportModal {
 
   private setupRedactionCanvas(): void {
     const elements = this.domCache.get();
-    
+
     if (!elements.redactionCanvas || !elements.screenshotImg) {
       return;
     }
@@ -163,15 +163,19 @@ export class BugReportModal {
     const elements = this.domCache.get();
 
     // Close button
-    elements.closeButton.addEventListener('click', () => this.close());
-    
+    elements.closeButton.addEventListener('click', () => {
+      return this.close();
+    });
+
     // Escape key to close
     document.addEventListener('keydown', this.handleEscapeKey);
-    
+
     // Note: Overlay click does NOT close modal (improved UX to prevent accidental data loss)
-    
+
     // Form submission
-    elements.form.addEventListener('submit', (e) => this.handleSubmit(e));
+    elements.form.addEventListener('submit', (e) => {
+      return this.handleSubmit(e);
+    });
 
     // Submit button click (manually trigger form submit for test compatibility)
     elements.submitButton.addEventListener('click', () => {
@@ -180,10 +184,14 @@ export class BugReportModal {
     });
 
     // Cancel button
-    elements.cancelButton.addEventListener('click', () => this.close());
+    elements.cancelButton.addEventListener('click', () => {
+      return this.close();
+    });
 
     // Real-time validation
-    elements.titleInput.addEventListener('input', () => this.validateField('title'));
+    elements.titleInput.addEventListener('input', () => {
+      return this.validateField('title');
+    });
     elements.descriptionTextarea.addEventListener('input', () => {
       this.validateField('description');
       this.checkForPII();
@@ -191,24 +199,31 @@ export class BugReportModal {
 
     // Redaction controls
     if (elements.redactButton && this.redactionCanvas) {
-      elements.redactButton.addEventListener('click', () => this.toggleRedactionMode());
+      elements.redactButton.addEventListener('click', () => {
+        return this.toggleRedactionMode();
+      });
     }
 
     if (elements.clearButton && this.redactionCanvas) {
-      elements.clearButton.addEventListener('click', () => this.clearRedactions());
+      elements.clearButton.addEventListener('click', () => {
+        return this.clearRedactions();
+      });
     }
 
     // PII confirmation
-    elements.piiConfirmCheckbox.addEventListener('change', () => this.updateSubmitButton());
+    elements.piiConfirmCheckbox.addEventListener('change', () => {
+      return this.updateSubmitButton();
+    });
   }
 
   private validateField(fieldName: keyof FormData): void {
     const elements = this.domCache.get();
-    const value = fieldName === 'title' ? elements.titleInput.value : elements.descriptionTextarea.value;
+    const value =
+      fieldName === 'title' ? elements.titleInput.value : elements.descriptionTextarea.value;
     const error = this.validator.validateField(fieldName, value);
 
     const errorElement = fieldName === 'title' ? elements.titleError : elements.descriptionError;
-    
+
     if (error) {
       errorElement.textContent = error;
       errorElement.style.display = 'block';
@@ -221,16 +236,18 @@ export class BugReportModal {
   private checkForPII(): void {
     const elements = this.domCache.get();
     const text = `${elements.titleInput.value} ${elements.descriptionTextarea.value}`;
-    
+
     // Create temporary sanitizer to detect PII
     const sanitizer = createSanitizer({ enabled: true });
     const detections = sanitizer.detectPII(text);
 
     // Convert to PIIDetection array
-    this.piiDetections = Array.from(detections.entries()).map(([type, count]) => ({
-      type,
-      count,
-    }));
+    this.piiDetections = Array.from(detections.entries()).map(([type, count]) => {
+      return {
+        type,
+        count,
+      };
+    });
 
     if (this.piiDetections.length > 0) {
       elements.piiSection.style.display = 'block';
@@ -247,19 +264,19 @@ export class BugReportModal {
     const elements = this.domCache.get();
     const hasPII = this.piiDetections.length > 0;
     const piiConfirmed = elements.piiConfirmCheckbox.checked;
-    
+
     elements.submitButton.disabled = hasPII && !piiConfirmed;
   }
 
   private toggleRedactionMode(): void {
     const elements = this.domCache.get();
-    
+
     if (!this.redactionCanvas || !elements.redactButton) {
       return;
     }
 
     const isActive = this.redactionCanvas.toggleRedactionMode();
-    
+
     if (isActive) {
       elements.redactButton.classList.add('active');
       elements.redactButton.textContent = '✓ Redacting...';
@@ -279,7 +296,7 @@ export class BugReportModal {
     e.preventDefault();
 
     const elements = this.domCache.get();
-    
+
     const formData: FormData = {
       title: elements.titleInput.value,
       description: elements.descriptionTextarea.value,
@@ -298,7 +315,7 @@ export class BugReportModal {
         elements.titleError.textContent = '';
         elements.titleError.style.display = 'none';
       }
-      
+
       if (validation.errors.description) {
         elements.descriptionError.textContent = validation.errors.description;
         elements.descriptionError.style.display = 'block';
@@ -306,11 +323,11 @@ export class BugReportModal {
         elements.descriptionError.textContent = '';
         elements.descriptionError.style.display = 'none';
       }
-      
+
       if (validation.errors.piiConfirmation) {
         alert(validation.errors.piiConfirmation);
       }
-      
+
       return;
     }
 
@@ -320,10 +337,13 @@ export class BugReportModal {
 
     // Prepare screenshot with redactions
     let finalScreenshot = this.originalScreenshot;
-    
+
     if (this.redactionCanvas && this.redactionCanvas.getRedactions().length > 0) {
       try {
-        finalScreenshot = await this.screenshotProcessor.mergeRedactions(this.originalScreenshot, this.redactionCanvas.getCanvas());
+        finalScreenshot = await this.screenshotProcessor.mergeRedactions(
+          this.originalScreenshot,
+          this.redactionCanvas.getCanvas()
+        );
       } catch (mergeError) {
         logger.error('Failed to merge redactions:', mergeError);
         finalScreenshot = this.originalScreenshot;

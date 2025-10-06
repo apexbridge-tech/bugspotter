@@ -7,7 +7,9 @@ The BugSpotter demo app now showcases **all four authentication methods** with i
 ## ✅ Changes Made
 
 ### 1. New UI Section (HTML)
+
 Added a dedicated "Authentication Flexibility" section with 5 interactive buttons:
+
 - **Use API Key Auth** - Switch to legacy API key authentication
 - **Use Bearer Token** - Switch to modern Bearer token with auto-refresh
 - **Use OAuth** - Test OAuth 2.0 authentication flow
@@ -15,17 +17,20 @@ Added a dedicated "Authentication Flexibility" section with 5 interactive button
 - **Show Current Auth** - Display current authentication configuration
 
 ### 2. SDK Initialization Update
+
 Changed from simple API key to Bearer Token with refresh capability:
 
 **Before:**
+
 ```javascript
 BugSpotter.init({
   apiKey: 'demo-api-key-12345',
-  endpoint: 'http://localhost:4000/api/bugs'
+  endpoint: 'http://localhost:4000/api/bugs',
 });
 ```
 
 **After:**
+
 ```javascript
 BugSpotter.init({
   endpoint: 'http://localhost:4000/api/bugs',
@@ -35,49 +40,57 @@ BugSpotter.init({
     refreshToken: 'demo-refresh-token-67890',
     onRefresh: async (refreshToken) => {
       console.log('🔄 Refreshing access token...');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return {
         accessToken: 'new-access-token-' + Date.now(),
         refreshToken: 'new-refresh-token-' + Date.now(),
-        expiresIn: 3600
+        expiresIn: 3600,
       };
-    }
-  }
+    },
+  },
 });
 ```
 
 ### 3. Interactive Demo Functions
+
 Added 5 new JavaScript functions:
 
 #### `switchToApiKey()`
+
 - Destroys current SDK instance
 - Reinitializes with API Key auth (backward compatible)
 - Shows configuration details in output panel
 
 #### `switchToBearerToken()`
+
 - Switches to Bearer Token authentication
 - Implements token refresh callback
 - Displays Bearer token configuration
 
 #### `switchToOAuth()`
+
 - Demonstrates OAuth 2.0 setup
 - Includes clientId and clientSecret
 - Shows OAuth-specific configuration
 
 #### `testTokenRefresh()`
+
 - Simulates 401 Unauthorized error
 - Triggers automatic token refresh
 - Shows step-by-step refresh flow
 - Displays before/after token states
 
 #### `showAuthConfig()`
+
 - Inspects current SDK configuration
 - Shows active auth method
 - Displays headers being sent
 - Lists all supported auth methods
 
 ### 4. Updated Documentation
+
 Enhanced `README.md` with:
+
 - Authentication methods section
 - Code examples for each auth type
 - Interactive testing workflows
@@ -87,7 +100,9 @@ Enhanced `README.md` with:
 ## 🎨 Visual Features
 
 ### Output Panel
+
 The demo includes a styled output panel (`#auth-output`) that displays:
+
 - Current authentication method
 - Token values (truncated for security)
 - Headers being sent
@@ -95,6 +110,7 @@ The demo includes a styled output panel (`#auth-output`) that displays:
 - Step-by-step flow for token refresh
 
 ### Color Coding
+
 - **Blue (Primary)**: API Key switch
 - **Green (Success)**: Bearer Token switch
 - **Cyan (Info)**: OAuth switch
@@ -104,7 +120,9 @@ The demo includes a styled output panel (`#auth-output`) that displays:
 ## 🧪 Testing Capabilities
 
 ### 1. Runtime Auth Switching
+
 Users can switch between auth methods **without page reload**:
+
 ```javascript
 // Switch from Bearer → API Key
 bugSpotter.destroy();
@@ -116,7 +134,9 @@ BugSpotter.init({ auth: { type: 'oauth', ... }, endpoint: '...' });
 ```
 
 ### 2. Token Refresh Flow Visualization
+
 The "Test Token Refresh" button shows:
+
 1. Initial request with expired token
 2. 401 Unauthorized detected
 3. `onRefresh()` callback triggered
@@ -125,7 +145,9 @@ The "Test Token Refresh" button shows:
 6. Success confirmation
 
 ### 3. Configuration Inspection
+
 The "Show Current Auth" button reveals:
+
 - Active auth type
 - Current tokens (masked)
 - Headers being sent
@@ -137,22 +159,26 @@ The "Show Current Auth" button reveals:
 The demo teaches developers:
 
 ### For API Key Users
+
 - How to migrate from deprecated API key to modern auth
 - Backward compatibility support
 - Simple header-based authentication
 
 ### For Bearer Token Users
+
 - Modern authentication best practices
 - Automatic token refresh implementation
 - Handling 401 errors gracefully
 - `onRefresh` callback pattern
 
 ### For OAuth Users
+
 - OAuth 2.0 integration
 - Client credentials management
 - OAuth-specific token refresh
 
 ### For Custom Auth Users
+
 - Using `getAuthHeaders()` for custom logic
 - Dynamic header generation
 - Flexible authentication patterns
@@ -160,6 +186,7 @@ The demo teaches developers:
 ## 🚀 Usage Examples
 
 ### Example 1: Switch to Bearer Token
+
 ```javascript
 // User clicks "Use Bearer Token"
 switchToBearerToken();
@@ -174,6 +201,7 @@ switchToBearerToken();
 ```
 
 ### Example 2: Test Token Refresh
+
 ```javascript
 // User clicks "Test Token Refresh"
 testTokenRefresh();
@@ -193,6 +221,7 @@ testTokenRefresh();
 ```
 
 ### Example 3: Switch to OAuth
+
 ```javascript
 // User clicks "Use OAuth"
 switchToOAuth();
@@ -209,42 +238,45 @@ switchToOAuth();
 ## 🔍 Implementation Details
 
 ### SDK Reinitialization Pattern
+
 ```javascript
 function switchAuth(newConfig) {
   // Clean up current instance
   bugSpotter.destroy();
-  
+
   // Create new instance with new auth
   window.bugSpotterInstance = BugSpotter.init(newConfig);
-  
+
   // Update UI
   displayAuthConfig(newConfig.auth);
 }
 ```
 
 ### Token Refresh Simulation
+
 ```javascript
 onRefresh: async (refreshToken) => {
   console.log('🔄 Refreshing access token...');
-  
+
   // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
   // Return new tokens
   return {
     accessToken: 'new-token-' + Date.now(),
     refreshToken: 'new-refresh-' + Date.now(),
-    expiresIn: 3600 // 1 hour
+    expiresIn: 3600, // 1 hour
   };
-}
+};
 ```
 
 ### Configuration Display
+
 ```javascript
 function showAuthConfig() {
   const config = bugSpotter.getConfig();
   const auth = config.auth || { type: 'apiKey' };
-  
+
   // Format and display auth details
   const details = formatAuthDetails(auth);
   displayInOutputPanel(details);
@@ -254,6 +286,7 @@ function showAuthConfig() {
 ## 📚 Documentation Updates
 
 ### README.md Enhancements
+
 - Added "Authentication Flexibility" section
 - Code examples for all 4 auth methods
 - Interactive demo actions list
@@ -261,6 +294,7 @@ function showAuthConfig() {
 - Headers comparison table
 
 ### Comments in Code
+
 - Each auth function has descriptive comments
 - Token refresh flow is documented inline
 - Output panel shows helpful tooltips

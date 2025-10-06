@@ -66,17 +66,14 @@ function dataToString(data: unknown): string {
  * @param config - Optional compression configuration
  * @returns Compressed data as Uint8Array
  */
-export async function compressData(
-  data: unknown,
-  config?: CompressionConfig
-): Promise<Uint8Array> {
+export async function compressData(data: unknown, config?: CompressionConfig): Promise<Uint8Array> {
   try {
     const jsonString = dataToString(data);
     const encoder = getTextEncoder();
     const uint8Data = encoder.encode(jsonString);
-    
+
     const gzipLevel = config?.gzipLevel ?? COMPRESSION_DEFAULTS.GZIP_LEVEL;
-    
+
     // pako.gzip already returns Uint8Array, no need to wrap it
     const compressed = pako.gzip(uint8Data, { level: gzipLevel });
     return compressed;
@@ -112,13 +109,15 @@ export function decompressData(
     const decompressed = pako.ungzip(compressed);
     const decoder = getTextDecoder();
     const jsonString = decoder.decode(decompressed);
-    
+
     return tryParseJSON(jsonString);
   } catch (error) {
     if (config?.verbose !== false) {
       getLogger().error('Decompression failed:', error);
     }
-    throw new Error(`Failed to decompress data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to decompress data: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -212,10 +211,7 @@ function calculateResizedDimensions(
  * @param config - Optional compression configuration
  * @returns Optimized base64 image string
  */
-export async function compressImage(
-  base64: string,
-  config?: CompressionConfig
-): Promise<string> {
+export async function compressImage(base64: string, config?: CompressionConfig): Promise<string> {
   try {
     if (!isBrowserEnvironment()) {
       return base64;
@@ -266,7 +262,9 @@ export async function compressImage(
  * @returns Compression ratio as percentage (0-100)
  */
 export function getCompressionRatio(originalSize: number, compressedSize: number): number {
-  if (originalSize <= 0) return 0;
+  if (originalSize <= 0) {
+    return 0;
+  }
   return Math.round((1 - compressedSize / originalSize) * 100);
 }
 

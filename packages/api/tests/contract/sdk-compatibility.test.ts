@@ -3,11 +3,11 @@
  * These tests verify that the SDK can successfully communicate with the API
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import type { 
-  CreateBugReportRequest, 
+import { describe, it, expect } from 'vitest';
+import type {
+  CreateBugReportRequest,
   CreateBugReportResponse,
-  ApiErrorResponse 
+  ApiErrorResponse,
 } from '@bugspotter/types';
 
 const API_URL = 'http://localhost:4000';
@@ -19,7 +19,8 @@ describe('SDK-API Contract Tests', () => {
         title: 'Test Bug Report',
         description: 'This is a test bug report from the SDK',
         report: {
-          screenshot: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+          screenshot:
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
           console: [
             {
               level: 'error',
@@ -70,8 +71,8 @@ describe('SDK-API Contract Tests', () => {
       expect(response.ok).toBe(true);
       expect(response.status).toBe(201);
 
-      const result = await response.json() as CreateBugReportResponse;
-      
+      const result = (await response.json()) as CreateBugReportResponse;
+
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data.id).toBeDefined();
@@ -88,7 +89,8 @@ describe('SDK-API Contract Tests', () => {
         description: 'Critical issue',
         priority: 'high',
         report: {
-          screenshot: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+          screenshot:
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
           console: [],
           network: [],
           metadata: {
@@ -109,7 +111,7 @@ describe('SDK-API Contract Tests', () => {
       });
 
       expect(response.ok).toBe(true);
-      const result = await response.json() as CreateBugReportResponse;
+      const result = (await response.json()) as CreateBugReportResponse;
       expect(result.success).toBe(true);
       expect(result.data.priority).toBe('high');
     });
@@ -139,7 +141,7 @@ describe('SDK-API Contract Tests', () => {
       });
 
       expect(response.status).toBe(400);
-      const result = await response.json() as ApiErrorResponse;
+      const result = (await response.json()) as ApiErrorResponse;
       expect(result.success).toBe(false);
       expect(result.error).toBe('Validation Error');
     });
@@ -176,7 +178,7 @@ describe('SDK-API Contract Tests', () => {
       });
 
       expect(response.status).toBe(400);
-      const result = await response.json() as ApiErrorResponse;
+      const result = (await response.json()) as ApiErrorResponse;
       expect(result.success).toBe(false);
     });
 
@@ -214,7 +216,7 @@ describe('SDK-API Contract Tests', () => {
       });
 
       expect(response.status).toBe(400);
-      const result = await response.json() as ApiErrorResponse;
+      const result = (await response.json()) as ApiErrorResponse;
       expect(result.success).toBe(false);
     });
 
@@ -237,7 +239,7 @@ describe('SDK-API Contract Tests', () => {
       });
 
       expect(response.status).toBe(400);
-      const result = await response.json() as ApiErrorResponse;
+      const result = (await response.json()) as ApiErrorResponse;
       expect(result.success).toBe(false);
     });
 
@@ -267,15 +269,20 @@ describe('SDK-API Contract Tests', () => {
       });
 
       expect(response.status).toBe(400);
-      const result = await response.json() as ApiErrorResponse;
+      const result = (await response.json()) as ApiErrorResponse;
       expect(result.success).toBe(false);
     });
   });
 
   describe('Type Compatibility', () => {
     it('should handle all console log levels from SDK', async () => {
-      const levels: Array<'log' | 'warn' | 'error' | 'info' | 'debug'> = 
-        ['log', 'warn', 'error', 'info', 'debug'];
+      const levels: Array<'log' | 'warn' | 'error' | 'info' | 'debug'> = [
+        'log',
+        'warn',
+        'error',
+        'info',
+        'debug',
+      ];
 
       for (const level of levels) {
         const payload: CreateBugReportRequest = {
@@ -307,8 +314,12 @@ describe('SDK-API Contract Tests', () => {
     });
 
     it('should handle all priority levels from SDK', async () => {
-      const priorities: Array<'low' | 'medium' | 'high' | 'critical'> = 
-        ['low', 'medium', 'high', 'critical'];
+      const priorities: Array<'low' | 'medium' | 'high' | 'critical'> = [
+        'low',
+        'medium',
+        'high',
+        'critical',
+      ];
 
       for (const priority of priorities) {
         const payload: CreateBugReportRequest = {
@@ -337,7 +348,7 @@ describe('SDK-API Contract Tests', () => {
         });
 
         expect(response.ok).toBe(true);
-        const result = await response.json() as CreateBugReportResponse;
+        const result = (await response.json()) as CreateBugReportResponse;
         expect(result.data.priority).toBe(priority);
       }
     });

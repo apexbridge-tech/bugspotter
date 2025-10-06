@@ -8,9 +8,9 @@ import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
 import { DOMCollector } from './collectors';
 import type { eventWithTime } from '@rrweb/types';
-import { createSanitizer, type Sanitizer, type SanitizeConfig } from './utils/sanitize';
+import { createSanitizer, type Sanitizer } from './utils/sanitize';
 import { getLogger } from './utils/logger';
-import { submitWithAuth, type AuthConfig, type RetryConfig, type TransportOptions } from './core/transport';
+import { submitWithAuth, type AuthConfig, type RetryConfig } from './core/transport';
 import type { OfflineConfig } from './core/offline-queue';
 
 const logger = getLogger();
@@ -28,7 +28,7 @@ export class BugSpotter {
 
   constructor(config: BugSpotterConfig) {
     this.config = config;
-    
+
     // Initialize sanitizer if enabled
     if (config.sanitize?.enabled !== false) {
       this.sanitizer = createSanitizer({
@@ -38,7 +38,7 @@ export class BugSpotter {
         excludeSelectors: config.sanitize?.excludeSelectors,
       });
     }
-    
+
     this.screenshot = new ScreenshotCapture();
     this.console = new ConsoleCapture({ sanitizer: this.sanitizer });
     this.network = new NetworkCapture({ sanitizer: this.sanitizer });
@@ -89,7 +89,7 @@ export class BugSpotter {
     const modal = new BugReportModal({
       onSubmit: async (data) => {
         logger.log('Submitting bug:', { ...data, report });
-        
+
         // Send to endpoint if configured
         if (this.config.endpoint) {
           try {
@@ -126,7 +126,9 @@ export class BugSpotter {
       const compressedSize = compressed.byteLength;
       const ratio = getCompressionRatio(originalSize, compressedSize);
 
-      logger.log(`Payload compression: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`);
+      logger.log(
+        `Payload compression: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${ratio}% reduction)`
+      );
 
       // Use compression if it actually reduces size
       if (compressedSize < originalSize) {
@@ -148,27 +150,26 @@ export class BugSpotter {
     const auth = this.config.auth;
 
     // Submit with authentication, retry logic, and offline queue
-    const response = await submitWithAuth(
-      this.config.endpoint,
-      body,
-      contentHeaders,
-      {
-        auth,
-        retry: this.config.retry,
-        offline: this.config.offline,
-      }
-    );
+    const response = await submitWithAuth(this.config.endpoint, body, contentHeaders, {
+      auth,
+      retry: this.config.retry,
+      offline: this.config.offline,
+    });
 
     logger.warn(`${JSON.stringify(response)}`);
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
+      const errorText = await response.text().catch(() => {
+        return 'Unknown error';
+      });
       throw new Error(
         `Failed to submit bug report: ${response.status} ${response.statusText}. ${errorText}`
       );
     }
 
-    return response.json().catch(() => undefined);
+    return response.json().catch(() => {
+      return undefined;
+    });
   }
 
   getConfig(): Readonly<BugSpotterConfig> {
@@ -188,16 +189,16 @@ export interface BugSpotterConfig {
   endpoint?: string;
   showWidget?: boolean;
   widgetOptions?: FloatingButtonOptions;
-  
+
   /** Authentication configuration */
   auth?: AuthConfig;
-  
+
   /** Retry configuration for failed requests */
   retry?: RetryConfig;
-  
+
   /** Offline queue configuration */
   offline?: OfflineConfig;
-  
+
   replay?: {
     /** Enable session replay recording (default: true) */
     enabled?: boolean;
@@ -214,24 +215,24 @@ export interface BugSpotterConfig {
   sanitize?: {
     /** Enable PII sanitization (default: true) */
     enabled?: boolean;
-    /** 
+    /**
      * PII patterns to detect and mask
      * - Can be a preset name: 'all', 'minimal', 'financial', 'contact', 'gdpr', 'pci', etc.
      * - Or an array of pattern names: ['email', 'phone', 'ip']
      */
-    patterns?: 
-      | 'all' 
-      | 'minimal' 
-      | 'financial' 
-      | 'contact' 
-      | 'identification' 
-      | 'kazakhstan' 
-      | 'gdpr' 
+    patterns?:
+      | 'all'
+      | 'minimal'
+      | 'financial'
+      | 'contact'
+      | 'identification'
+      | 'kazakhstan'
+      | 'gdpr'
       | 'pci'
       | Array<'email' | 'phone' | 'creditcard' | 'ssn' | 'iin' | 'ip' | 'custom'>;
     /** Custom regex patterns for PII detection */
-    customPatterns?: Array<{ 
-      name: string; 
+    customPatterns?: Array<{
+      name: string;
       regex: RegExp;
       description?: string;
       examples?: string[];
@@ -284,7 +285,13 @@ export { CircularBuffer } from './core/buffer';
 export type { CircularBufferConfig } from './core/buffer';
 
 // Export compression utilities
-export { compressData, decompressData, compressImage, estimateSize, getCompressionRatio } from './core/compress';
+export {
+  compressData,
+  decompressData,
+  compressImage,
+  estimateSize,
+  getCompressionRatio,
+} from './core/compress';
 
 // Export transport and authentication
 export { submitWithAuth, getAuthHeaders, clearOfflineQueue } from './core/transport';
@@ -322,10 +329,10 @@ export type { eventWithTime } from '@rrweb/types';
 /**
  * Convenience function to sanitize text with default PII patterns
  * Useful for quick sanitization without creating a Sanitizer instance
- * 
+ *
  * @param text - Text to sanitize
  * @returns Sanitized text with PII redacted
- * 
+ *
  * @example
  * ```typescript
  * const sanitized = sanitize('Email: user@example.com');

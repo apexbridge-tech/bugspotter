@@ -34,7 +34,9 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true, id: 'bug-123' }),
+        json: async () => {
+          return { success: true, id: 'bug-123' };
+        },
       });
 
       const bugSpotter = BugSpotter.init({
@@ -57,11 +59,11 @@ describe('API Submission', () => {
       await (bugSpotter as any).submitBugReport(payload);
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      
+
       // With compression, the request will have different headers
       const call = fetchMock.mock.calls[0][1];
       expect(call.method).toBe('POST');
-      
+
       // Check if compression was used or not
       if (call.headers['Content-Encoding'] === 'gzip') {
         expect(call.headers['Content-Type']).toBe('application/gzip');
@@ -74,7 +76,7 @@ describe('API Submission', () => {
         expect(calledBody).toHaveProperty('description', 'Bug description');
         expect(calledBody).toHaveProperty('report');
       }
-      
+
       // API Key auth uses X-API-Key header, not Authorization
       expect(call.headers['X-API-Key']).toBe('test-api-key');
     });
@@ -83,7 +85,9 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ success: true }),
+        json: async () => {
+          return { success: true };
+        },
       });
 
       const bugSpotter = BugSpotter.init({
@@ -97,7 +101,7 @@ describe('API Submission', () => {
       await (bugSpotter as any).submitBugReport(payload);
 
       const call = fetchMock.mock.calls[0][1];
-      
+
       // Check headers - compression may or may not be used
       if (call.headers['Content-Encoding'] === 'gzip') {
         expect(call.headers['Content-Type']).toBe('application/gzip');
@@ -114,7 +118,9 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 201,
-        json: async () => mockResponse,
+        json: async () => {
+          return mockResponse;
+        },
       });
 
       const bugSpotter = BugSpotter.init({
@@ -173,7 +179,9 @@ describe('API Submission', () => {
         ok: false,
         status: 400,
         statusText: 'Bad Request',
-        text: async () => 'Invalid payload',
+        text: async () => {
+          return 'Invalid payload';
+        },
       });
 
       const bugSpotter = BugSpotter.init({
@@ -194,7 +202,9 @@ describe('API Submission', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        text: async () => 'Server error occurred',
+        text: async () => {
+          return 'Server error occurred';
+        },
       });
 
       const bugSpotter = BugSpotter.init({
@@ -222,9 +232,7 @@ describe('API Submission', () => {
       const report = await bugSpotter.capture();
       const payload = { title: 'Test', description: 'Test', report };
 
-      await expect((bugSpotter as any).submitBugReport(payload)).rejects.toThrow(
-        'Network error'
-      );
+      await expect((bugSpotter as any).submitBugReport(payload)).rejects.toThrow('Network error');
     });
 
     it('should handle error response with no text body', async () => {
@@ -251,12 +259,13 @@ describe('API Submission', () => {
     });
 
     it('should handle timeout errors', async () => {
-      fetchMock.mockImplementationOnce(
-        () =>
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timeout')), 100)
-          )
-      );
+      fetchMock.mockImplementationOnce(() => {
+        return new Promise((_, reject) => {
+          return setTimeout(() => {
+            return reject(new Error('Request timeout'));
+          }, 100);
+        });
+      });
 
       const bugSpotter = BugSpotter.init({
         endpoint: 'https://api.example.com/bugs',
@@ -267,9 +276,7 @@ describe('API Submission', () => {
       const report = await bugSpotter.capture();
       const payload = { title: 'Test', description: 'Test', report };
 
-      await expect((bugSpotter as any).submitBugReport(payload)).rejects.toThrow(
-        'Request timeout'
-      );
+      await expect((bugSpotter as any).submitBugReport(payload)).rejects.toThrow('Request timeout');
     });
   });
 
@@ -278,7 +285,9 @@ describe('API Submission', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({}),
+        json: async () => {
+          return {};
+        },
       });
 
       const bugSpotter = BugSpotter.init({
@@ -301,7 +310,7 @@ describe('API Submission', () => {
 
       const call = fetchMock.mock.calls[0][1];
       let sentPayload;
-      
+
       // Handle both compressed and uncompressed payloads
       if (call.body instanceof Blob) {
         // Compressed payload - skip detailed structure test since we can't easily parse Blob in tests
@@ -351,7 +360,9 @@ describe('API Submission', () => {
         fetchMock.mockResolvedValueOnce({
           ok: true,
           status: 200,
-          json: async () => ({}),
+          json: async () => {
+            return {};
+          },
         });
 
         const bugSpotter = BugSpotter.init({

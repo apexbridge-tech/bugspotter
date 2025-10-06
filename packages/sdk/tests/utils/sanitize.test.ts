@@ -145,9 +145,7 @@ describe('Sanitizer', () => {
       const customSanitizer = createSanitizer({
         enabled: true,
         patterns: ['custom'],
-        customPatterns: [
-          { name: 'api-key', regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi },
-        ],
+        customPatterns: [{ name: 'api-key', regex: /(?:API[-_]?KEY[-_:]?\s*[\w-]{20,})/gi }],
       });
 
       const input = 'API_KEY: abcd1234efgh5678ijkl';
@@ -160,8 +158,8 @@ describe('Sanitizer', () => {
         enabled: true,
         patterns: ['custom'],
         customPatterns: [
-          { name: 'token', regex: /TOKEN[-_:]?\s*[\w\-]{16,}/gi },
-          { name: 'secret', regex: /SECRET[-_:]?\s*[\w\-]{16,}/gi },
+          { name: 'token', regex: /TOKEN[-_:]?\s*[\w-]{16,}/gi },
+          { name: 'secret', regex: /SECRET[-_:]?\s*[\w-]{16,}/gi },
         ],
       });
 
@@ -214,10 +212,7 @@ describe('Sanitizer', () => {
     });
 
     it('should sanitize arrays of objects', () => {
-      const input = [
-        { email: 'user1@test.com' },
-        { email: 'user2@test.com' },
-      ];
+      const input = [{ email: 'user1@test.com' }, { email: 'user2@test.com' }];
 
       const output = sanitizer.sanitize(input) as typeof input;
       expect(output[0].email).toBe('[REDACTED-EMAIL]');
@@ -247,7 +242,7 @@ describe('Sanitizer', () => {
     it('should sanitize console arguments', () => {
       const args = ['User email:', 'admin@test.com', { phone: '+1-555-0000' }];
       const output = sanitizer.sanitizeConsoleArgs(args);
-      
+
       expect(output[0]).toBe('User email:');
       expect(output[1]).toBe('[REDACTED-EMAIL]');
       expect((output[2] as { phone: string }).phone).toContain('[REDACTED-PHONE]');
@@ -256,7 +251,7 @@ describe('Sanitizer', () => {
     it('should handle mixed argument types', () => {
       const args = [123, 'email@test.com', true, null, undefined];
       const output = sanitizer.sanitizeConsoleArgs(args);
-      
+
       expect(output[0]).toBe(123);
       expect(output[1]).toBe('[REDACTED-EMAIL]');
       expect(output[2]).toBe(true);
@@ -284,7 +279,7 @@ describe('Sanitizer', () => {
       const data = {
         url: 'https://api.example.com',
         headers: {
-          'Authorization': 'Bearer token-with-email@test.com',
+          Authorization: 'Bearer token-with-email@test.com',
         },
       };
 
@@ -333,7 +328,7 @@ describe('Sanitizer', () => {
     it('should sanitize text nodes', () => {
       const text = 'Contact: user@test.com or call +1-555-1234';
       const output = sanitizer.sanitizeTextNode(text);
-      
+
       expect(output).toContain('[REDACTED-EMAIL]');
       expect(output).toContain('[REDACTED-PHONE]');
     });
@@ -347,10 +342,10 @@ describe('Sanitizer', () => {
       // Create a mock element
       const div = document.createElement('div');
       div.className = 'public-email';
-      
+
       const text = 'public@test.com';
       const output = excludeSanitizer.sanitizeTextNode(text, div);
-      
+
       expect(output).toBe(text); // Should not sanitize
     });
 
@@ -362,10 +357,10 @@ describe('Sanitizer', () => {
 
       const div = document.createElement('div');
       div.className = 'private-data';
-      
+
       const text = 'private@test.com';
       const output = excludeSanitizer.sanitizeTextNode(text, div);
-      
+
       expect(output).toBe('[REDACTED-EMAIL]');
     });
   });
@@ -379,7 +374,7 @@ describe('Sanitizer', () => {
 
       const input = 'Email: user@test.com Phone: +1-555-1234';
       const output = emailOnlySanitizer.sanitize(input);
-      
+
       expect(output).toContain('[REDACTED-EMAIL]');
       expect(output).toContain('+1-555-1234'); // Phone should not be sanitized
     });
@@ -392,7 +387,7 @@ describe('Sanitizer', () => {
 
       const input = 'Email: user@test.com SSN: 123-45-6789 Phone: +1-555-1234';
       const output = multiSanitizer.sanitize(input);
-      
+
       expect(output).toContain('[REDACTED-EMAIL]');
       expect(output).toContain('[REDACTED-SSN]');
       expect(output).toContain('+1-555-1234'); // Phone should not be sanitized
@@ -402,10 +397,10 @@ describe('Sanitizer', () => {
   describe('Disabled Sanitization', () => {
     it('should not sanitize when disabled', () => {
       const disabledSanitizer = createSanitizer({ enabled: false });
-      
+
       const input = 'Email: user@test.com Phone: +1-555-1234';
       const output = disabledSanitizer.sanitize(input);
-      
+
       expect(output).toBe(input); // No changes
     });
   });
@@ -413,11 +408,13 @@ describe('Sanitizer', () => {
   describe('Performance', () => {
     it('should sanitize large objects efficiently', () => {
       const largeObject = {
-        users: Array.from({ length: 100 }, (_, i) => ({
-          id: i,
-          email: `user${i}@test.com`,
-          phone: `+1-555-${String(i).padStart(4, '0')}`,
-        })),
+        users: Array.from({ length: 100 }, (_, i) => {
+          return {
+            id: i,
+            email: `user${i}@test.com`,
+            phone: `+1-555-${String(i).padStart(4, '0')}`,
+          };
+        }),
       };
 
       const startTime = performance.now();
@@ -425,16 +422,18 @@ describe('Sanitizer', () => {
       const duration = performance.now() - startTime;
 
       expect(duration).toBeLessThan(50); // Should complete in <50ms
-      
+
       const users = (output as typeof largeObject).users;
       expect(users[0].email).toBe('[REDACTED-EMAIL]');
       expect(users[50].email).toBe('[REDACTED-EMAIL]');
     });
 
     it('should sanitize long strings efficiently', () => {
-      const longString = 'Contact info: ' + Array.from({ length: 100 }, (_, i) => 
-        `user${i}@test.com`
-      ).join(', ');
+      const longString =
+        'Contact info: ' +
+        Array.from({ length: 100 }, (_, i) => {
+          return `user${i}@test.com`;
+        }).join(', ');
 
       const startTime = performance.now();
       const output = sanitizer.sanitize(longString);
@@ -483,9 +482,10 @@ describe('Sanitizer', () => {
 
   describe('Multiple PII in Same String', () => {
     it('should sanitize multiple PII types in one string', () => {
-      const input = 'User: email@test.com, SSN: 123-45-6789, Card: 4532-1488-0343-6467, IP: 192.168.1.1';
+      const input =
+        'User: email@test.com, SSN: 123-45-6789, Card: 4532-1488-0343-6467, IP: 192.168.1.1';
       const output = sanitizer.sanitize(input);
-      
+
       expect(output).toContain('[REDACTED-EMAIL]');
       expect(output).toContain('[REDACTED-SSN]');
       expect(output).toContain('[REDACTED-CREDITCARD]');
@@ -495,7 +495,7 @@ describe('Sanitizer', () => {
     it('should preserve context around sanitized data', () => {
       const input = 'Please contact admin@test.com for access';
       const output = sanitizer.sanitize(input);
-      
+
       expect(output).toBe('Please contact [REDACTED-EMAIL] for access');
     });
   });

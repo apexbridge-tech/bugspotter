@@ -151,9 +151,7 @@ describe('BugReportModal', () => {
     it('should not submit with empty title', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       descriptionInput.value = 'Test description';
@@ -188,9 +186,7 @@ describe('BugReportModal', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       titleInput.value = '   ';
@@ -204,9 +200,7 @@ describe('BugReportModal', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       titleInput.value = 'Test title';
@@ -220,9 +214,7 @@ describe('BugReportModal', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       // First submit with empty fields to show errors
@@ -250,9 +242,7 @@ describe('BugReportModal', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       titleInput.value = 'Test Bug Title';
@@ -270,9 +260,7 @@ describe('BugReportModal', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       titleInput.value = '  Test Title  ';
@@ -289,9 +277,7 @@ describe('BugReportModal', () => {
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       titleInput.value = 'Test Title';
@@ -299,7 +285,9 @@ describe('BugReportModal', () => {
       submitButton.click();
 
       // Wait for async submission to complete
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 0);
+      });
 
       expect(document.body.contains(container)).toBe(false);
       expect(onClose).toHaveBeenCalled();
@@ -341,13 +329,11 @@ describe('BugReportModal', () => {
   describe('BugReportData type', () => {
     it('should have correct data structure', () => {
       modal.show('data:image/png;base64,test');
-      
+
       const container = document.body.lastElementChild as HTMLElement;
       const shadow = container.shadowRoot;
       const titleInput = shadow?.querySelector('#title') as HTMLInputElement;
-      const descriptionInput = shadow?.querySelector(
-        '#description'
-      ) as HTMLTextAreaElement;
+      const descriptionInput = shadow?.querySelector('#description') as HTMLTextAreaElement;
       const submitButton = shadow?.querySelector('.submit') as HTMLButtonElement;
 
       titleInput.value = 'Test';

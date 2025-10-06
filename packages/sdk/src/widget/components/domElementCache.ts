@@ -1,6 +1,6 @@
 /**
  * DOMElementCache
- * 
+ *
  * Responsibility: Cache DOM element references to avoid repeated querySelector calls
  * Follows SRP: Only handles element reference management
  * Improves Performance: Single querySelector per element
@@ -50,7 +50,9 @@ export class DOMElementCache {
       descriptionTextarea: this.getRequiredElement('#description', form) as HTMLTextAreaElement,
       descriptionError: this.getRequiredElement('#description-error', form),
       screenshotImg: this.getOptionalElement('#screenshot', modal) as HTMLImageElement | undefined,
-      redactionCanvas: this.getOptionalElement('#redaction-canvas', modal) as HTMLCanvasElement | undefined,
+      redactionCanvas: this.getOptionalElement('#redaction-canvas', modal) as
+        | HTMLCanvasElement
+        | undefined,
       redactButton: this.getOptionalElement('#btn-redact', modal) as HTMLButtonElement | undefined,
       clearButton: this.getOptionalElement('#btn-clear', modal) as HTMLButtonElement | undefined,
       piiSection: this.getRequiredElement('#pii-section', modal),
@@ -91,7 +93,10 @@ export class DOMElementCache {
   /**
    * Get a required element (throws if not found)
    */
-  private getRequiredElement(selector: string, parent?: HTMLElement | Document | ShadowRoot): HTMLElement {
+  private getRequiredElement(
+    selector: string,
+    parent?: HTMLElement | Document | ShadowRoot
+  ): HTMLElement {
     const searchParent = parent || this.container || document;
     const element = searchParent.querySelector(selector) as HTMLElement;
     if (!element) {
@@ -103,7 +108,10 @@ export class DOMElementCache {
   /**
    * Get an optional element (returns undefined if not found)
    */
-  private getOptionalElement(selector: string, parent?: HTMLElement | Document | ShadowRoot): HTMLElement | undefined {
+  private getOptionalElement(
+    selector: string,
+    parent?: HTMLElement | Document | ShadowRoot
+  ): HTMLElement | undefined {
     const searchParent = parent || this.container || document;
     const element = searchParent.querySelector(selector) as HTMLElement;
     return element || undefined;
@@ -119,7 +127,7 @@ export class DOMElementCache {
 
     const element = this.container.querySelector(selector) as HTMLElement;
     if (element) {
-      (this.elements[key] as any) = element;
+      (this.elements[key] as unknown) = element;
     }
   }
 

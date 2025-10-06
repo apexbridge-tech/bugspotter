@@ -30,6 +30,7 @@ const compressed = await compressData(payload);
 ```
 
 **Parameters:**
+
 - `data` - Data to compress (will be JSON stringified if object)
 - `config?` - Optional compression configuration
 
@@ -50,6 +51,7 @@ const original = await decompressData(compressed);
 ```
 
 **Parameters:**
+
 - `data` - Compressed Uint8Array data
 - `config?` - Optional compression configuration
 
@@ -70,12 +72,14 @@ const optimized = await compressImage(screenshot);
 ```
 
 **Parameters:**
+
 - `dataUrl` - Base64 data URL of the image
 - `config?` - Optional image compression settings
 
 **Returns:** `Promise<string>` (optimized data URL)
 
 **Features:**
+
 - Converts to WebP format (80% quality by default)
 - Falls back to JPEG (85% quality) if WebP unsupported
 - Resizes to max 1920x1080 preserving aspect ratio
@@ -119,7 +123,7 @@ console.log(`Reduced by ${ratio}%`); // "Reduced by 80%"
 interface CompressionConfig {
   /** Gzip compression level: 0-9 or -1 for default (6) */
   gzipLevel?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | -1;
-  
+
   /** Image compression settings */
   image?: {
     /** Max width in pixels (default: 1920) */
@@ -133,7 +137,7 @@ interface CompressionConfig {
     /** Compression timeout in ms (default: 3000) */
     timeout?: number;
   };
-  
+
   /** Enable verbose logging (default: true) */
   verbose?: boolean;
 }
@@ -146,12 +150,12 @@ import { compressData, compressImage } from '@bugspotter/sdk';
 
 // Maximum compression (slower, smaller)
 const maxCompressed = await compressData(data, {
-  gzipLevel: 9
+  gzipLevel: 9,
 });
 
 // Fast compression (faster, larger)
 const fastCompressed = await compressData(data, {
-  gzipLevel: 1
+  gzipLevel: 1,
 });
 
 // Custom image settings
@@ -159,8 +163,8 @@ const customImage = await compressImage(dataUrl, {
   image: {
     maxWidth: 1280,
     maxHeight: 720,
-    webpQuality: 0.7
-  }
+    webpQuality: 0.7,
+  },
 });
 ```
 
@@ -171,7 +175,7 @@ The SDK automatically compresses bug report payloads when submitted:
 ```typescript
 BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
-  apiKey: 'your-api-key'
+  apiKey: 'your-api-key',
 });
 
 // Submission automatically compresses the payload
@@ -191,12 +195,12 @@ BugSpotter.init({
 
 Real-world compression results from test suite:
 
-| Data Type | Original Size | Compressed Size | Reduction |
-|-----------|--------------|-----------------|-----------|
-| Bug Report | 7.1 KB | 867 bytes | **88%** |
-| Console Logs | 4.4 KB | 1.1 KB | **76%** |
-| Network Data | 5.6 KB | 1.1 KB | **79%** |
-| Repetitive Data | Large | Small | **70-90%** |
+| Data Type       | Original Size | Compressed Size | Reduction  |
+| --------------- | ------------- | --------------- | ---------- |
+| Bug Report      | 7.1 KB        | 867 bytes       | **88%**    |
+| Console Logs    | 4.4 KB        | 1.1 KB          | **76%**    |
+| Network Data    | 5.6 KB        | 1.1 KB          | **79%**    |
+| Repetitive Data | Large         | Small           | **70-90%** |
 
 ### Bundle Impact
 
@@ -221,12 +225,12 @@ app.post('/bugs', (req, res) => {
   if (req.headers['content-encoding'] === 'gzip') {
     // Decompress the binary payload
     const chunks = [];
-    req.on('data', chunk => chunks.push(chunk));
+    req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
       const buffer = Buffer.concat(chunks);
       const decompressed = gunzipSync(buffer);
       const data = JSON.parse(decompressed.toString('utf-8'));
-      
+
       // Process the bug report
       console.log('Received bug:', data);
       res.json({ success: true });
@@ -260,7 +264,7 @@ def receive_bug():
     else:
         # Handle uncompressed JSON
         data = request.get_json()
-    
+
     print('Received bug:', data)
     return {'success': True}
 ```
@@ -270,12 +274,7 @@ def receive_bug():
 ### Manual Compression
 
 ```typescript
-import { 
-  compressData, 
-  decompressData, 
-  estimateSize, 
-  getCompressionRatio 
-} from '@bugspotter/sdk';
+import { compressData, decompressData, estimateSize, getCompressionRatio } from '@bugspotter/sdk';
 
 // Measure compression effectiveness
 const data = { large: 'object', with: 'many', fields: true };
@@ -303,7 +302,7 @@ describe('Compression', () => {
     const original = { test: 'data', nested: { value: 123 } };
     const compressed = await compressData(original);
     const decompressed = await decompressData(compressed);
-    
+
     expect(decompressed).toEqual(original);
     expect(compressed.byteLength).toBeLessThan(JSON.stringify(original).length);
   });
@@ -324,6 +323,7 @@ try {
 ```
 
 **Built-in safeguards:**
+
 - ✅ Automatic fallback to uncompressed data
 - ✅ Descriptive error messages with context
 - ✅ Optional verbose logging for debugging
@@ -342,6 +342,7 @@ try {
 ### "Compression failed" warnings
 
 The SDK automatically falls back to uncompressed upload. Check:
+
 - Data is JSON-serializable
 - No circular references (should be handled automatically)
 - Sufficient memory available
@@ -349,6 +350,7 @@ The SDK automatically falls back to uncompressed upload. Check:
 ### Large payloads still slow
 
 Even with 80% compression, a 50 MB payload is still 10 MB. Consider:
+
 - Reducing screenshot resolution further
 - Limiting console log count
 - Truncating long network responses
@@ -357,6 +359,7 @@ Even with 80% compression, a 50 MB payload is still 10 MB. Consider:
 ### Backend not decompressing
 
 Verify:
+
 - `Content-Encoding: gzip` header is sent
 - Backend has gzip decompression middleware
 - Binary payload handling is enabled (not just JSON parsing)

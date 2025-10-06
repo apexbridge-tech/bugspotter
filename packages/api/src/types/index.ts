@@ -1,10 +1,10 @@
 /**
  * API Internal Types
- * 
+ *
  * IMPORTANT: This file contains API-internal types that should NOT be used by the SDK.
  * For shared types between SDK and API, use @bugspotter/types package.
  * For database schema types, use ./database.ts
- * 
+ *
  * This file is kept for backward compatibility and will be deprecated.
  * Please import from the appropriate locations:
  * - Public API contracts: @bugspotter/types
@@ -18,7 +18,7 @@ export type {
   NetworkRequest,
   BrowserMetadata,
   CapturedReport,
-  
+
   // API Contract types
   BugPriority,
   BugStatus,

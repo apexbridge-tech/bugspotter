@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { submitWithAuth, clearOfflineQueue, type RetryConfig, type OfflineConfig } from '../../src/core/transport';
+import {
+  submitWithAuth,
+  clearOfflineQueue,
+  type RetryConfig,
+  type OfflineConfig,
+} from '../../src/core/transport';
 
 describe('Retry and Offline Queue', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -9,10 +14,10 @@ describe('Retry and Offline Queue', () => {
     originalFetch = global.fetch;
     fetchMock = vi.fn();
     global.fetch = fetchMock as any;
-    
+
     // Clear offline queue before each test
     clearOfflineQueue();
-    
+
     // Clear localStorage
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
@@ -36,23 +41,25 @@ describe('Retry and Offline Queue', () => {
 
       // First two attempts fail with 502, third succeeds
       fetchMock
-        .mockResolvedValueOnce({ 
-          ok: false, 
-          status: 502, 
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 502,
           statusText: 'Bad Gateway',
-          headers: new Headers()
+          headers: new Headers(),
         })
-        .mockResolvedValueOnce({ 
-          ok: false, 
-          status: 502, 
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 502,
           statusText: 'Bad Gateway',
-          headers: new Headers()
+          headers: new Headers(),
         })
-        .mockResolvedValueOnce({ 
-          ok: true, 
-          status: 200, 
-          json: async () => ({ success: true }),
-          headers: new Headers()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => {
+            return { success: true };
+          },
+          headers: new Headers(),
         });
 
       const response = await submitWithAuth(
@@ -79,7 +86,7 @@ describe('Retry and Offline Queue', () => {
       // Mock response with Retry-After header
       const headers = new Headers();
       headers.set('Retry-After', '1');
-      
+
       fetchMock
         .mockResolvedValueOnce({
           ok: false,
@@ -209,36 +216,40 @@ describe('Retry and Offline Queue', () => {
   });
 
   describe('Offline Queue', () => {
-    it('should queue request on network failure when offline enabled', { timeout: 10000 }, async () => {
-      const offlineConfig: OfflineConfig = {
-        enabled: true,
-        maxQueueSize: 10,
-      };
-      const retryConfig: RetryConfig = {
-        maxRetries: 1,
-        baseDelay: 1,
-        maxDelay: 10,
-        retryOn: [502, 503, 504, 429],
-      };
+    it(
+      'should queue request on network failure when offline enabled',
+      { timeout: 10000 },
+      async () => {
+        const offlineConfig: OfflineConfig = {
+          enabled: true,
+          maxQueueSize: 10,
+        };
+        const retryConfig: RetryConfig = {
+          maxRetries: 1,
+          baseDelay: 1,
+          maxDelay: 10,
+          retryOn: [502, 503, 504, 429],
+        };
 
-      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+        fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
-      await expect(
-        submitWithAuth(
-          'https://api.example.com/bugs',
-          JSON.stringify({ test: 'data' }),
-          { 'Content-Type': 'application/json' },
-          { offline: offlineConfig, retry: retryConfig }
-        )
-      ).rejects.toThrow('Failed to fetch');
+        await expect(
+          submitWithAuth(
+            'https://api.example.com/bugs',
+            JSON.stringify({ test: 'data' }),
+            { 'Content-Type': 'application/json' },
+            { offline: offlineConfig, retry: retryConfig }
+          )
+        ).rejects.toThrow('Failed to fetch');
 
-      // Verify request was queued
-      const queue = JSON.parse(localStorage.getItem('bugspotter_offline_queue') || '[]');
-      expect(queue).toHaveLength(1);
-    });
+        // Verify request was queued
+        const queue = JSON.parse(localStorage.getItem('bugspotter_offline_queue') || '[]');
+        expect(queue).toHaveLength(1);
+      }
+    );
 
     it('should process offline queue on next request', { timeout: 10000 }, async () => {
-      const retryConfig: RetryConfig = {
+      const _retryConfig: RetryConfig = {
         maxRetries: 1,
         baseDelay: 1,
         maxDelay: 10,
@@ -279,7 +290,9 @@ describe('Retry and Offline Queue', () => {
       );
 
       // Give processOfflineQueue time to run (it's async)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 100);
+      });
 
       // Queue should be empty now
       const storedAfter = localStorage.getItem('bugspotter_offline_queue');
@@ -382,7 +395,9 @@ describe('Retry and Offline Queue', () => {
       );
 
       // Give processOfflineQueue time to run
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 200);
+      });
 
       // Expired request should be removed
       const queue = JSON.parse(localStorage.getItem('bugspotter_offline_queue') || '[]');

@@ -182,7 +182,7 @@ export interface WebhookPayload {
   timestamp: string;
 }
 
-export type WebhookEvent = 
+export type WebhookEvent =
   | 'bug.created'
   | 'bug.updated'
   | 'bug.status_changed'
@@ -276,6 +276,7 @@ export interface Pagination {
 // ============================================================================
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: DatabaseUser;

@@ -9,7 +9,7 @@ export interface BrowserMetadata {
   timestamp: number;
 }
 
-export interface MetadataCaptureOptions extends CaptureOptions {}
+export type MetadataCaptureOptions = CaptureOptions;
 
 interface BrowserPattern {
   pattern: string;
@@ -55,13 +55,13 @@ export class MetadataCapture extends BaseCapture<BrowserMetadata, MetadataCaptur
         url: window.location.href,
         timestamp: Date.now(),
       };
-      
+
       // Sanitize sensitive data if sanitizer is enabled
       if (this.sanitizer) {
         metadata.url = this.sanitizer.sanitize(metadata.url) as string;
         metadata.userAgent = this.sanitizer.sanitize(metadata.userAgent) as string;
       }
-      
+
       return metadata;
     } catch (error) {
       this.handleError('capturing metadata', error);

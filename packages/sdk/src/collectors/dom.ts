@@ -33,7 +33,12 @@ export class DOMCollector {
   private buffer: CircularBuffer;
   private stopRecordingFn?: () => void;
   private isRecording = false;
-  private config: DOMCollectorConfig & { duration: number; sampling: Required<DOMCollectorConfig['sampling']>; recordCanvas: boolean; recordCrossOriginIframes: boolean };
+  private config: DOMCollectorConfig & {
+    duration: number;
+    sampling: Required<DOMCollectorConfig['sampling']>;
+    recordCanvas: boolean;
+    recordCrossOriginIframes: boolean;
+  };
   private sanitizer?: Sanitizer;
 
   constructor(config: DOMCollectorConfig = {}) {
@@ -87,9 +92,11 @@ export class DOMCollector {
         recordCanvas: this.config.recordCanvas,
         recordCrossOriginIframes: this.config.recordCrossOriginIframes,
         // PII sanitization for text content
-        maskTextFn: this.sanitizer ? (text: string, element?: HTMLElement) => {
-          return this.sanitizer!.sanitizeTextNode(text, element);
-        } : undefined,
+        maskTextFn: this.sanitizer
+          ? (text: string, element?: HTMLElement) => {
+              return this.sanitizer!.sanitizeTextNode(text, element);
+            }
+          : undefined,
         // Performance optimizations
         slimDOMOptions: {
           script: true, // Don't record script tags

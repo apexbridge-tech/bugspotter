@@ -37,7 +37,9 @@ export class CircularBuffer<T extends eventWithTime = eventWithTime> {
    * Remove events older than the configured duration
    */
   private prune(): void {
-    if (this.events.length === 0) return;
+    if (this.events.length === 0) {
+      return;
+    }
 
     const now = Date.now();
     const cutoffTime = now - this.duration;

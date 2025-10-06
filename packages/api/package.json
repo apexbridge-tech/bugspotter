@@ -13,7 +13,11 @@
     "test:contract": "vitest run tests/contract",
     "test:coverage": "vitest run --coverage"
   },
-  "keywords": ["bugspotter", "api", "bug-tracking"],
+  "keywords": [
+    "bugspotter",
+    "api",
+    "bug-tracking"
+  ],
   "author": "ApexBridge",
   "license": "MIT",
   "packageManager": "pnpm@10.17.1",

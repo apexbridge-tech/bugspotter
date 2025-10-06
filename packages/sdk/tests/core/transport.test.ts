@@ -6,7 +6,7 @@ describe('Transport - Authentication', () => {
     it('should handle backward compatible string API key', () => {
       const headers = getAuthHeaders('my-api-key-123');
       expect(headers).toEqual({
-        'Authorization': 'Bearer my-api-key-123',
+        Authorization: 'Bearer my-api-key-123',
       });
     });
 
@@ -33,7 +33,7 @@ describe('Transport - Authentication', () => {
       };
       const headers = getAuthHeaders(auth);
       expect(headers).toEqual({
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
       });
     });
 
@@ -44,7 +44,7 @@ describe('Transport - Authentication', () => {
       };
       const headers = getAuthHeaders(auth);
       expect(headers).toEqual({
-        'Authorization': 'Bearer bearer-token-abc123',
+        Authorization: 'Bearer bearer-token-abc123',
       });
     });
 
@@ -92,7 +92,7 @@ describe('Transport - Authentication', () => {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
       const auth: AuthConfig = {
@@ -107,17 +107,14 @@ describe('Transport - Authentication', () => {
         auth
       );
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.example.com/bugs',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': 'test-key',
-          },
-          body: JSON.stringify({ test: 'data' }),
-        }
-      );
+      expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/bugs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': 'test-key',
+        },
+        body: JSON.stringify({ test: 'data' }),
+      });
 
       expect(response.status).toBe(200);
     });
@@ -126,7 +123,7 @@ describe('Transport - Authentication', () => {
       const mockResponse = new Response(JSON.stringify({ success: true }), {
         status: 200,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
       const auth: AuthConfig = {
@@ -145,7 +142,7 @@ describe('Transport - Authentication', () => {
         'https://api.example.com/bugs',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer jwt-token-123',
+            Authorization: 'Bearer jwt-token-123',
           }),
         })
       );
@@ -155,7 +152,7 @@ describe('Transport - Authentication', () => {
       const mockResponse = new Response(JSON.stringify({ success: true }), {
         status: 200,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
       const auth: AuthConfig = {
@@ -187,7 +184,7 @@ describe('Transport - Authentication', () => {
       const mockResponse = new Response(JSON.stringify({ success: true }), {
         status: 200,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
       await submitWithAuth(
@@ -201,7 +198,7 @@ describe('Transport - Authentication', () => {
         'https://api.example.com/bugs',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer old-api-key',
+            Authorization: 'Bearer old-api-key',
           }),
         })
       );
@@ -211,11 +208,11 @@ describe('Transport - Authentication', () => {
       const mockExpiredResponse = new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
       });
-      
+
       const mockSuccessResponse = new Response(JSON.stringify({ success: true }), {
         status: 200,
       });
-      
+
       (global.fetch as any)
         .mockResolvedValueOnce(mockExpiredResponse)
         .mockResolvedValueOnce(mockSuccessResponse);
@@ -237,18 +234,18 @@ describe('Transport - Authentication', () => {
 
       // Should have called fetch twice
       expect(global.fetch).toHaveBeenCalledTimes(2);
-      
+
       // First call with old token
       expect((global.fetch as any).mock.calls[0][1].headers).toEqual(
         expect.objectContaining({
-          'Authorization': 'Bearer old-token-123',
+          Authorization: 'Bearer old-token-123',
         })
       );
 
       // Second call with new token
       expect((global.fetch as any).mock.calls[1][1].headers).toEqual(
         expect.objectContaining({
-          'Authorization': 'Bearer new-token-456',
+          Authorization: 'Bearer new-token-456',
         })
       );
 
@@ -263,7 +260,7 @@ describe('Transport - Authentication', () => {
       const mockExpiredResponse = new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockExpiredResponse);
 
       const auth: AuthConfig = {
@@ -281,7 +278,7 @@ describe('Transport - Authentication', () => {
 
       // Should have called fetch only once
       expect(global.fetch).toHaveBeenCalledTimes(1);
-      
+
       // Should return original 401 response
       expect(response.status).toBe(401);
     });
@@ -290,7 +287,7 @@ describe('Transport - Authentication', () => {
       const mockErrorResponse = new Response(JSON.stringify({ error: 'Server Error' }), {
         status: 500,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockErrorResponse);
 
       const onTokenExpired = vi.fn().mockResolvedValue('new-token');
@@ -310,10 +307,10 @@ describe('Transport - Authentication', () => {
 
       // Should have called fetch only once
       expect(global.fetch).toHaveBeenCalledTimes(1);
-      
+
       // Should not call token refresh
       expect(onTokenExpired).not.toHaveBeenCalled();
-      
+
       // Should return original error response
       expect(response.status).toBe(500);
     });
@@ -322,7 +319,7 @@ describe('Transport - Authentication', () => {
       const mockExpiredResponse = new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockExpiredResponse);
 
       const onTokenExpired = vi.fn().mockRejectedValue(new Error('Refresh failed'));
@@ -342,10 +339,10 @@ describe('Transport - Authentication', () => {
 
       // Should have called fetch only once (retry didn't happen due to refresh failure)
       expect(global.fetch).toHaveBeenCalledTimes(1);
-      
+
       // Should have attempted token refresh
       expect(onTokenExpired).toHaveBeenCalledTimes(1);
-      
+
       // Should return original 401 response
       expect(response.status).toBe(401);
     });
@@ -354,7 +351,7 @@ describe('Transport - Authentication', () => {
       const mockResponse = new Response(JSON.stringify({ success: true }), {
         status: 200,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
       const auth: AuthConfig = {
@@ -378,7 +375,7 @@ describe('Transport - Authentication', () => {
           headers: {
             'Content-Type': 'application/gzip',
             'Content-Encoding': 'gzip',
-            'Authorization': 'Bearer token-123',
+            Authorization: 'Bearer token-123',
           },
         })
       );
@@ -388,7 +385,7 @@ describe('Transport - Authentication', () => {
       const mockResponse = new Response(JSON.stringify({ success: true }), {
         status: 200,
       });
-      
+
       (global.fetch as any).mockResolvedValueOnce(mockResponse);
 
       await submitWithAuth(

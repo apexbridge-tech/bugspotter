@@ -3,6 +3,7 @@
 ## Overview
 
 With the extracted pattern configuration, you can now:
+
 - ✅ Use predefined pattern presets
 - ✅ Mix and match individual patterns
 - ✅ Create custom patterns with metadata
@@ -22,8 +23,8 @@ import { BugSpotter, PATTERN_PRESETS } from '@bugspotter/sdk';
 BugSpotter.init({
   sanitize: {
     enabled: true,
-    patterns: 'minimal',  // Only critical PII
-  }
+    patterns: 'minimal', // Only critical PII
+  },
 });
 
 // Available presets:
@@ -42,22 +43,22 @@ BugSpotter.init({
 ```typescript
 // GDPR compliance
 BugSpotter.init({
-  sanitize: { patterns: 'gdpr' }
+  sanitize: { patterns: 'gdpr' },
 });
 
 // PCI DSS compliance
 BugSpotter.init({
-  sanitize: { patterns: 'pci' }
+  sanitize: { patterns: 'pci' },
 });
 
 // Kazakhstan-specific app
 BugSpotter.init({
-  sanitize: { patterns: 'kazakhstan' }
+  sanitize: { patterns: 'kazakhstan' },
 });
 
 // Financial application
 BugSpotter.init({
-  sanitize: { patterns: 'financial' }
+  sanitize: { patterns: 'financial' },
 });
 ```
 
@@ -71,14 +72,14 @@ BugSpotter.init({
   sanitize: {
     enabled: true,
     patterns: ['email', 'phone', 'ip'],
-  }
+  },
 });
 
 // Only sanitize emails
 BugSpotter.init({
   sanitize: {
-    patterns: ['email']
-  }
+    patterns: ['email'],
+  },
 });
 ```
 
@@ -101,10 +102,10 @@ BugSpotter.init({
         regex: /API[-_]KEY:\s*[\w-]{20,}/gi,
         description: 'API keys in format API_KEY: xxx',
         examples: ['API_KEY: abcd1234efgh5678ijkl'],
-        priority: 1,  // High priority
-      }
-    ]
-  }
+        priority: 1, // High priority
+      },
+    ],
+  },
 });
 ```
 
@@ -124,8 +125,8 @@ const sessionTokenPattern = new PatternBuilder()
 BugSpotter.init({
   sanitize: {
     patterns: 'all',
-    customPatterns: [sessionTokenPattern]
-  }
+    customPatterns: [sessionTokenPattern],
+  },
 });
 ```
 
@@ -140,12 +141,12 @@ import { getPattern, DEFAULT_PATTERNS } from '@bugspotter/sdk';
 
 // Get specific pattern
 const emailPattern = getPattern('email');
-console.log(emailPattern.description);  // "Email addresses"
-console.log(emailPattern.examples);     // ["user@example.com", ...]
-console.log(emailPattern.priority);     // 1
+console.log(emailPattern.description); // "Email addresses"
+console.log(emailPattern.examples); // ["user@example.com", ...]
+console.log(emailPattern.priority); // 1
 
 // List all patterns
-Object.values(DEFAULT_PATTERNS).forEach(pattern => {
+Object.values(DEFAULT_PATTERNS).forEach((pattern) => {
   console.log(`${pattern.name}: ${pattern.description}`);
 });
 ```
@@ -182,7 +183,7 @@ import { validatePattern, PatternBuilder } from '@bugspotter/sdk';
 
 const customPattern = new PatternBuilder()
   .name('weak-pattern')
-  .regex(/.*@.*/)  // Missing global flag!
+  .regex(/.*@.*/) // Missing global flag!
   .build();
 
 const validation = validatePattern(customPattern);
@@ -201,10 +202,10 @@ import { validatePattern } from '@bugspotter/sdk';
 // Pattern validation includes performance check
 const pattern = {
   name: 'complex',
-  regex: /(a+)+b/g,  // Potentially slow
+  regex: /(a+)+b/g, // Potentially slow
   description: 'Complex pattern',
   examples: [],
-  priority: 10
+  priority: 10,
 };
 
 const result = validatePattern(pattern);
@@ -218,11 +219,7 @@ const result = validatePattern(pattern);
 ### Combine Multiple Configurations
 
 ```typescript
-import { 
-  createPatternConfig, 
-  mergePatternConfigs,
-  DEFAULT_PATTERNS 
-} from '@bugspotter/sdk';
+import { createPatternConfig, mergePatternConfigs, DEFAULT_PATTERNS } from '@bugspotter/sdk';
 
 // Create base config from preset
 const basePatterns = createPatternConfig('minimal');
@@ -236,15 +233,11 @@ const customPattern = {
   regex: /CUSTOM:\s*\w+/g,
   description: 'Custom data',
   examples: ['CUSTOM: data'],
-  priority: 5
+  priority: 5,
 };
 
 // Merge all together
-const mergedPatterns = mergePatternConfigs(
-  basePatterns,
-  additionalPatterns,
-  [customPattern]
-);
+const mergedPatterns = mergePatternConfigs(basePatterns, additionalPatterns, [customPattern]);
 
 // Use merged config
 // (Note: BugSpotter.init uses preset/array, this is for advanced use)
@@ -261,16 +254,16 @@ import { BugSpotter } from '@bugspotter/sdk';
 
 BugSpotter.init({
   sanitize: {
-    patterns: 'kazakhstan',  // email, phone, iin
+    patterns: 'kazakhstan', // email, phone, iin
     customPatterns: [
       {
         name: 'kz-license',
         regex: /[A-Z]{3}\s*\d{3}\s*[A-Z]{2}/gi,
         description: 'Kazakhstan vehicle license plates',
         examples: ['ABC 123 KZ', 'XYZ456AB'],
-      }
-    ]
-  }
+      },
+    ],
+  },
 });
 ```
 
@@ -279,16 +272,16 @@ BugSpotter.init({
 ```typescript
 BugSpotter.init({
   sanitize: {
-    patterns: 'gdpr',  // email, phone, ip
+    patterns: 'gdpr', // email, phone, ip
     customPatterns: [
       {
         name: 'eu-vat',
         regex: /[A-Z]{2}\d{9,12}/g,
         description: 'EU VAT numbers',
         examples: ['GB123456789', 'DE987654321'],
-      }
-    ]
-  }
+      },
+    ],
+  },
 });
 ```
 
@@ -304,9 +297,9 @@ BugSpotter.init({
         regex: /[A-Z]\d{7}/g,
         description: 'US drivers license',
         examples: ['A1234567'],
-      }
-    ]
-  }
+      },
+    ],
+  },
 });
 ```
 
@@ -332,9 +325,9 @@ const strictEmailPattern = {
 
 BugSpotter.init({
   sanitize: {
-    patterns: ['phone', 'ip'],  // Don't use default email
-    customPatterns: [strictEmailPattern],  // Use custom instead
-  }
+    patterns: ['phone', 'ip'], // Don't use default email
+    customPatterns: [strictEmailPattern], // Use custom instead
+  },
 });
 ```
 
@@ -351,7 +344,7 @@ BugSpotter.init({
         regex: /MRN[-:]?\s*\d{7,10}/gi,
         description: 'Medical Record Numbers',
         examples: ['MRN: 1234567', 'MRN-9876543210'],
-        priority: 1,  // High priority
+        priority: 1, // High priority
       },
       {
         name: 'npi',
@@ -359,9 +352,9 @@ BugSpotter.init({
         description: 'National Provider Identifier',
         examples: ['NPI: 1234567890'],
         priority: 2,
-      }
-    ]
-  }
+      },
+    ],
+  },
 });
 
 // E-commerce application
@@ -380,9 +373,9 @@ BugSpotter.init({
         regex: /PROMO[-:]?\s*[A-Z0-9]{6,12}/gi,
         description: 'Promotional codes',
         examples: ['PROMO: SUMMER2025'],
-      }
-    ]
-  }
+      },
+    ],
+  },
 });
 ```
 
@@ -423,7 +416,7 @@ Patterns are applied in priority order (lower number = higher priority):
 ```typescript
 import { DEFAULT_PATTERNS } from '@bugspotter/sdk';
 
-Object.values(DEFAULT_PATTERNS).forEach(p => {
+Object.values(DEFAULT_PATTERNS).forEach((p) => {
   console.log(`${p.priority}: ${p.name} - ${p.description}`);
 });
 
@@ -437,6 +430,7 @@ Object.values(DEFAULT_PATTERNS).forEach(p => {
 ```
 
 **Why priority matters:**
+
 - Email detected before phone (both contain `@` and digits)
 - Credit cards detected before generic digit patterns
 - Specific patterns checked before general ones
@@ -484,17 +478,21 @@ BugSpotter.init({
 // ✅ Good
 BugSpotter.init({
   sanitize: {
-    patterns: 'all',  // Cover standard cases
-    customPatterns: [/* app-specific */]
-  }
+    patterns: 'all', // Cover standard cases
+    customPatterns: [
+      /* app-specific */
+    ],
+  },
 });
 
 // ❌ Avoid
 BugSpotter.init({
   sanitize: {
-    patterns: [],  // Missing standard patterns
-    customPatterns: [/* only custom */]
-  }
+    patterns: [], // Missing standard patterns
+    customPatterns: [
+      /* only custom */
+    ],
+  },
 });
 ```
 
@@ -504,8 +502,7 @@ BugSpotter.init({
 import { getPatternsByCategory } from '@bugspotter/sdk';
 
 // ✅ Good - get all financial patterns
-const patterns = getPatternsByCategory('financial')
-  .map(p => p.name);
+const patterns = getPatternsByCategory('financial').map((p) => p.name);
 ```
 
 ### 3. **Validate Custom Patterns**
@@ -525,14 +522,14 @@ if (!validation.valid) {
 // ✅ Good - specific patterns get higher priority
 customPatterns: [
   { name: 'specific', regex: /.../, priority: 1 },
-  { name: 'general', regex: /.../, priority: 10 }
-]
+  { name: 'general', regex: /.../, priority: 10 },
+];
 
 // ❌ Avoid - general pattern might match first
 customPatterns: [
   { name: 'general', regex: /.../, priority: 1 },
-  { name: 'specific', regex: /.../, priority: 10 }
-]
+  { name: 'specific', regex: /.../, priority: 10 },
+];
 ```
 
 ---
@@ -540,6 +537,7 @@ customPatterns: [
 ## 🔗 Pattern Configuration Reference
 
 See the following files for more details:
+
 - `sanitize-patterns.ts` - Pattern definitions and utilities
 - `sanitize.refactored.ts` - Sanitizer implementation
 - `PII_SANITIZATION.md` - Complete sanitization guide

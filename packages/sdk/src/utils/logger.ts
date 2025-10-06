@@ -38,7 +38,9 @@ class BugSpotterLogger implements Logger {
   }
 
   private shouldLog(level: LogLevel): boolean {
-    if (!this.enabled) return false;
+    if (!this.enabled) {
+      return false;
+    }
     return LOG_LEVELS[level] >= LOG_LEVELS[this.level];
   }
 
@@ -71,14 +73,20 @@ class BugSpotterLogger implements Logger {
   }
 
   configure(config: LoggerConfig): void {
-    if (config.enabled !== undefined) this.enabled = config.enabled;
-    if (config.level !== undefined) this.level = config.level;
-    if (config.prefix !== undefined) this.prefix = config.prefix;
+    if (config.enabled !== undefined) {
+      this.enabled = config.enabled;
+    }
+    if (config.level !== undefined) {
+      this.level = config.level;
+    }
+    if (config.prefix !== undefined) {
+      this.prefix = config.prefix;
+    }
   }
 }
 
 // Default logger instance
-let defaultLogger = new BugSpotterLogger();
+const defaultLogger = new BugSpotterLogger();
 
 /**
  * Get the default logger instance

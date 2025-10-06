@@ -66,11 +66,13 @@ export interface ApiErrorResponse {
 /**
  * Generic API response wrapper
  */
-export type ApiResponse<T> = {
-  success: true;
-  data: T;
-  timestamp: string;
-} | ApiErrorResponse;
+export type ApiResponse<T> =
+  | {
+      success: true;
+      data: T;
+      timestamp: string;
+    }
+  | ApiErrorResponse;
 
 /**
  * Paginated response

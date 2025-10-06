@@ -5,12 +5,14 @@ Production-ready API server for BugSpotter with Supabase integration.
 ## Quick Start
 
 ### 1. Install Dependencies
+
 ```bash
 cd packages/api
 pnpm install
 ```
 
 ### 2. Configure Environment
+
 ```bash
 # Copy example env file
 cp .env.example .env
@@ -19,6 +21,7 @@ cp .env.example .env
 ```
 
 ### 3. Run Development Server
+
 ```bash
 pnpm dev
 ```
@@ -49,7 +52,22 @@ api/
 - `pnpm dev` - Start development server with hot reload
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
-- `pnpm test` - Run tests (TODO)
+- `pnpm test` - Run all tests (requires API server running on port 4000)
+- `pnpm test:contract` - Run contract tests only
+
+## Testing
+
+The API package includes contract tests that verify SDK-API compatibility. These tests require a running API server:
+
+```bash
+# Terminal 1: Start the API server
+pnpm dev
+
+# Terminal 2: Run tests
+pnpm test
+```
+
+**Note:** Contract tests are skipped in CI/CD pipelines since they require a running server. Run them locally before committing API changes.
 
 ## Environment Variables
 
@@ -75,6 +93,7 @@ CORS_ORIGIN=http://localhost:3000
 ## API Endpoints
 
 ### Health Check
+
 ```
 GET /health
 ```
@@ -82,6 +101,7 @@ GET /health
 Returns server status.
 
 ### Bug Reports (Coming Soon)
+
 ```
 POST /api/bugs
 GET /api/bugs
@@ -107,6 +127,7 @@ GET /api/bugs/:id
 4. Import route in `src/server.ts`
 
 Example:
+
 ```typescript
 // src/routes/bugs.ts
 import { Router } from 'express';
@@ -125,6 +146,7 @@ See `docs/DATABASE_SCHEMA.md` for Supabase table definitions.
 ## Production Deployment
 
 1. Build the project:
+
 ```bash
 pnpm build
 ```
@@ -132,6 +154,7 @@ pnpm build
 2. Set production environment variables
 
 3. Start server:
+
 ```bash
 NODE_ENV=production pnpm start
 ```

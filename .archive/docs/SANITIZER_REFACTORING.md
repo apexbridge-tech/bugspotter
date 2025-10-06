@@ -5,6 +5,7 @@
 The refactored `Sanitizer` class applies **SOLID**, **DRY**, and **KISS** principles to create a more maintainable, testable, and extensible architecture.
 
 **Key Improvements:**
+
 - 🎯 **5 focused classes** instead of 1 monolithic class
 - 📉 **Reduced code duplication** by 40%
 - ✅ **Easier to test** - each class has a single responsibility
@@ -22,13 +23,13 @@ The original `Sanitizer` class had **4 different responsibilities**:
 class Sanitizer {
   // Responsibility 1: Pattern Management
   private initializePatterns() { ... }
-  
+
   // Responsibility 2: String Sanitization
   private sanitizeString(value: string) { ... }
-  
+
   // Responsibility 3: Object Traversal
   public sanitize(value: unknown) { ... }
-  
+
   // Responsibility 4: Domain-Specific Logic
   public sanitizeNetworkData(...) { ... }
   public sanitizeError(...) { ... }
@@ -36,7 +37,8 @@ class Sanitizer {
 }
 ```
 
-**Impact:** 
+**Impact:**
+
 - Hard to test individual pieces
 - Changes to one feature can break others
 - Difficult to understand what the class does
@@ -61,7 +63,7 @@ if (!this.config.enabled) {
 return {
   url: data.url ? this.sanitizeString(data.url) : data.url,
   method: data.method,
-  headers: data.headers ? this.sanitize(data.headers) as Record<string, string> : data.headers,
+  headers: data.headers ? (this.sanitize(data.headers) as Record<string, string>) : data.headers,
   body: data.body ? this.sanitize(data.body) : data.body,
   response: data.response ? this.sanitize(data.response) : data.response,
   status: data.status,
@@ -79,6 +81,7 @@ if (sanitized.stack) {
 ```
 
 **Impact:**
+
 - More code to maintain
 - Bug fixes need to be applied in multiple places
 - Harder to ensure consistency
@@ -142,10 +145,7 @@ The generic `sanitize()` method already handles all these cases!
 class PatternManager {
   private patterns: Map<string, RegExp> = new Map();
 
-  constructor(
-    selectedPatterns: PIIPattern[],
-    customPatterns: CustomPattern[]
-  ) {
+  constructor(selectedPatterns: PIIPattern[], customPatterns: CustomPattern[]) {
     this.initializePatterns(selectedPatterns, customPatterns);
   }
 
@@ -156,6 +156,7 @@ class PatternManager {
 ```
 
 **Benefits:**
+
 - ✅ Easy to test pattern initialization in isolation
 - ✅ Could be extended to support pattern caching
 - ✅ Clear interface - only handles patterns
@@ -181,6 +182,7 @@ class StringSanitizer {
 ```
 
 **Benefits:**
+
 - ✅ Pure function behavior - easy to test
 - ✅ No dependencies on config or state
 - ✅ Could be optimized independently
@@ -198,7 +200,7 @@ class ValueSanitizer {
   sanitize(value: unknown): unknown {
     if (value == null) return value;
     if (typeof value === 'string') return this.stringSanitizer.sanitize(value);
-    if (Array.isArray(value)) return value.map(item => this.sanitize(item));
+    if (Array.isArray(value)) return value.map((item) => this.sanitize(item));
     if (typeof value === 'object') return this.sanitizeObject(value);
     return value;
   }
@@ -206,6 +208,7 @@ class ValueSanitizer {
 ```
 
 **Benefits:**
+
 - ✅ Separation of concerns - traversal vs. sanitization
 - ✅ Easy to add new types (Dates, Sets, Maps)
 - ✅ Dependency injection makes testing simple
@@ -222,7 +225,7 @@ class ElementMatcher {
 
   shouldExclude(element?: Element): boolean {
     if (!element || !this.excludeSelectors.length) return false;
-    return this.excludeSelectors.some(selector => {
+    return this.excludeSelectors.some((selector) => {
       try {
         return element.matches(selector);
       } catch {
@@ -234,6 +237,7 @@ class ElementMatcher {
 ```
 
 **Benefits:**
+
 - ✅ DOM logic isolated from sanitization logic
 - ✅ Easy to mock in tests
 - ✅ Could be extended with performance optimizations
@@ -267,6 +271,7 @@ export class Sanitizer {
 ```
 
 **Benefits:**
+
 - ✅ Clean public API - backward compatible
 - ✅ Each component is independently testable
 - ✅ Easy to swap implementations (Open/Closed Principle)
@@ -306,7 +311,7 @@ if (guarded !== undefined) return guarded;
 // In sanitizeNetworkData
 return {
   url: data.url ? this.sanitizeString(data.url) : data.url,
-  headers: data.headers ? this.sanitize(data.headers) as Record<string, string> : data.headers,
+  headers: data.headers ? (this.sanitize(data.headers) as Record<string, string>) : data.headers,
   body: data.body ? this.sanitize(data.body) : data.body,
   // ... 4 more lines
 };
@@ -361,14 +366,14 @@ public sanitizeNetworkData<T extends Record<string, unknown>>(data: T): T {
 
 ## 📊 Metrics Comparison
 
-| Metric | Original | Refactored | Improvement |
-|--------|----------|------------|-------------|
-| **Classes** | 1 | 5 | Better SRP |
-| **Lines per class** | 260 | ~50 avg | More focused |
-| **Code duplication** | High | Low | 40% reduction |
-| **Cyclomatic complexity** | 18 | 8 avg | 55% reduction |
-| **Testability** | Medium | High | Isolated units |
-| **Extensibility** | Low | High | Open/Closed |
+| Metric                    | Original | Refactored | Improvement    |
+| ------------------------- | -------- | ---------- | -------------- |
+| **Classes**               | 1        | 5          | Better SRP     |
+| **Lines per class**       | 260      | ~50 avg    | More focused   |
+| **Code duplication**      | High     | Low        | 40% reduction  |
+| **Cyclomatic complexity** | 18       | 8 avg      | 55% reduction  |
+| **Testability**           | Medium   | High       | Isolated units |
+| **Extensibility**         | Low      | High       | Open/Closed    |
 
 ---
 
@@ -400,7 +405,7 @@ expect(sanitizer.sanitize('test@test.com')).toBe('[REDACTED-EMAIL]');
 
 // Test value traversal in isolation
 const valueSanitizer = new ValueSanitizer(mockStringSanitizer);
-expect(valueSanitizer.sanitize({nested: 'value'})).toBeDefined();
+expect(valueSanitizer.sanitize({ nested: 'value' })).toBeDefined();
 ```
 
 ---
@@ -431,6 +436,7 @@ expect(valueSanitizer.sanitize({nested: 'value'})).toBeDefined();
 ### **S** - Single Responsibility Principle ✅
 
 Each class has one reason to change:
+
 - `PatternManager` - pattern configuration changes
 - `StringSanitizer` - regex replacement logic changes
 - `ValueSanitizer` - traversal logic changes
@@ -460,7 +466,7 @@ Components are interchangeable:
 // Can swap implementations
 class CachingStringSanitizer extends StringSanitizer {
   private cache = new Map();
-  
+
   sanitize(value: string): string {
     if (this.cache.has(value)) return this.cache.get(value);
     const result = super.sanitize(value);
@@ -508,11 +514,11 @@ class Sanitizer {
 ```typescript
 class CachedPatternManager extends PatternManager {
   private cache = new LRUCache<string, string>(1000);
-  
+
   sanitize(value: string): string {
     const cached = this.cache.get(value);
     if (cached) return cached;
-    
+
     const result = super.sanitize(value);
     this.cache.set(value, result);
     return result;
@@ -549,13 +555,13 @@ interface SanitizationObserver {
 
 class Sanitizer {
   private observers: SanitizationObserver[] = [];
-  
+
   addObserver(observer: SanitizationObserver): void {
     this.observers.push(observer);
   }
-  
+
   private notifyRedaction(pattern: string, value: string): void {
-    this.observers.forEach(o => o.onRedaction(pattern, value));
+    this.observers.forEach((o) => o.onRedaction(pattern, value));
   }
 }
 ```
@@ -571,7 +577,7 @@ class Sanitizer {
 ✅ **Improved Extensibility** - Easy to add new features  
 ✅ **Reduced Complexity** - Simpler code paths  
 ✅ **Less Duplication** - DRY principle applied  
-✅ **SOLID Compliance** - All 5 principles satisfied  
+✅ **SOLID Compliance** - All 5 principles satisfied
 
 ### Recommendation
 

@@ -1,6 +1,6 @@
 /**
  * RedactionCanvas
- * 
+ *
  * Responsibility: Handle canvas drawing and redaction rectangle management
  * Follows SRP: Only handles canvas-based redaction interactions
  */
@@ -34,7 +34,7 @@ export class RedactionCanvas {
 
   constructor(canvas: HTMLCanvasElement, config: RedactionCanvasConfig = {}) {
     this.canvas = canvas;
-    
+
     const context = canvas.getContext('2d');
     if (!context) {
       throw new Error('Failed to get 2D context from canvas');
@@ -62,11 +62,11 @@ export class RedactionCanvas {
       const rect = img.getBoundingClientRect();
       const displayWidth = rect.width || img.width;
       const displayHeight = rect.height || img.height;
-      
+
       // Set canvas internal dimensions to match natural image size for high resolution
       this.canvas.width = img.naturalWidth || img.width;
       this.canvas.height = img.naturalHeight || img.height;
-      
+
       // Set canvas display size to match the rendered image size
       this.canvas.style.width = `${displayWidth}px`;
       this.canvas.style.height = `${displayHeight}px`;
@@ -83,7 +83,9 @@ export class RedactionCanvas {
    * Enable redaction mode
    */
   enableRedactionMode(): void {
-    if (this.isRedactionMode) return;
+    if (this.isRedactionMode) {
+      return;
+    }
 
     this.isRedactionMode = true;
     this.canvas.style.display = 'block';
@@ -101,7 +103,9 @@ export class RedactionCanvas {
    * Disable redaction mode
    */
   disableRedactionMode(): void {
-    if (!this.isRedactionMode) return;
+    if (!this.isRedactionMode) {
+      return;
+    }
 
     this.isRedactionMode = false;
     this.isDrawing = false;
@@ -195,7 +199,9 @@ export class RedactionCanvas {
   // Private event handlers
 
   private onMouseDown(e: MouseEvent): void {
-    if (!this.isRedactionMode) return;
+    if (!this.isRedactionMode) {
+      return;
+    }
 
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
@@ -207,7 +213,9 @@ export class RedactionCanvas {
   }
 
   private onMouseMove(e: MouseEvent): void {
-    if (!this.isDrawing || !this.isRedactionMode) return;
+    if (!this.isDrawing || !this.isRedactionMode) {
+      return;
+    }
 
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
@@ -221,7 +229,9 @@ export class RedactionCanvas {
   }
 
   private onMouseUp(e: MouseEvent): void {
-    if (!this.isDrawing || !this.isRedactionMode) return;
+    if (!this.isDrawing || !this.isRedactionMode) {
+      return;
+    }
 
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
@@ -251,7 +261,7 @@ export class RedactionCanvas {
 
   private redraw(): void {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
+
     for (const rect of this.redactionRects) {
       this.drawRect(rect.x, rect.y, rect.width, rect.height);
     }

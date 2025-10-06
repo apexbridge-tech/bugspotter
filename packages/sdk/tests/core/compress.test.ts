@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   compressData,
   decompressData,
@@ -11,21 +11,21 @@ describe('Compression', () => {
   describe('compressData', () => {
     it('should compress and decompress simple object', async () => {
       const original = { name: 'test', value: 123 };
-      
+
       const compressed = await compressData(original);
       expect(compressed).toBeInstanceOf(Uint8Array);
       expect(compressed.length).toBeGreaterThan(0);
-      
+
       const decompressed = decompressData(compressed);
       expect(decompressed).toEqual(original);
     });
 
     it('should compress and decompress string data', async () => {
       const original = 'This is a test string that should be compressed';
-      
+
       const compressed = await compressData(original);
       expect(compressed).toBeInstanceOf(Uint8Array);
-      
+
       const decompressed = decompressData(compressed);
       expect(decompressed).toBe(original);
     });
@@ -33,11 +33,13 @@ describe('Compression', () => {
     it('should compress large JSON data efficiently', async () => {
       // Create a large object with repetitive data
       const original = {
-        logs: Array.from({ length: 100 }, (_, i) => ({
-          level: 'info',
-          message: `Log message ${i}`,
-          timestamp: Date.now(),
-        })),
+        logs: Array.from({ length: 100 }, (_, i) => {
+          return {
+            level: 'info',
+            message: `Log message ${i}`,
+            timestamp: Date.now(),
+          };
+        }),
         metadata: {
           userAgent: 'Mozilla/5.0...',
           viewport: { width: 1920, height: 1080 },
@@ -50,7 +52,7 @@ describe('Compression', () => {
 
       // Compression should reduce size significantly
       expect(compressedSize).toBeLessThan(originalSize);
-      
+
       // Should achieve at least 50% compression on repetitive data
       const ratio = getCompressionRatio(originalSize, compressedSize);
       expect(ratio).toBeGreaterThan(50);
@@ -91,11 +93,13 @@ describe('Compression', () => {
     });
 
     it('should compress console logs with PII data', async () => {
-      const consoleLogs = Array.from({ length: 50 }, (_, i) => ({
-        level: 'log',
-        message: `User email: user${i}@example.com, Phone: 555-${1000 + i}`,
-        timestamp: Date.now() + i,
-      }));
+      const consoleLogs = Array.from({ length: 50 }, (_, i) => {
+        return {
+          level: 'log',
+          message: `User email: user${i}@example.com, Phone: 555-${1000 + i}`,
+          timestamp: Date.now() + i,
+        };
+      });
 
       const originalSize = estimateSize(consoleLogs);
       const compressed = await compressData(consoleLogs);
@@ -160,7 +164,9 @@ describe('Compression', () => {
 
     it('should estimate larger objects', () => {
       const largeObj = {
-        data: Array.from({ length: 100 }, (_, i) => ({ id: i, value: `item-${i}` })),
+        data: Array.from({ length: 100 }, (_, i) => {
+          return { id: i, value: `item-${i}` };
+        }),
       };
       const size = estimateSize(largeObj);
       expect(size).toBeGreaterThan(1000); // Should be reasonably large
@@ -174,18 +180,22 @@ describe('Compression', () => {
         description: 'This is a detailed description of the bug',
         report: {
           screenshot: 'data:image/png;base64,'.padEnd(1000, 'A'), // Simulated small screenshot
-          console: Array.from({ length: 20 }, (_, i) => ({
-            level: 'log',
-            message: `Console message ${i}`,
-            timestamp: Date.now() + i,
-          })),
-          network: Array.from({ length: 10 }, (_, i) => ({
-            url: `https://api.example.com/endpoint/${i}`,
-            method: 'GET',
-            status: 200,
-            duration: 100 + i,
-            timestamp: Date.now() + i,
-          })),
+          console: Array.from({ length: 20 }, (_, i) => {
+            return {
+              level: 'log',
+              message: `Console message ${i}`,
+              timestamp: Date.now() + i,
+            };
+          }),
+          network: Array.from({ length: 10 }, (_, i) => {
+            return {
+              url: `https://api.example.com/endpoint/${i}`,
+              method: 'GET',
+              status: 200,
+              duration: 100 + i,
+              timestamp: Date.now() + i,
+            };
+          }),
           metadata: {
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             viewport: { width: 1920, height: 1080 },
@@ -194,11 +204,13 @@ describe('Compression', () => {
             url: 'https://example.com/page',
             timestamp: Date.now(),
           },
-          replay: Array.from({ length: 50 }, (_, i) => ({
-            type: 'click',
-            target: `button-${i}`,
-            timestamp: Date.now() + i,
-          })),
+          replay: Array.from({ length: 50 }, (_, i) => {
+            return {
+              type: 'click',
+              target: `button-${i}`,
+              timestamp: Date.now() + i,
+            };
+          }),
         },
       };
 
@@ -207,7 +219,9 @@ describe('Compression', () => {
       const compressedSize = compressed.byteLength;
       const ratio = getCompressionRatio(originalSize, compressedSize);
 
-      console.log(`Bug report: ${originalSize} bytes → ${compressedSize} bytes (${ratio}% reduction)`);
+      console.log(
+        `Bug report: ${originalSize} bytes → ${compressedSize} bytes (${ratio}% reduction)`
+      );
 
       // Should achieve significant compression
       expect(ratio).toBeGreaterThan(40);
@@ -221,11 +235,13 @@ describe('Compression', () => {
     it('should handle payloads with repetitive data well', async () => {
       // Simulate many similar console logs (common in real apps)
       const repetitiveData = {
-        logs: Array.from({ length: 200 }, () => ({
-          level: 'debug',
-          message: 'Rendering component',
-          timestamp: Date.now(),
-        })),
+        logs: Array.from({ length: 200 }, () => {
+          return {
+            level: 'debug',
+            message: 'Rendering component',
+            timestamp: Date.now(),
+          };
+        }),
       };
 
       const originalSize = estimateSize(repetitiveData);
@@ -256,13 +272,15 @@ describe('Compression', () => {
   describe('Error handling', () => {
     it('should handle invalid compressed data gracefully', () => {
       const invalidData = new Uint8Array([1, 2, 3, 4, 5]);
-      expect(() => decompressData(invalidData)).toThrow();
+      expect(() => {
+        return decompressData(invalidData);
+      }).toThrow();
     });
 
     it('should handle circular references by throwing', async () => {
       const circular: any = { name: 'test' };
       circular.self = circular;
-      
+
       // JSON.stringify will throw on circular references
       await expect(compressData(circular)).rejects.toThrow();
     });

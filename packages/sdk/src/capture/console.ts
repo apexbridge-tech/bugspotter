@@ -28,19 +28,25 @@ export class ConsoleCapture extends BaseCapture<LogEntry[], ConsoleCaptureOption
   }
 
   private formatMessage(args: unknown[]): string {
-    if (!args || args.length === 0) return '';
-    
+    if (!args || args.length === 0) {
+      return '';
+    }
+
     // Sanitize args if sanitizer is enabled
     const sanitizedArgs = this.sanitizer ? this.sanitizer.sanitizeConsoleArgs(args) : args;
-    
+
     return sanitizedArgs
       .map((arg) => {
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
+        if (arg === null) {
+          return 'null';
+        }
+        if (arg === undefined) {
+          return 'undefined';
+        }
         if (typeof arg === 'object') {
           try {
             return JSON.stringify(arg);
-          } catch (error) {
+          } catch {
             return `[${arg.constructor?.name || 'Object'}]`;
           }
         }
@@ -58,7 +64,7 @@ export class ConsoleCapture extends BaseCapture<LogEntry[], ConsoleCaptureOption
 
     if (this.captureStackTrace && method === 'error') {
       const stack = this.captureStack();
-      log.stack = this.sanitizer && stack ? this.sanitizer.sanitize(stack) as string : stack;
+      log.stack = this.sanitizer && stack ? (this.sanitizer.sanitize(stack) as string) : stack;
     }
 
     return log;

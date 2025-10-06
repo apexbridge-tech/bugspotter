@@ -1,6 +1,6 @@
 /**
  * TemplateManager
- * 
+ *
  * Responsibility: Generate HTML templates for modal components
  * Follows SRP: Only handles HTML structure generation
  */
@@ -21,7 +21,8 @@ export class TemplateManager {
     this.config = {
       title: config.title || 'Report a Bug',
       titlePlaceholder: config.titlePlaceholder || 'Brief description of the issue',
-      descriptionPlaceholder: config.descriptionPlaceholder || 'Detailed description of what happened...',
+      descriptionPlaceholder:
+        config.descriptionPlaceholder || 'Detailed description of what happened...',
       submitButtonText: config.submitButtonText || 'Submit Bug Report',
       cancelButtonText: config.cancelButtonText || 'Cancel',
       showScreenshot: config.showScreenshot !== false,

@@ -3,13 +3,13 @@
  * Configurable regex patterns for detecting sensitive data (PII + credentials)
  */
 
-export type PIIPatternName = 
+export type PIIPatternName =
   // Personal Identifiable Information
-  | 'email' 
-  | 'phone' 
-  | 'creditcard' 
-  | 'ssn' 
-  | 'iin' 
+  | 'email'
+  | 'phone'
+  | 'creditcard'
+  | 'ssn'
+  | 'iin'
   | 'ip'
   // Credentials and Secrets
   | 'apikey'
@@ -40,11 +40,7 @@ export const DEFAULT_PATTERNS: Record<PIIPatternName, PatternDefinition> = {
     name: 'email',
     regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
     description: 'Email addresses',
-    examples: [
-      'user@example.com',
-      'john.doe+tag@company.co.uk',
-      'test_user@sub.domain.com',
-    ],
+    examples: ['user@example.com', 'john.doe+tag@company.co.uk', 'test_user@sub.domain.com'],
     priority: 1, // Highest priority - most specific
   },
 
@@ -65,10 +61,7 @@ export const DEFAULT_PATTERNS: Record<PIIPatternName, PatternDefinition> = {
     name: 'ssn',
     regex: /\b\d{3}-\d{2}-\d{4}\b|\b(?<!\d)\d{9}(?!\d)\b/g,
     description: 'US Social Security Numbers',
-    examples: [
-      '123-45-6789',
-      '987654321',
-    ],
+    examples: ['123-45-6789', '987654321'],
     priority: 3,
   },
 
@@ -76,29 +69,23 @@ export const DEFAULT_PATTERNS: Record<PIIPatternName, PatternDefinition> = {
     name: 'iin',
     regex: /\b[0-9]{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])\d{6}\b/g,
     description: 'Kazakhstan IIN/BIN (12 digits with date validation)',
-    examples: [
-      '950315300123',
-      '880612500456',
-      '021225123456',
-    ],
+    examples: ['950315300123', '880612500456', '021225123456'],
     priority: 4,
   },
 
   ip: {
     name: 'ip',
-    regex: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b|(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b/g,
+    regex:
+      /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b|(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b/g,
     description: 'IPv4 and IPv6 addresses',
-    examples: [
-      '192.168.1.100',
-      '127.0.0.1',
-      '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-    ],
+    examples: ['192.168.1.100', '127.0.0.1', '2001:0db8:85a3:0000:0000:8a2e:0370:7334'],
     priority: 5,
   },
 
   phone: {
     name: 'phone',
-    regex: /\+\d{1,3}[-.\s]\d{3}[-.\s]\d{4}\b|\+\d{1,3}[-.\s]\d{3}[-.\s]\d{3}[-.\s]\d{4}\b|\(\d{3}\)\s*\d{3}[-.\s]\d{4}\b|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g,
+    regex:
+      /\+\d{1,3}[-.\s]\d{3}[-.\s]\d{4}\b|\+\d{1,3}[-.\s]\d{3}[-.\s]\d{3}[-.\s]\d{4}\b|\(\d{3}\)\s*\d{3}[-.\s]\d{4}\b|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g,
     description: 'International phone numbers',
     examples: [
       '+1-555-1234',
@@ -112,7 +99,8 @@ export const DEFAULT_PATTERNS: Record<PIIPatternName, PatternDefinition> = {
 
   apikey: {
     name: 'apikey',
-    regex: /\b(?:sk|pk)_(?:live|test)_[a-zA-Z0-9]{24,}\b|AIza[a-zA-Z0-9_-]{35}|ya29\.[a-zA-Z0-9_-]+|AKIA[a-zA-Z0-9]{16}\b/g,
+    regex:
+      /\b(?:sk|pk)_(?:live|test)_[a-zA-Z0-9]{24,}\b|AIza[a-zA-Z0-9_-]{35}|ya29\.[a-zA-Z0-9_-]+|AKIA[a-zA-Z0-9]{16}\b/g,
     description: 'API keys (Stripe, Google, AWS, etc.)',
     examples: [
       'sk_live_abc123def456ghi789jkl',
@@ -125,7 +113,8 @@ export const DEFAULT_PATTERNS: Record<PIIPatternName, PatternDefinition> = {
 
   token: {
     name: 'token',
-    regex: /\b(?:Bearer\s+)?[a-zA-Z0-9_-]{32,}\b|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{82}/g,
+    regex:
+      /\b(?:Bearer\s+)?[a-zA-Z0-9_-]{32,}\b|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{82}/g,
     description: 'Authentication tokens (Bearer, GitHub, JWT-like)',
     examples: [
       'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
@@ -137,13 +126,10 @@ export const DEFAULT_PATTERNS: Record<PIIPatternName, PatternDefinition> = {
 
   password: {
     name: 'password',
-    regex: /(?:password|passwd|pwd)[\s:=]+[^\s]{6,}|(?:password|passwd|pwd)["']?\s*[:=]\s*["']?[^\s"']{6,}/gi,
+    regex:
+      /(?:password|passwd|pwd)[\s:=]+[^\s]{6,}|(?:password|passwd|pwd)["']?\s*[:=]\s*["']?[^\s"']{6,}/gi,
     description: 'Password fields in text (password=..., pwd:...)',
-    examples: [
-      'password: MySecret123!',
-      'passwd=SecurePass456',
-      'pwd: "MyP@ssw0rd"',
-    ],
+    examples: ['password: MySecret123!', 'passwd=SecurePass456', 'pwd: "MyP@ssw0rd"'],
     priority: 9,
   },
 };
@@ -163,10 +149,10 @@ export const PATTERN_CATEGORIES = {
 /**
  * Get patterns sorted by priority
  */
-export function getPatternsByPriority(
-  patterns: PatternDefinition[]
-): PatternDefinition[] {
-  return [...patterns].sort((a, b) => a.priority - b.priority);
+export function getPatternsByPriority(patterns: PatternDefinition[]): PatternDefinition[] {
+  return [...patterns].sort((a, b) => {
+    return a.priority - b.priority;
+  });
 }
 
 /**
@@ -182,7 +168,9 @@ export function getPattern(name: PIIPatternName): PatternDefinition {
 export function getPatternsByCategory(
   category: keyof typeof PATTERN_CATEGORIES
 ): PatternDefinition[] {
-  return PATTERN_CATEGORIES[category].map((name) => DEFAULT_PATTERNS[name]);
+  return PATTERN_CATEGORIES[category].map((name) => {
+    return DEFAULT_PATTERNS[name];
+  });
 }
 
 /**
@@ -276,7 +264,15 @@ export const PATTERN_PRESETS = {
   pci: ['creditcard'] as PIIPatternName[],
 
   /** Security-focused: PII + credentials */
-  security: ['email', 'phone', 'creditcard', 'ssn', 'apikey', 'token', 'password'] as PIIPatternName[],
+  security: [
+    'email',
+    'phone',
+    'creditcard',
+    'ssn',
+    'apikey',
+    'token',
+    'password',
+  ] as PIIPatternName[],
 } as const;
 
 /**
@@ -286,7 +282,9 @@ export function createPatternConfig(
   preset: keyof typeof PATTERN_PRESETS | PIIPatternName[]
 ): PatternDefinition[] {
   const names = typeof preset === 'string' ? PATTERN_PRESETS[preset] : preset;
-  return names.map((name) => DEFAULT_PATTERNS[name]);
+  return names.map((name) => {
+    return DEFAULT_PATTERNS[name];
+  });
 }
 
 /**
@@ -317,9 +315,7 @@ export function validatePattern(pattern: PatternDefinition): {
       const duration = Date.now() - start;
 
       if (duration > 100) {
-        errors.push(
-          `Pattern regex may cause performance issues (took ${duration}ms on test)`
-        );
+        errors.push(`Pattern regex may cause performance issues (took ${duration}ms on test)`);
       }
     } catch (error) {
       errors.push(`Pattern regex error: ${(error as Error).message}`);
@@ -339,9 +335,7 @@ export function validatePattern(pattern: PatternDefinition): {
 /**
  * Merge pattern configurations
  */
-export function mergePatternConfigs(
-  ...configs: PatternDefinition[][]
-): PatternDefinition[] {
+export function mergePatternConfigs(...configs: PatternDefinition[][]): PatternDefinition[] {
   const merged = new Map<string, PatternDefinition>();
 
   configs.forEach((config) => {

@@ -95,25 +95,29 @@ const authStrategies: Record<AuthConfig['type'], AuthHeaderStrategy> = {
     const apiKey = (config as Extract<AuthConfig, { type: 'api-key' }>).apiKey;
     return apiKey ? { 'X-API-Key': apiKey } : {};
   },
-  
-  'jwt': (config): Record<string, string> => {
+
+  jwt: (config): Record<string, string> => {
     const token = (config as Extract<AuthConfig, { type: 'jwt' }>).token;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
+    return token ? { Authorization: `Bearer ${token}` } : {};
   },
-  
-  'bearer': (config): Record<string, string> => {
+
+  bearer: (config): Record<string, string> => {
     const token = (config as Extract<AuthConfig, { type: 'bearer' }>).token;
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
+    return token ? { Authorization: `Bearer ${token}` } : {};
   },
-  
-  'custom': (config): Record<string, string> => {
+
+  custom: (config): Record<string, string> => {
     const customHeader = (config as Extract<AuthConfig, { type: 'custom' }>).customHeader;
-    if (!customHeader) return {};
+    if (!customHeader) {
+      return {};
+    }
     const { name, value } = customHeader;
     return name && value ? { [name]: value } : {};
   },
-  
-  'none': (): Record<string, string> => ({}),
+
+  none: (): Record<string, string> => {
+    return {};
+  },
 };
 
 // ============================================================================
@@ -134,35 +138,39 @@ class RetryHandler {
     shouldRetryStatus: (status: number) => boolean
   ): Promise<Response> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
         const response = await operation();
-        
+
         // Check if we should retry based on status code
         if (shouldRetryStatus(response.status) && attempt < this.config.maxRetries) {
           const delay = this.calculateDelay(attempt, response);
-          this.logger.warn(`Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.maxRetries})`);
+          this.logger.warn(
+            `Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.maxRetries})`
+          );
           await sleep(delay);
           continue;
         }
-        
+
         // Success or non-retryable status
         return response;
-        
       } catch (error) {
         lastError = error as Error;
-        
+
         // Retry on network errors
         if (attempt < this.config.maxRetries) {
           const delay = this.calculateDelay(attempt);
-          this.logger.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.maxRetries}):`, error);
+          this.logger.warn(
+            `Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${this.config.maxRetries}):`,
+            error
+          );
           await sleep(delay);
           continue;
         }
       }
     }
-    
+
     // All retries exhausted
     throw lastError || new Error('Request failed after all retry attempts');
   }
@@ -175,19 +183,19 @@ class RetryHandler {
     if (response?.headers?.has?.('Retry-After')) {
       const retryAfter = response.headers.get('Retry-After')!;
       const retryAfterSeconds = parseInt(retryAfter, 10);
-      
+
       if (!isNaN(retryAfterSeconds)) {
         return Math.min(retryAfterSeconds * 1000, this.config.maxDelay);
       }
     }
-    
+
     // Exponential backoff: baseDelay * 2^attempt
     const exponentialDelay = this.config.baseDelay * Math.pow(2, attempt);
-    
+
     // Add jitter: ±10% randomization
     const jitter = exponentialDelay * JITTER_PERCENTAGE * (Math.random() * 2 - 1);
     const delayWithJitter = exponentialDelay + jitter;
-    
+
     // Cap at maxDelay
     return Math.min(delayWithJitter, this.config.maxDelay);
   }
@@ -212,10 +220,11 @@ function isTransportOptions(obj: unknown): obj is TransportOptions {
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
-  
-  const has = (prop: string, ...types: string[]) => 
-    prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop]);
-  
+
+  const has = (prop: string, ...types: string[]) => {
+    return prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop]);
+  };
+
   return (
     has('auth', 'object', 'string') ||
     has('retry', 'object') ||
@@ -228,7 +237,9 @@ function isTransportOptions(obj: unknown): obj is TransportOptions {
 /**
  * Parse transport parameters, supporting both legacy and new API signatures
  */
-function parseTransportParams(authOrOptions?: AuthConfig | string | TransportOptions): ParsedTransportParams {
+function parseTransportParams(
+  authOrOptions?: AuthConfig | string | TransportOptions
+): ParsedTransportParams {
   if (isTransportOptions(authOrOptions)) {
     // Type guard ensures authOrOptions is TransportOptions
     return {
@@ -239,7 +250,7 @@ function parseTransportParams(authOrOptions?: AuthConfig | string | TransportOpt
       offlineConfig: { ...DEFAULT_OFFLINE_CONFIG, ...authOrOptions.offline },
     };
   }
-  
+
   return {
     auth: authOrOptions as AuthConfig | string | undefined,
     logger: getLogger(),
@@ -261,8 +272,10 @@ async function processQueueInBackground(
   retryConfig: Required<RetryConfig>,
   logger: Logger
 ): Promise<void> {
-  if (!offlineConfig.enabled) return;
-  
+  if (!offlineConfig.enabled) {
+    return;
+  }
+
   const queue = new OfflineQueue(offlineConfig, logger);
   queue.process(retryConfig.retryOn).catch((error: unknown) => {
     logger.warn('Failed to process offline queue:', error);
@@ -281,8 +294,10 @@ async function handleOfflineFailure(
   offlineConfig: Required<OfflineConfig>,
   logger: Logger
 ): Promise<void> {
-  if (!offlineConfig.enabled || !isNetworkError(error)) return;
-  
+  if (!offlineConfig.enabled || !isNetworkError(error)) {
+    return;
+  }
+
   logger.warn('Network error detected, queueing request for offline retry');
   const queue = new OfflineQueue(offlineConfig, logger);
   const authHeaders = getAuthHeaders(auth);
@@ -301,14 +316,14 @@ async function handleOfflineFailure(
 export function getAuthHeaders(auth?: AuthConfig | string): Record<string, string> {
   // Backward compatibility: string treated as Bearer token
   if (typeof auth === 'string') {
-    return { 'Authorization': `Bearer ${auth}` };
+    return { Authorization: `Bearer ${auth}` };
   }
-  
+
   // No auth
   if (!auth) {
     return {};
   }
-  
+
   // Apply strategy
   const strategy = authStrategies[auth.type];
   return strategy ? strategy(auth) : {};
@@ -316,9 +331,9 @@ export function getAuthHeaders(auth?: AuthConfig | string): Record<string, strin
 
 /**
  * Submit request with authentication, exponential backoff retry, and offline queue support
- * 
+ *
  * Supports both legacy signature (4 parameters) and new options-based signature.
- * 
+ *
  * @param endpoint - API endpoint URL
  * @param body - Request body (must be serializable for retry)
  * @param contentHeaders - Content-related headers (Content-Type, etc.)
@@ -332,11 +347,12 @@ export async function submitWithAuth(
   authOrOptions?: AuthConfig | string | TransportOptions
 ): Promise<Response> {
   // Parse options (support both old signature and new options-based API)
-  const { auth, logger, enableRetry, retryConfig, offlineConfig } = parseTransportParams(authOrOptions);
-  
+  const { auth, logger, enableRetry, retryConfig, offlineConfig } =
+    parseTransportParams(authOrOptions);
+
   // Process offline queue on each request (run in background without awaiting)
   processQueueInBackground(offlineConfig, retryConfig, logger);
-  
+
   try {
     // Send with retry logic
     const response = await sendWithRetry(
@@ -348,19 +364,11 @@ export async function submitWithAuth(
       logger,
       enableRetry
     );
-    
+
     return response;
   } catch (error) {
     // Queue for offline retry if enabled
-    await handleOfflineFailure(
-      error,
-      endpoint,
-      body,
-      contentHeaders,
-      auth,
-      offlineConfig,
-      logger
-    );
+    await handleOfflineFailure(error, endpoint, body, contentHeaders, auth, offlineConfig, logger);
     throw error;
   }
 }
@@ -393,7 +401,7 @@ async function makeRequest(
 ): Promise<Response> {
   const authHeaders = getAuthHeaders(auth);
   const headers = { ...contentHeaders, ...authHeaders };
-  
+
   return fetch(endpoint, {
     method: 'POST',
     headers,
@@ -415,14 +423,19 @@ async function sendWithRetry(
 ): Promise<Response> {
   const retryHandler = new RetryHandler(retryConfig, logger);
   let hasAttemptedRefresh = false;
-  
+
   // Use retry handler with token refresh support
   return retryHandler.executeWithRetry(
     async () => {
       const response = await makeRequest(endpoint, body, contentHeaders, auth);
-      
+
       // Check for 401 and retry with token refresh if applicable (only once)
-      if (response.status === TOKEN_REFRESH_STATUS && enableTokenRetry && !hasAttemptedRefresh && shouldRetryWithRefresh(auth)) {
+      if (
+        response.status === TOKEN_REFRESH_STATUS &&
+        enableTokenRetry &&
+        !hasAttemptedRefresh &&
+        shouldRetryWithRefresh(auth)
+      ) {
         hasAttemptedRefresh = true;
         const refreshedResponse = await retryWithTokenRefresh(
           endpoint,
@@ -433,10 +446,12 @@ async function sendWithRetry(
         );
         return refreshedResponse;
       }
-      
+
       return response;
     },
-    (status) => retryConfig.retryOn.includes(status)
+    (status) => {
+      return retryConfig.retryOn.includes(status);
+    }
   );
 }
 
@@ -444,7 +459,9 @@ async function sendWithRetry(
  * Sleep for specified milliseconds
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    return setTimeout(resolve, ms);
+  });
 }
 
 /**
@@ -472,10 +489,7 @@ function isNetworkError(error: unknown): boolean {
     error.name === 'NetworkError' ||
     error.name === 'AbortError' ||
     // TypeError only if it mentions fetch or network
-    (error.name === 'TypeError' && (
-      message.includes('fetch') ||
-      message.includes('network')
-    ))
+    (error.name === 'TypeError' && (message.includes('fetch') || message.includes('network')))
   );
 }
 
@@ -491,25 +505,24 @@ async function retryWithTokenRefresh(
 ): Promise<Response> {
   try {
     logger.warn('Token expired, attempting refresh...');
-    
+
     // Get new token
     const newToken = await auth.onTokenExpired!();
-    
+
     // Create updated auth config
     const refreshedAuth: TokenBasedAuth = {
       ...auth,
       token: newToken,
     };
-    
+
     // Retry request
     const response = await makeRequest(endpoint, body, contentHeaders, refreshedAuth);
-    
+
     logger.log('Request retried with refreshed token');
     return response;
-    
   } catch (error) {
     logger.error('Token refresh failed:', error);
-    
+
     // Return original 401 - caller should handle
     return new Response(null, { status: TOKEN_REFRESH_STATUS, statusText: 'Unauthorized' });
   }

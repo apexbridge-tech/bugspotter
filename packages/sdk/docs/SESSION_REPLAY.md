@@ -34,11 +34,11 @@ BugSpotter.init({
   apiKey: 'your-api-key',
   endpoint: 'https://api.bugspotter.com',
   replay: {
-    enabled: true,           // Enable/disable replay (default: true)
-    duration: 30,            // Duration in seconds (default: 15, recommended max: 30)
+    enabled: true, // Enable/disable replay (default: true)
+    duration: 30, // Duration in seconds (default: 15, recommended max: 30)
     sampling: {
-      mousemove: 50,        // Throttle mousemove events to every 50ms (default: 50)
-      scroll: 100,          // Throttle scroll events to every 100ms (default: 100)
+      mousemove: 50, // Throttle mousemove events to every 50ms (default: 50)
+      scroll: 100, // Throttle scroll events to every 100ms (default: 100)
     },
   },
 });
@@ -255,6 +255,7 @@ Session replay works in all modern browsers that support:
 - Proxy API
 
 Tested on:
+
 - Chrome/Edge 90+
 - Firefox 88+
 - Safari 14+
@@ -271,11 +272,11 @@ Tested on:
 
 ```typescript
 interface ReplayConfig {
-  enabled?: boolean;     // Default: true
-  duration?: number;     // Default: 15 seconds
+  enabled?: boolean; // Default: true
+  duration?: number; // Default: 15 seconds
   sampling?: {
     mousemove?: number; // Default: 50ms
-    scroll?: number;    // Default: 100ms
+    scroll?: number; // Default: 100ms
   };
 }
 ```
@@ -341,8 +342,8 @@ BugSpotter.init({
   replay: {
     duration: 15,
     sampling: {
-      mousemove: 200,  // Less frequent mousemove events
-      scroll: 300,     // Less frequent scroll events
+      mousemove: 200, // Less frequent mousemove events
+      scroll: 300, // Less frequent scroll events
     },
   },
 });
