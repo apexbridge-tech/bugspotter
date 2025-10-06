@@ -3,7 +3,6 @@
  */
 
 import { getLogger, type Logger } from '../utils/logger';
-import type { AuthConfig } from './transport';
 
 // ============================================================================
 // STORAGE ADAPTER
@@ -40,8 +39,8 @@ export class LocalStorageAdapter implements StorageAdapter {
       }
       localStorage.setItem(key, value);
     } catch (error) {
-      // Handle quota exceeded or other storage errors
-      // Could emit event or log warning here
+      // Re-throw error so caller can handle QuotaExceededError and other storage errors
+      throw error;
     }
   }
 
@@ -277,6 +276,9 @@ export class OfflineQueue {
 
       return JSON.parse(stored) as QueuedRequest[];
     } catch (error) {
+      // Log corrupted data and clear it to prevent repeated errors
+      this.logger.warn('Failed to parse offline queue data, clearing corrupted queue:', error);
+      this.clear();
       return [];
     }
   }
@@ -285,14 +287,41 @@ export class OfflineQueue {
     try {
       this.storage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
     } catch (error) {
-      // Handle quota exceeded error
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
+      // Handle quota exceeded error (check multiple properties for cross-browser compatibility)
+      if (this.isQuotaExceededError(error)) {
         this.logger.error('localStorage quota exceeded, clearing oldest items');
         this.clearOldestItems(queue);
       } else {
         this.logger.error('Failed to save offline queue:', error);
       }
     }
+  }
+
+  /**
+   * Check if error is a quota exceeded error (cross-browser compatible)
+   */
+  private isQuotaExceededError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    // Check error name (standard)
+    if (error.name === 'QuotaExceededError') {
+      return true;
+    }
+
+    // Check DOMException code (Safari, older browsers)
+    if ('code' in error && error.code === 22) {
+      return true;
+    }
+
+    // Check error message as fallback (Firefox, Chrome variants)
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('quota') ||
+      message.includes('storage') ||
+      message.includes('exceeded')
+    );
   }
 
   /**

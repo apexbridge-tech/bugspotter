@@ -437,19 +437,35 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Check if error is a network error
+ * Check if error is a network error (more specific to avoid false positives)
  */
 function isNetworkError(error: unknown): boolean {
-  if (error instanceof Error) {
-    return (
-      error.message.includes('network') ||
-      error.message.includes('fetch') ||
-      error.message.includes('Failed to fetch') ||
-      error.name === 'NetworkError' ||
-      error.name === 'TypeError'
-    );
+  if (!(error instanceof Error)) {
+    return false;
   }
-  return false;
+
+  const message = error.message.toLowerCase();
+
+  // Check for specific network error patterns
+  return (
+    // Standard fetch network errors
+    message.includes('failed to fetch') ||
+    message.includes('network request failed') ||
+    message.includes('networkerror') ||
+    // Connection issues
+    message.includes('network error') ||
+    message.includes('connection') ||
+    // Timeout errors
+    message.includes('timeout') ||
+    // Standard error names
+    error.name === 'NetworkError' ||
+    error.name === 'AbortError' ||
+    // TypeError only if it mentions fetch or network
+    (error.name === 'TypeError' && (
+      message.includes('fetch') ||
+      message.includes('network')
+    ))
+  );
 }
 
 /**
