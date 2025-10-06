@@ -119,7 +119,7 @@ export class DOMElementCache {
 
     const element = this.container.querySelector(selector) as HTMLElement;
     if (element) {
-      (this.elements[key] as any) = element;
+      (this.elements[key] as unknown) = element;
     }
   }
 

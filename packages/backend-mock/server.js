@@ -29,15 +29,15 @@ try {
   console.log(`📂 Loaded ${db.bugs.length} existing bug reports from database`);
 } catch (err) {
   // File doesn't exist yet, will be created on first write
-  console.log('📂 No existing database found, starting fresh');
+  console.log('📂 No existing database found, starting fresh', err.code || '');
 }
 
 // Save database to file
 async function saveDatabase() {
   try {
     await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2));
-  } catch (err) {
-    console.error('Failed to save database:', err);
+  } catch (_err) {
+    console.error('Failed to save database:', _err);
   }
 }
 
@@ -355,9 +355,9 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
       // Validate URL format
       if (req.url) {
         try {
-          new URL(req.url);
+          new globalThis.URL(req.url);
         } catch (e) {
-          console.log(`✗ Invalid network URL: ${req.url}`);
+          console.log(`✗ Invalid network URL: ${req.url} - ${e.message}`);
           return res.status(400).json({ 
             success: false,
             error: 'Validation Error',
@@ -475,7 +475,6 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   if (report.replay && report.replay.length > 0) {
     console.log('\n🎥 Session Replay Events:');
     const timeSpan = ((report.replay[report.replay.length - 1].timestamp - report.replay[0].timestamp) / 1000).toFixed(2);
-    const eventTypes = [...new Set(report.replay.map(e => {return e.type}))];
     const eventTypeCounts = {};
     report.replay.forEach(e => {
       eventTypeCounts[e.type] = (eventTypeCounts[e.type] || 0) + 1;
@@ -507,7 +506,7 @@ app.post('/api/bugs', authenticateRequest, async (req, res) => {
   // Simulate processing delay (optional)
   const simulateDelay = req.query.delay ? parseInt(req.query.delay) : 0;
   
-  setTimeout(() => {
+  globalThis.setTimeout(() => {
     res.status(201).json({
       success: true,
       data: {
@@ -558,7 +557,7 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Error:', err);
   res.status(500).json({
     error: 'Internal server error',

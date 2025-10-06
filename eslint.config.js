@@ -56,6 +56,9 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.min.js',
       'pnpm-lock.yaml',
+      '**/tests/**',
+      '**/*.test.ts',
+      '**/*.test.js',
     ],
   }
 );

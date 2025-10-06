@@ -115,7 +115,7 @@ export class FormValidator {
   /**
    * Validate single field by name
    */
-  validateField(fieldName: keyof FormData, value: any, formData?: Partial<FormData>): string | null {
+  validateField(fieldName: keyof FormData, value: unknown, formData?: Partial<FormData>): string | null {
     switch (fieldName) {
       case 'title':
         return this.validateTitle(value as string);

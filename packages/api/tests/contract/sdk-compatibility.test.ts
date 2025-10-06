@@ -3,7 +3,7 @@
  * These tests verify that the SDK can successfully communicate with the API
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { 
   CreateBugReportRequest, 
   CreateBugReportResponse,

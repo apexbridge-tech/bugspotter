@@ -2,7 +2,7 @@
  * Contract tests to ensure SDK and API compatibility
  * These tests verify that the SDK can successfully communicate with the API
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 const API_URL = 'http://localhost:4000';
 describe('SDK-API Contract Tests', () => {
     describe('POST /api/bugs', () => {

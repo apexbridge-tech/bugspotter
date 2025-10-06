@@ -24,11 +24,11 @@ router.post(
   '/',
   validateBody(CreateBugReportSchema),
   async (
-    req: Request<{}, CreateBugReportResponse | ApiErrorResponse, CreateBugReportRequest>,
+    req: Request<object, CreateBugReportResponse | ApiErrorResponse, CreateBugReportRequest>,
     res: Response<CreateBugReportResponse | ApiErrorResponse>
   ) => {
     try {
-      const { title, description, report, priority, project_id } = req.body;
+      const { title, description, priority, project_id } = req.body;
 
       // TODO: Save to Supabase database
       // For now, return mock response
