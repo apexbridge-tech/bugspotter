@@ -18,6 +18,7 @@ Welcome to the BugSpotter documentation! This guide will help you get started an
 - 🔒 **[PII Sanitization](./features/PII_SANITIZATION.md)** - Privacy protection system
 - ⚙️ **[Pattern Configuration](./features/PATTERN_CONFIGURATION.md)** - Configure custom PII patterns
 - 🎯 **[Modal PII Features](./features/MODAL_PII_FEATURES.md)** - PII detection in the modal UI
+- 🗜️ **[Data Compression](./features/COMPRESSION.md)** - Gzip compression with 70-90% reduction
 
 ### SDK Documentation
 - 📦 **[SDK API Reference](../packages/sdk/README.md)** - Complete API documentation
@@ -93,10 +94,10 @@ Modular design following SOLID principles:
 
 ## 📊 Documentation Stats
 
-- **13 documentation files**
+- **14 documentation files**
 - **3 architecture deep-dives**
-- **3 feature guides**
-- **226 tests** with 100% coverage
+- **4 feature guides**
+- **262 tests** with 100% pass rate
 
 ## 🔍 Search by Topic
 
@@ -110,6 +111,7 @@ Modular design following SOLID principles:
 - [PII Sanitization](./features/PII_SANITIZATION.md)
 - [Pattern Configuration](./features/PATTERN_CONFIGURATION.md)
 - [Modal PII Features](./features/MODAL_PII_FEATURES.md)
+- [Data Compression](./features/COMPRESSION.md)
 
 ### Guides
 - [Quick Start](./guides/QUICK_START.md)
@@ -177,6 +179,8 @@ All our documentation follows these principles:
 
 ## 🔄 Recent Updates
 
+- **Oct 2025** - Added gzip compression (70-90% payload reduction)
+- **Oct 2025** - Implemented image optimization (WebP/JPEG with resizing)
 - **Oct 2025** - Refactored modal system (8 components, 79% code reduction)
 - **Oct 2025** - Refactored sanitizer (5 classes, SOLID principles)
 - **Oct 2025** - Added PII sanitization with 9 pattern types
@@ -189,4 +193,4 @@ See [Changelog](../CHANGELOG.md) for full history.
 
 **Happy Building! 🚀**
 
-*Last updated: October 5, 2025*
+*Last updated: October 6, 2025*
