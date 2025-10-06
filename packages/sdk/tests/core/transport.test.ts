@@ -74,7 +74,7 @@ describe('Transport - Authentication', () => {
     it('should handle custom header without credentials gracefully', () => {
       const auth: AuthConfig = {
         type: 'custom',
-        // Missing customHeader
+        // Missing customHeader: should return empty headers when customHeader is not provided
       };
       const headers = getAuthHeaders(auth);
       expect(headers).toEqual({});
