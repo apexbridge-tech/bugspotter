@@ -3,7 +3,6 @@ import { ConsoleCapture } from './capture/console';
 import { NetworkCapture } from './capture/network';
 import { MetadataCapture } from './capture/metadata';
 import { compressData, estimateSize, getCompressionRatio } from './core/compress';
-import { submitWithAuth, type AuthConfig } from './core/transport';
 import type { BrowserMetadata } from './capture/metadata';
 import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
@@ -11,6 +10,8 @@ import { DOMCollector } from './collectors';
 import type { eventWithTime } from '@rrweb/types';
 import { createSanitizer, type Sanitizer, type SanitizeConfig } from './utils/sanitize';
 import { getLogger } from './utils/logger';
+import { submitWithAuth, type AuthConfig, type RetryConfig, type TransportOptions } from './core/transport';
+import type { OfflineConfig } from './core/offline-queue';
 
 const logger = getLogger();
 
@@ -146,12 +147,16 @@ export class BugSpotter {
     // Determine auth configuration
     const auth = this.config.auth;
 
-    // Submit with authentication and retry logic
+    // Submit with authentication, retry logic, and offline queue
     const response = await submitWithAuth(
       this.config.endpoint,
       body,
       contentHeaders,
-      auth
+      {
+        auth,
+        retry: this.config.retry,
+        offline: this.config.offline,
+      }
     );
 
     logger.warn(`${JSON.stringify(response)}`);
@@ -186,6 +191,12 @@ export interface BugSpotterConfig {
   
   /** Authentication configuration */
   auth?: AuthConfig;
+  
+  /** Retry configuration for failed requests */
+  retry?: RetryConfig;
+  
+  /** Offline queue configuration */
+  offline?: OfflineConfig;
   
   replay?: {
     /** Enable session replay recording (default: true) */
@@ -276,8 +287,9 @@ export type { CircularBufferConfig } from './core/buffer';
 export { compressData, decompressData, compressImage, estimateSize, getCompressionRatio } from './core/compress';
 
 // Export transport and authentication
-export { submitWithAuth, getAuthHeaders } from './core/transport';
-export type { AuthConfig, TransportOptions } from './core/transport';
+export { submitWithAuth, getAuthHeaders, clearOfflineQueue } from './core/transport';
+export type { AuthConfig, TransportOptions, RetryConfig } from './core/transport';
+export type { OfflineConfig } from './core/offline-queue';
 export type { Logger, LogLevel, LoggerConfig } from './utils/logger';
 export { getLogger, configureLogger, createLogger } from './utils/logger';
 
