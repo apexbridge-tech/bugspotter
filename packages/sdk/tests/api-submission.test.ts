@@ -216,6 +216,7 @@ describe('API Submission', () => {
       const bugSpotter = BugSpotter.init({
         endpoint: 'https://api.example.com/bugs',
         showWidget: false,
+        retry: { maxRetries: 0 }, // Disable retries for this test
       });
 
       const report = await bugSpotter.capture();
@@ -260,6 +261,7 @@ describe('API Submission', () => {
       const bugSpotter = BugSpotter.init({
         endpoint: 'https://api.example.com/bugs',
         showWidget: false,
+        retry: { maxRetries: 0 }, // Disable retries for this test
       });
 
       const report = await bugSpotter.capture();
