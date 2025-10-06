@@ -65,7 +65,7 @@ describe('Transport - Authentication', () => {
     it('should return empty headers if auth type has no credentials', () => {
       const auth: AuthConfig = {
         type: 'jwt',
-        // Missing token
+        // Missing token: should return empty headers when token is not provided for 'jwt' auth type
       };
       const headers = getAuthHeaders(auth);
       expect(headers).toEqual({});
