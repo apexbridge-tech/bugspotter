@@ -209,9 +209,20 @@ interface ParsedTransportParams {
  * Type guard to check if parameter is TransportOptions
  */
 function isTransportOptions(obj: unknown): obj is TransportOptions {
-  return typeof obj === 'object' && obj !== null && 
-    ('auth' in obj || 'retry' in obj || 'offline' in obj || 
-     'logger' in obj || 'enableRetry' in obj);
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+  
+  const has = (prop: string, ...types: string[]) => 
+    prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop]);
+  
+  return (
+    has('auth', 'object', 'string') ||
+    has('retry', 'object') ||
+    has('offline', 'object') ||
+    has('logger', 'object') ||
+    has('enableRetry', 'boolean')
+  );
 }
 
 /**

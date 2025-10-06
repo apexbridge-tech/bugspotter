@@ -99,6 +99,7 @@ export class OfflineQueue {
   private config: Required<OfflineConfig>;
   private logger: Logger;
   private storage: StorageAdapter;
+  private requestCounter: number = 0;
 
   constructor(
     config: OfflineConfig,
@@ -113,53 +114,28 @@ export class OfflineQueue {
   /**
    * Queue a request for offline retry
    */
-  async enqueue(
+  enqueue(
     endpoint: string,
     body: BodyInit,
     headers: Record<string, string>
-  ): Promise<void> {
+  ): void {
     try {
-      // Serialize body
-      let serializedBody: string;
-      if (typeof body === 'string') {
-        serializedBody = body;
-      } else if (body instanceof Blob) {
-        this.logger.warn('Cannot queue Blob for offline retry, skipping');
-        return;
-      } else {
-        serializedBody = JSON.stringify(body);
-      }
-
-      // Validate item size
-      if (!this.validateItemSize(serializedBody)) {
+      const serializedBody = this.serializeBody(body);
+      if (!serializedBody || !this.validateItemSize(serializedBody)) {
         return;
       }
 
-      // Get existing queue
       const queue = this.getQueue();
-
-      // Check queue size limit
+      
+      // Ensure space in queue
       if (queue.length >= this.config.maxQueueSize) {
         this.logger.warn(`Offline queue is full (${this.config.maxQueueSize}), removing oldest request`);
         queue.shift();
       }
 
-      // Create queued request
-      const queuedRequest: QueuedRequest = {
-        id: this.generateRequestId(),
-        endpoint,
-        body: serializedBody,
-        headers,
-        timestamp: Date.now(),
-        attempts: 0,
-      };
-
-      // Add to queue
-      queue.push(queuedRequest);
-
-      // Save to localStorage
+      queue.push(this.createQueuedRequest(endpoint, serializedBody, headers));
       this.saveQueue(queue);
-
+      
       this.logger.log(`Request queued for offline retry (queue size: ${queue.length})`);
     } catch (error) {
       this.logger.error('Failed to queue request for offline retry:', error);
@@ -256,6 +232,40 @@ export class OfflineQueue {
   // ============================================================================
 
   /**
+   * Serialize body to string format
+   */
+  private serializeBody(body: BodyInit): string | null {
+    if (typeof body === 'string') {
+      return body;
+    }
+    
+    if (body instanceof Blob) {
+      this.logger.warn('Cannot queue Blob for offline retry, skipping');
+      return null;
+    }
+    
+    return JSON.stringify(body);
+  }
+
+  /**
+   * Create a queued request object
+   */
+  private createQueuedRequest(
+    endpoint: string,
+    body: string,
+    headers: Record<string, string>
+  ): QueuedRequest {
+    return {
+      id: this.generateRequestId(),
+      endpoint,
+      body,
+      headers,
+      timestamp: Date.now(),
+      attempts: 0,
+    };
+  }
+
+  /**
    * Validate that item size doesn't exceed localStorage limits
    */
   private validateItemSize(body: string): boolean {
@@ -340,7 +350,21 @@ export class OfflineQueue {
   }
 
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // Increment counter for additional entropy
+    this.requestCounter = (this.requestCounter + 1) % 10000;
+    
+    // Use crypto.getRandomValues for better randomness (browser-safe fallback)
+    let randomPart: string;
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const array = new Uint32Array(2);
+      crypto.getRandomValues(array);
+      randomPart = Array.from(array, (num) => num.toString(36)).join('');
+    } else {
+      // Fallback to Math.random for environments without crypto
+      randomPart = Math.random().toString(36).substring(2, 9) + Math.random().toString(36).substring(2, 9);
+    }
+    
+    return `req_${Date.now()}_${this.requestCounter}_${randomPart}`;
   }
 }
 
