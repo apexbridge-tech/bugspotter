@@ -203,11 +203,3 @@ async function retryWithTokenRefresh(
     return new Response(null, { status: 401, statusText: 'Unauthorized' });
   }
 }
-
-/**
- * Legacy function for backward compatibility
- * @deprecated Use submitWithAuth instead
- */
-export function getAuthHeader(apiKey?: string): Record<string, string> {
-  return getAuthHeaders(apiKey);
-}

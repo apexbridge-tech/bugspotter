@@ -55,13 +55,3 @@ export type {
   TimeRange,
   Pagination,
 } from './database.js';
-
-/**
- * @deprecated Import from @bugspotter/types instead
- */
-export interface UpdateBugReportInput {
-  title?: string;
-  description?: string;
-  status?: 'open' | 'in-progress' | 'resolved' | 'closed';
-  priority?: 'low' | 'medium' | 'high' | 'critical';
-}

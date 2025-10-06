@@ -143,8 +143,8 @@ export class BugSpotter {
       body = JSON.stringify(payload);
     }
 
-    // Determine auth configuration (backward compatible)
-    const auth = this.config.auth || this.config.apiKey;
+    // Determine auth configuration
+    const auth = this.config.auth;
 
     // Submit with authentication and retry logic
     const response = await submitWithAuth(
@@ -180,8 +180,6 @@ export class BugSpotter {
 }
 
 export interface BugSpotterConfig {
-  /** @deprecated Use auth.apiKey instead */
-  apiKey?: string;
   endpoint?: string;
   showWidget?: boolean;
   widgetOptions?: FloatingButtonOptions;
