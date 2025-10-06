@@ -80,9 +80,13 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run tests for all packages in the workspace
-          # This uses the workspace: protocol defined in pnpm-workspace.yaml
-          pnpm --recursive --filter "./packages/**" run test
+          # Run SDK tests (full test suite)
+          pnpm --filter @bugspotter/sdk run test
+          
+          # Skip API contract tests in CI (they require running server)
+          # API contract tests should be run locally or in integration test environment
+          echo "⏭️  Skipping API contract tests (require running server)"
+
 
   build:
     name: Build
@@ -163,10 +167,11 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          # Run tests with coverage for testable packages
-          # Note: backend-mock doesn't have tests, types is just type definitions
-          pnpm --filter "@bugspotter/sdk" run test -- --coverage || true
-          pnpm --filter "@bugspotter/api" run test -- --coverage || true
+          # Run SDK tests with coverage
+          pnpm --filter "@bugspotter/sdk" run test -- --coverage
+          
+          # Skip API tests in CI (contract tests require running server)
+          echo "⏭️  Skipping API tests in CI environment"
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4

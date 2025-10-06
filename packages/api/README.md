@@ -52,7 +52,22 @@ api/
 - `pnpm dev` - Start development server with hot reload
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
-- `pnpm test` - Run tests (TODO)
+- `pnpm test` - Run all tests (requires API server running on port 4000)
+- `pnpm test:contract` - Run contract tests only
+
+## Testing
+
+The API package includes contract tests that verify SDK-API compatibility. These tests require a running API server:
+
+```bash
+# Terminal 1: Start the API server
+pnpm dev
+
+# Terminal 2: Run tests
+pnpm test
+```
+
+**Note:** Contract tests are skipped in CI/CD pipelines since they require a running server. Run them locally before committing API changes.
 
 ## Environment Variables
 
