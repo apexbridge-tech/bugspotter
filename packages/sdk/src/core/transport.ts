@@ -323,8 +323,8 @@ export async function submitWithAuth(
   // Parse options (support both old signature and new options-based API)
   const { auth, logger, enableRetry, retryConfig, offlineConfig } = parseTransportParams(authOrOptions);
   
-  // Process offline queue on each request (don't await - run in background)
-  await processQueueInBackground(offlineConfig, retryConfig, logger);
+  // Process offline queue on each request (run in background without awaiting)
+  processQueueInBackground(offlineConfig, retryConfig, logger);
   
   try {
     // Send with retry logic
