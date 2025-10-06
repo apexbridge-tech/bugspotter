@@ -146,7 +146,7 @@ describe('Sanitizer', () => {
         enabled: true,
         patterns: ['custom'],
         customPatterns: [
-          { name: 'api-key', regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi },
+          { name: 'api-key', regex: /(?:API[-_]?KEY[-_:]?\s*[\w-]{20,})/gi },
         ],
       });
 
@@ -160,8 +160,8 @@ describe('Sanitizer', () => {
         enabled: true,
         patterns: ['custom'],
         customPatterns: [
-          { name: 'token', regex: /TOKEN[-_:]?\s*[\w\-]{16,}/gi },
-          { name: 'secret', regex: /SECRET[-_:]?\s*[\w\-]{16,}/gi },
+          { name: 'token', regex: /TOKEN[-_:]?\s*[\w-]{16,}/gi },
+          { name: 'secret', regex: /SECRET[-_:]?\s*[\w-]{16,}/gi },
         ],
       });
 

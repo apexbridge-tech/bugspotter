@@ -150,6 +150,7 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
   private interceptXHR() {
     const originalOpen = this.originalXHR.open;
     const originalSend = this.originalXHR.send;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const captureInstance = this;
 
     XMLHttpRequest.prototype.open = function (

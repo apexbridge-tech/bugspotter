@@ -8,9 +8,9 @@ import { FloatingButton, type FloatingButtonOptions } from './widget/button';
 import { BugReportModal } from './widget/modal';
 import { DOMCollector } from './collectors';
 import type { eventWithTime } from '@rrweb/types';
-import { createSanitizer, type Sanitizer, type SanitizeConfig } from './utils/sanitize';
+import { createSanitizer, type Sanitizer } from './utils/sanitize';
 import { getLogger } from './utils/logger';
-import { submitWithAuth, type AuthConfig, type RetryConfig, type TransportOptions } from './core/transport';
+import { submitWithAuth, type AuthConfig, type RetryConfig } from './core/transport';
 import type { OfflineConfig } from './core/offline-queue';
 
 const logger = getLogger();

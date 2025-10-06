@@ -5,11 +5,9 @@
 
 import {
   PIIPatternName,
-  PatternDefinition,
   DEFAULT_PATTERNS,
   getPatternsByPriority,
   PATTERN_PRESETS,
-  createPatternConfig,
 } from './sanitize-patterns';
 
 export type PIIPattern = PIIPatternName | 'custom';

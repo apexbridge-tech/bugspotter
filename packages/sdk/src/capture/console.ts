@@ -40,7 +40,7 @@ export class ConsoleCapture extends BaseCapture<LogEntry[], ConsoleCaptureOption
         if (typeof arg === 'object') {
           try {
             return JSON.stringify(arg);
-          } catch (error) {
+          } catch {
             return `[${arg.constructor?.name || 'Object'}]`;
           }
         }

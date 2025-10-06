@@ -9,7 +9,7 @@ export interface BrowserMetadata {
   timestamp: number;
 }
 
-export interface MetadataCaptureOptions extends CaptureOptions {}
+export type MetadataCaptureOptions = CaptureOptions;
 
 interface BrowserPattern {
   pattern: string;

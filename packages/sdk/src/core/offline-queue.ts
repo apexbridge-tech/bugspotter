@@ -210,7 +210,7 @@ export class OfflineQueue {
   clear(): void {
     try {
       this.storage.removeItem(QUEUE_STORAGE_KEY);
-    } catch (_error) {
+    } catch {
       // Ignore storage errors
     }
   }
@@ -337,7 +337,7 @@ export class OfflineQueue {
       const trimmedQueue = queue.slice(Math.floor(queue.length / 2));
       this.storage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(trimmedQueue));
       this.logger.log(`Trimmed offline queue to ${trimmedQueue.length} items due to quota`);
-    } catch (_error) {
+    } catch {
       // If still failing, clear everything
       this.logger.error('Failed to save even after trimming, clearing queue');
       this.clear();

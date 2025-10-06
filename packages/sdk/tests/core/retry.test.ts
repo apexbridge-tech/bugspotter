@@ -238,7 +238,7 @@ describe('Retry and Offline Queue', () => {
     });
 
     it('should process offline queue on next request', { timeout: 10000 }, async () => {
-      const retryConfig: RetryConfig = {
+      const _retryConfig: RetryConfig = {
         maxRetries: 1,
         baseDelay: 1,
         maxDelay: 10,
