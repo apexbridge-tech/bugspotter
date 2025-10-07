@@ -1,0 +1,482 @@
+{
+  "type": "full-snapshot",
+  "timestamp": 1696608000000,
+  "data": {
+    "node": {
+      "type": 0,
+      "childNodes": [
+        {
+          "type": 1,
+          "name": "html",
+          "publicId": "",
+          "systemId": "",
+          "id": 2
+        },
+        {
+          "type": 2,
+          "tagName": "html",
+          "attributes": {
+            "lang": "en"
+          },
+          "childNodes": [
+            {
+              "type": 2,
+              "tagName": "head",
+              "attributes": {},
+              "childNodes": [
+                {
+                  "type": 2,
+                  "tagName": "meta",
+                  "attributes": {
+                    "charset": "UTF-8"
+                  },
+                  "childNodes": [],
+                  "id": 5
+                },
+                {
+                  "type": 2,
+                  "tagName": "meta",
+                  "attributes": {
+                    "name": "viewport",
+                    "content": "width=device-width, initial-scale=1.0"
+                  },
+                  "childNodes": [],
+                  "id": 6
+                },
+                {
+                  "type": 2,
+                  "tagName": "title",
+                  "attributes": {},
+                  "childNodes": [
+                    {
+                      "type": 3,
+                      "textContent": "Large DOM Test Page - E-Commerce Dashboard",
+                      "id": 8
+                    }
+                  ],
+                  "id": 7
+                }
+              ],
+              "id": 4
+            },
+            {
+              "type": 2,
+              "tagName": "body",
+              "attributes": {
+                "class": "dashboard-page",
+                "data-user-id": "user-12345"
+              },
+              "childNodes": [
+                {
+                  "type": 2,
+                  "tagName": "header",
+                  "attributes": {
+                    "class": "site-header"
+                  },
+                  "childNodes": [
+                    {
+                      "type": 2,
+                      "tagName": "nav",
+                      "attributes": {
+                        "class": "main-nav"
+                      },
+                      "childNodes": [
+                        {
+                          "type": 2,
+                          "tagName": "div",
+                          "attributes": {
+                            "class": "user-info"
+                          },
+                          "childNodes": [
+                            {
+                              "type": 3,
+                              "textContent": "Welcome, john.doe@example.com",
+                              "id": 13
+                            }
+                          ],
+                          "id": 12
+                        }
+                      ],
+                      "id": 11
+                    }
+                  ],
+                  "id": 10
+                },
+                {
+                  "type": 2,
+                  "tagName": "main",
+                  "attributes": {
+                    "class": "content"
+                  },
+                  "childNodes": [
+                    {
+                      "type": 2,
+                      "tagName": "section",
+                      "attributes": {
+                        "class": "payment-section"
+                      },
+                      "childNodes": [
+                        {
+                          "type": 2,
+                          "tagName": "h2",
+                          "attributes": {},
+                          "childNodes": [
+                            {
+                              "type": 3,
+                              "textContent": "Payment Information",
+                              "id": 17
+                            }
+                          ],
+                          "id": 16
+                        },
+                        {
+                          "type": 2,
+                          "tagName": "form",
+                          "attributes": {
+                            "class": "payment-form",
+                            "data-sensitive": "true"
+                          },
+                          "childNodes": [
+                            {
+                              "type": 2,
+                              "tagName": "input",
+                              "attributes": {
+                                "type": "text",
+                                "name": "cardNumber",
+                                "value": "4532-1234-5678-9010",
+                                "placeholder": "Card Number"
+                              },
+                              "childNodes": [],
+                              "id": 19
+                            },
+                            {
+                              "type": 2,
+                              "tagName": "input",
+                              "attributes": {
+                                "type": "text",
+                                "name": "cvv",
+                                "value": "123",
+                                "placeholder": "CVV"
+                              },
+                              "childNodes": [],
+                              "id": 20
+                            },
+                            {
+                              "type": 2,
+                              "tagName": "input",
+                              "attributes": {
+                                "type": "text",
+                                "name": "ssn",
+                                "value": "123-45-6789",
+                                "placeholder": "SSN"
+                              },
+                              "childNodes": [],
+                              "id": 21
+                            }
+                          ],
+                          "id": 18
+                        }
+                      ],
+                      "id": 15
+                    },
+                    {
+                      "type": 2,
+                      "tagName": "section",
+                      "attributes": {
+                        "class": "data-table"
+                      },
+                      "childNodes": [
+                        {
+                          "type": 2,
+                          "tagName": "h2",
+                          "attributes": {},
+                          "childNodes": [
+                            {
+                              "type": 3,
+                              "textContent": "Customer Records",
+                              "id": 24
+                            }
+                          ],
+                          "id": 23
+                        },
+                        {
+                          "type": 2,
+                          "tagName": "table",
+                          "attributes": {
+                            "class": "customer-table"
+                          },
+                          "childNodes": [
+                            {
+                              "type": 2,
+                              "tagName": "thead",
+                              "attributes": {},
+                              "childNodes": [
+                                {
+                                  "type": 2,
+                                  "tagName": "tr",
+                                  "attributes": {},
+                                  "childNodes": [
+                                    {
+                                      "type": 2,
+                                      "tagName": "th",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "ID",
+                                          "id": 29
+                                        }
+                                      ],
+                                      "id": 28
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "th",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "Email",
+                                          "id": 31
+                                        }
+                                      ],
+                                      "id": 30
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "th",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "Phone",
+                                          "id": 33
+                                        }
+                                      ],
+                                      "id": 32
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "th",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "IP Address",
+                                          "id": 35
+                                        }
+                                      ],
+                                      "id": 34
+                                    }
+                                  ],
+                                  "id": 27
+                                }
+                              ],
+                              "id": 26
+                            },
+                            {
+                              "type": 2,
+                              "tagName": "tbody",
+                              "attributes": {},
+                              "childNodes": [
+                                {
+                                  "type": 2,
+                                  "tagName": "tr",
+                                  "attributes": {},
+                                  "childNodes": [
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "1",
+                                          "id": 39
+                                        }
+                                      ],
+                                      "id": 38
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "alice.smith@company.com",
+                                          "id": 41
+                                        }
+                                      ],
+                                      "id": 40
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "+1-555-123-4567",
+                                          "id": 43
+                                        }
+                                      ],
+                                      "id": 42
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "192.168.1.100",
+                                          "id": 45
+                                        }
+                                      ],
+                                      "id": 44
+                                    }
+                                  ],
+                                  "id": 37
+                                },
+                                {
+                                  "type": 2,
+                                  "tagName": "tr",
+                                  "attributes": {},
+                                  "childNodes": [
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "2",
+                                          "id": 48
+                                        }
+                                      ],
+                                      "id": 47
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "bob.jones@example.org",
+                                          "id": 50
+                                        }
+                                      ],
+                                      "id": 49
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "+44-20-7123-4567",
+                                          "id": 52
+                                        }
+                                      ],
+                                      "id": 51
+                                    },
+                                    {
+                                      "type": 2,
+                                      "tagName": "td",
+                                      "attributes": {},
+                                      "childNodes": [
+                                        {
+                                          "type": 3,
+                                          "textContent": "10.0.0.42",
+                                          "id": 54
+                                        }
+                                      ],
+                                      "id": 53
+                                    }
+                                  ],
+                                  "id": 46
+                                }
+                              ],
+                              "id": 36
+                            }
+                          ],
+                          "id": 25
+                        }
+                      ],
+                      "id": 22
+                    },
+                    {
+                      "type": 2,
+                      "tagName": "section",
+                      "attributes": {
+                        "class": "large-content"
+                      },
+                      "childNodes": [
+                        {
+                          "type": 2,
+                          "tagName": "h2",
+                          "attributes": {},
+                          "childNodes": [
+                            {
+                              "type": 3,
+                              "textContent": "Product Catalog (1000+ items)",
+                              "id": 57
+                            }
+                          ],
+                          "id": 56
+                        },
+                        {
+                          "type": 2,
+                          "tagName": "div",
+                          "attributes": {
+                            "class": "product-grid"
+                          },
+                          "childNodes": []
+                        }
+                      ],
+                      "id": 55
+                    }
+                  ],
+                  "id": 14
+                },
+                {
+                  "type": 2,
+                  "tagName": "footer",
+                  "attributes": {
+                    "class": "site-footer"
+                  },
+                  "childNodes": [
+                    {
+                      "type": 2,
+                      "tagName": "p",
+                      "attributes": {},
+                      "childNodes": [
+                        {
+                          "type": 3,
+                          "textContent": "© 2025 Test Company. Contact: support@testcompany.com",
+                          "id": 61
+                        }
+                      ],
+                      "id": 60
+                    }
+                  ],
+                  "id": 59
+                }
+              ],
+              "id": 9
+            }
+          ],
+          "id": 3
+        }
+      ],
+      "id": 1
+    },
+    "initialOffset": {
+      "left": 0,
+      "top": 0
+    }
+  }
+}

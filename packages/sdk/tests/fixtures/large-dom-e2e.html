@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Large DOM Test Fixture - BugSpotter E2E</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .section {
+        padding: 20px;
+        margin: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .nested-container {
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        margin: 10px 0;
+      }
+      .data-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .pii-data {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+      }
+      th {
+        background-color: #667eea;
+        color: white;
+      }
+      .shadow-host {
+        margin: 20px 0;
+        padding: 20px;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header class="section">
+        <h1>BugSpotter E2E Test Page - Large DOM</h1>
+        <p>This page contains over 1MB of DOM content for testing compression and performance.</p>
+        <div class="pii-data">
+          <p>Test User: john.doe@example.com</p>
+          <p>Phone: +1-555-123-4567</p>
+          <p>SSN: 123-45-6789</p>
+          <p>Credit Card: 4532-1234-5678-9010</p>
+          <p>IP Address: 192.168.1.100</p>
+        </div>
+      </header>
+
+      <!-- Generate 50 sections with nested content -->
+      <div class="section">
+        <h2>User Database Records</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Credit Card</th>
+              <th>SSN</th>
+              <th>Address</th>
+            </tr>
+          </thead>
+          <tbody id="user-table">
+            <!-- Will be populated by script -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Deeply nested structure -->
+      <div class="section">
+        <h2>Nested Components</h2>
+        <div class="nested-container" data-level="1">
+          <div class="nested-container" data-level="2">
+            <div class="nested-container" data-level="3">
+              <div class="nested-container" data-level="4">
+                <div class="nested-container" data-level="5">
+                  <p>Deep nested content with PII: alice.smith@company.com</p>
+                  <p>Auth Token: Bearer test_key_fake_abcdef1234567890</p>
+                  <div class="nested-container" data-level="6">
+                    <div class="nested-container" data-level="7">
+                      <div class="nested-container" data-level="8">
+                        <div class="nested-container" data-level="9">
+                          <div class="nested-container" data-level="10">
+                            <p>Very deep content - Level 10</p>
+                            <p>Secret: API_KEY_123456789ABCDEF</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Large data section -->
+      <div class="section">
+        <h2>Large JSON Data Representation</h2>
+        <div id="json-data"></div>
+      </div>
+
+      <!-- Shadow DOM test -->
+      <div class="section">
+        <h2>Shadow DOM Components</h2>
+        <div id="shadow-host-1" class="shadow-host"></div>
+        <div id="shadow-host-2" class="shadow-host"></div>
+        <div id="shadow-host-3" class="shadow-host"></div>
+      </div>
+
+      <!-- Forms with PII -->
+      <div class="section">
+        <h2>User Registration Forms</h2>
+        <div id="forms-container"></div>
+      </div>
+
+      <!-- Comments section with PII -->
+      <div class="section">
+        <h2>User Comments</h2>
+        <div id="comments-container"></div>
+      </div>
+
+      <!-- Large text content -->
+      <div class="section">
+        <h2>Privacy Policy & Terms (Large Text)</h2>
+        <div id="large-text"></div>
+      </div>
+    </div>
+
+    <script>
+      // Generate 1000+ user records
+      const userTable = document.getElementById('user-table');
+      const firstNames = [
+        'John',
+        'Jane',
+        'Bob',
+        'Alice',
+        'Charlie',
+        'Diana',
+        'Eve',
+        'Frank',
+        'Grace',
+        'Henry',
+      ];
+      const lastNames = [
+        'Smith',
+        'Johnson',
+        'Williams',
+        'Brown',
+        'Jones',
+        'Garcia',
+        'Miller',
+        'Davis',
+        'Rodriguez',
+        'Martinez',
+      ];
+      const domains = ['example.com', 'test.org', 'demo.net', 'sample.io', 'company.com'];
+
+      for (let i = 0; i < 1000; i++) {
+        const firstName = firstNames[i % firstNames.length];
+        const lastName = lastNames[Math.floor(i / firstNames.length) % lastNames.length];
+        const domain = domains[i % domains.length];
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${firstName} ${lastName}</td>
+        <td>${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@${domain}</td>
+        <td>+1-555-${String(i).padStart(3, '0')}-${String((i * 7) % 10000).padStart(4, '0')}</td>
+        <td>4532-${String(i).padStart(4, '0')}-${String(i * 3).padStart(4, '0')}-${String(i * 7).padStart(4, '0')}</td>
+        <td>${String(i).padStart(3, '0')}-${String((i * 2) % 100).padStart(2, '0')}-${String((i * 3) % 10000).padStart(4, '0')}</td>
+        <td>${i * 100} Main St, City ${i % 50}, State ${i % 50}, ${10000 + i}</td>
+      `;
+        userTable.appendChild(tr);
+      }
+
+      // Generate large JSON data display
+      const jsonData = document.getElementById('json-data');
+      const largeObject = {
+        users: [],
+        transactions: [],
+        logs: [],
+      };
+
+      for (let i = 0; i < 500; i++) {
+        largeObject.users.push({
+          id: i,
+          email: `user${i}@example.com`,
+          phone: `+1-555-${String(i).padStart(7, '0')}`,
+          creditCard: `4532${String(i).padStart(12, '0')}`,
+          createdAt: new Date(2024, 0, 1 + i).toISOString(),
+          metadata: {
+            ip: `192.168.${Math.floor(i / 256)}.${i % 256}`,
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            lastLogin: new Date(2024, 9, 1 + (i % 30)).toISOString(),
+          },
+        });
+      }
+
+      jsonData.innerHTML = `<pre>${JSON.stringify(largeObject, null, 2).slice(0, 50000)}</pre>`;
+
+      // Create Shadow DOM components
+      for (let i = 1; i <= 3; i++) {
+        const host = document.getElementById(`shadow-host-${i}`);
+        const shadow = host.attachShadow({ mode: 'open' });
+        shadow.innerHTML = `
+        <style>
+          .shadow-content { padding: 15px; background: #e3f2fd; border-radius: 4px; }
+          .pii { color: #c62828; font-weight: bold; }
+        </style>
+        <div class="shadow-content">
+          <h3>Shadow Component ${i}</h3>
+          <p class="pii">Email in shadow: shadow-user${i}@example.com</p>
+          <p class="pii">API Key: sk_live_shadow_${i}_${'x'.repeat(20)}</p>
+          <p>Regular content without PII</p>
+        </div>
+      `;
+      }
+
+      // Generate forms
+      const formsContainer = document.getElementById('forms-container');
+      for (let i = 0; i < 50; i++) {
+        const form = document.createElement('form');
+        form.innerHTML = `
+        <h3>Form ${i + 1}</h3>
+        <input type="email" name="email" placeholder="Email" value="test${i}@example.com">
+        <input type="tel" name="phone" placeholder="Phone" value="+1-555-${String(i).padStart(7, '0')}">
+        <input type="text" name="ssn" placeholder="SSN" value="${String(i).padStart(3, '0')}-${String(i).padStart(2, '0')}-${String(i).padStart(4, '0')}">
+        <input type="text" name="card" placeholder="Credit Card" value="4532${String(i).padStart(12, '0')}">
+        <textarea name="notes">User notes for ${i}: Contains email admin${i}@company.com and phone +1-555-999-${String(i).padStart(4, '0')}</textarea>
+      `;
+        formsContainer.appendChild(form);
+      }
+
+      // Generate comments
+      const commentsContainer = document.getElementById('comments-container');
+      const commentTexts = [
+        'Great service! Contact me at support@example.com',
+        'My phone number is +1-555-000-1234, please call',
+        'Payment issue with card 4532-1111-2222-3333',
+        'My SSN 987-65-4321 was compromised',
+        'IP address 10.0.0.42 is blocked',
+        'Token expired: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+        'API key sk_test_123456789 needs renewal',
+      ];
+
+      for (let i = 0; i < 200; i++) {
+        const comment = document.createElement('div');
+        comment.className = 'data-row';
+        comment.innerHTML = `
+        <div>
+          <strong>User ${i}</strong> (${firstNames[i % firstNames.length].toLowerCase()}${i}@example.com)
+          <br>
+          <small>Posted from IP: 192.168.${Math.floor(i / 256)}.${i % 256}</small>
+        </div>
+        <div>${commentTexts[i % commentTexts.length]}</div>
+      `;
+        commentsContainer.appendChild(comment);
+      }
+
+      // Generate large text
+      const largeText = document.getElementById('large-text');
+      const paragraph =
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. Contact us at privacy@company.com or call +1-555-PRIVACY. ';
+      largeText.innerHTML = '<p>' + paragraph.repeat(500) + '</p>';
+
+      console.log('Large DOM generated successfully');
+      console.log(
+        'Total DOM size estimate: ' +
+          (document.body.innerHTML.length / 1024 / 1024).toFixed(2) +
+          ' MB'
+      );
+    </script>
+  </body>
+</html>
