@@ -4,7 +4,7 @@
 
 A lightweight mock API server for testing BugSpotter SDK integration during development. This is **not** intended for production use.
 
-For production deployment, use the production-ready API server at `/packages/api` with Supabase integration.
+For production deployment, you'll need to implement your own backend API with proper database integration.
 
 ## Features
 

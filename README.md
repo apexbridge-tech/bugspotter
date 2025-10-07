@@ -112,8 +112,7 @@ bugspotter/
 ├── packages/
 │ ├── sdk/ # @bugspotter/sdk - Core SDK + Session Replay
 │ ├── types/ # @bugspotter/types - Shared TypeScript types
-│ ├── backend-mock/ # @bugspotter/backend-mock - Mock API server
-│ └── api/ # @bugspotter/api - Production API (Supabase)
+│ └── backend-mock/ # @bugspotter/backend-mock - Mock API server
 ├── apps/
 │ └── demo/ # Interactive demo application
 ├── docs/ # Documentation
@@ -138,7 +137,7 @@ pnpm run lint # Lint all packages
 # Run commands for specific package
 
 pnpm --filter @bugspotter/sdk run build
-pnpm --filter @bugspotter/api run test
+pnpm --filter @bugspotter/sdk run test
 
 # Run commands for all packages in a directory
 
