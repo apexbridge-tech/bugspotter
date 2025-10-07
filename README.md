@@ -55,7 +55,7 @@ npx browser-sync start --config bs-config.json
     endpoint: 'https://your-api.com/api/bugs',
     showWidget: true,
     replay: { enabled: true, duration: 30 },
-    sanitize: { enabled: true, patterns: ['email', 'phone'] }
+    sanitize: { enabled: true, patterns: ['email', 'phone'] },
   });
 </script>
 ```
@@ -180,15 +180,18 @@ const report = await bugSpotter.capture();
 ## 🧪 Testing
 
 \`\`\`bash
+
 # Run all tests
+
 cd packages/sdk
-pnpm test              # Unit tests (348 tests)
-pnpm run test:e2e      # E2E tests (55 tests)
-pnpm run test:browser  # Playwright tests (13 tests)
+pnpm test # Unit tests (348 tests)
+pnpm run test:e2e # E2E tests (55 tests)
+pnpm run test:browser # Playwright tests (13 tests)
 
 # Development
-pnpm test --watch      # Watch mode
-pnpm test --ui         # Visual UI
+
+pnpm test --watch # Watch mode
+pnpm test --ui # Visual UI
 \`\`\`
 
 ## 🏗️ Tech Stack

@@ -129,10 +129,13 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
     });
 
     // Wait for console logs to be captured by the SDK
-    await page.waitForFunction(() => {
-      // @ts-expect-error - BugSpotter is injected
-      return window.bugspotterInstance?.console?.getLogs()?.length >= 3;
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        // @ts-expect-error - BugSpotter is injected
+        return window.bugspotterInstance?.console?.getLogs()?.length >= 3;
+      },
+      { timeout: 5000 }
+    );
 
     const consoleLogs = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -172,10 +175,13 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
     });
 
     // Wait for network request to be captured by the SDK
-    await page.waitForFunction(() => {
-      // @ts-expect-error - BugSpotter is injected
-      return window.bugspotterInstance?.network?.getRequests()?.length > 0;
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        // @ts-expect-error - BugSpotter is injected
+        return window.bugspotterInstance?.network?.getRequests()?.length > 0;
+      },
+      { timeout: 5000 }
+    );
 
     const networkRequests = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -257,10 +263,13 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
     });
 
     // Wait for console logs to be captured and sanitized
-    await page.waitForFunction(() => {
-      // @ts-expect-error - BugSpotter is injected
-      return window.bugspotterInstance?.console?.getLogs()?.length >= 3;
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        // @ts-expect-error - BugSpotter is injected
+        return window.bugspotterInstance?.console?.getLogs()?.length >= 3;
+      },
+      { timeout: 5000 }
+    );
 
     const consoleLogs = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -309,10 +318,13 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
     });
 
     // Wait for replay events to be recorded
-    await page.waitForFunction(() => {
-      // @ts-expect-error - BugSpotter is injected
-      return window.bugspotterInstance?.domCollector?.getEvents()?.length > 0;
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        // @ts-expect-error - BugSpotter is injected
+        return window.bugspotterInstance?.domCollector?.getEvents()?.length > 0;
+      },
+      { timeout: 5000 }
+    );
 
     const report = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -408,10 +420,13 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
     });
 
     // Wait for logs to be captured before measuring capture performance
-    await page.waitForFunction(() => {
-      // @ts-expect-error - BugSpotter is injected
-      return window.bugspotterInstance?.console?.getLogs()?.length >= 2;
-    }, { timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        // @ts-expect-error - BugSpotter is injected
+        return window.bugspotterInstance?.console?.getLogs()?.length >= 2;
+      },
+      { timeout: 5000 }
+    );
 
     // Measure capture performance
     const captureStart = Date.now();

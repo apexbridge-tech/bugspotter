@@ -501,5 +501,4 @@ describe('E2E Performance Benchmarks', () => {
       console.log(`  - Average per capture: ${averageTime.toFixed(2)}ms`);
     });
   });
-
 });
