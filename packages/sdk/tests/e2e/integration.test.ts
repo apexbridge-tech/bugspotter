@@ -571,8 +571,6 @@ describe('E2E Integration Tests', () => {
 
   describe('Retry and Offline Queue', () => {
     it('should retry failed requests with exponential backoff', async () => {
-      const startTime = Date.now();
-
       // Fail 2 times, then succeed
       fetchMock
         .mockResolvedValueOnce({
@@ -613,14 +611,16 @@ describe('E2E Integration Tests', () => {
       const report = await bugspotter.capture();
       const payload = { title: 'Test', description: 'Test', report };
 
+      // Capture time just before the request
+      const startTime = Date.now();
       await (bugspotter as any).submitBugReport(payload);
-
       const elapsed = Date.now() - startTime;
 
-      // Should have made 3 requests
+      // Should have made 3 requests (2 failures + 1 success)
       expect(fetchMock).toHaveBeenCalledTimes(3);
 
-      // Should have taken at least baseDelay time (exponential backoff)
+      // Should have taken at least baseDelay time for retries (exponential backoff)
+      // With 2 retries at 100ms base delay, should take at least 100ms total
       expect(elapsed).toBeGreaterThanOrEqual(100);
     });
 

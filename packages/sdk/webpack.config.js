@@ -8,6 +8,7 @@ module.exports = {
     library: {
       name: 'BugSpotter',
       type: 'umd',
+      export: 'BugSpotter', // Export the BugSpotter class directly as the global
     },
     globalObject: 'this',
   },

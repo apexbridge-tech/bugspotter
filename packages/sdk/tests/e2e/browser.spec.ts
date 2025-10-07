@@ -16,20 +16,12 @@ const LARGE_DOM_FIXTURE = path.join(__dirname, '../fixtures/large-dom-e2e.html')
 async function injectSDK(page: Page, config: Record<string, unknown> = {}) {
   // In a real scenario, you'd load the built SDK file
   // For now, we'll inject minimal SDK setup
-  let sdkLoaded = false;
-  await page
-    .addScriptTag({
+  try {
+    await page.addScriptTag({
       path: path.join(__dirname, '../../dist/bugspotter.min.js'),
-    })
-    .then(() => {
-      sdkLoaded = true;
-    })
-    .catch(() => {
-      // If dist doesn't exist, this is a critical error
-      sdkLoaded = false;
     });
-
-  if (!sdkLoaded) {
+  } catch (error) {
+    // If dist doesn't exist, this is a critical error
     throw new Error(
       'BugSpotter SDK bundle not found at dist/bugspotter.min.js. ' +
         'Please build the SDK first by running: pnpm build'
@@ -42,7 +34,7 @@ async function injectSDK(page: Page, config: Record<string, unknown> = {}) {
       return false;
     }
     // @ts-expect-error - Playwright types not fully compatible with test setup
-    window.bugspotterInstance = BugSpotter.BugSpotter.init(cfg);
+    window.bugspotterInstance = BugSpotter.init(cfg);
     return true;
   }, config);
 
@@ -136,7 +128,11 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
       console.warn('Test warning message');
     });
 
-    await page.waitForTimeout(200);
+    // Wait for console logs to be captured by the SDK
+    await page.waitForFunction(() => {
+      // @ts-expect-error - BugSpotter is injected
+      return window.bugspotterInstance?.console?.getLogs()?.length >= 3;
+    }, { timeout: 5000 });
 
     const consoleLogs = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -175,7 +171,11 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
       await fetch('https://jsonplaceholder.typicode.com/todos/1').catch(() => {});
     });
 
-    await page.waitForTimeout(500);
+    // Wait for network request to be captured by the SDK
+    await page.waitForFunction(() => {
+      // @ts-expect-error - BugSpotter is injected
+      return window.bugspotterInstance?.network?.getRequests()?.length > 0;
+    }, { timeout: 5000 });
 
     const networkRequests = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -256,7 +256,11 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
       console.log('Payment card: 4532-1234-5678-9010');
     });
 
-    await page.waitForTimeout(200);
+    // Wait for console logs to be captured and sanitized
+    await page.waitForFunction(() => {
+      // @ts-expect-error - BugSpotter is injected
+      return window.bugspotterInstance?.console?.getLogs()?.length >= 3;
+    }, { timeout: 5000 });
 
     const consoleLogs = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -304,7 +308,11 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
       sanitize: { enabled: true },
     });
 
-    await page.waitForTimeout(200);
+    // Wait for replay events to be recorded
+    await page.waitForFunction(() => {
+      // @ts-expect-error - BugSpotter is injected
+      return window.bugspotterInstance?.domCollector?.getEvents()?.length > 0;
+    }, { timeout: 5000 });
 
     const report = await page.evaluate(async () => {
       // @ts-expect-error - Playwright types not fully compatible with test setup
@@ -399,7 +407,11 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
       console.log('Test log 2');
     });
 
-    await page.waitForTimeout(100);
+    // Wait for logs to be captured before measuring capture performance
+    await page.waitForFunction(() => {
+      // @ts-expect-error - BugSpotter is injected
+      return window.bugspotterInstance?.console?.getLogs()?.length >= 2;
+    }, { timeout: 5000 });
 
     // Measure capture performance
     const captureStart = Date.now();
