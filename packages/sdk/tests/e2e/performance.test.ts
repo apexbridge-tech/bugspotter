@@ -8,6 +8,13 @@ import { BugSpotter } from '../../src/index';
 import { compressData, estimateSize } from '../../src/core/compress';
 import { generateLargePayload } from '../fixtures/e2e-fixtures';
 
+/**
+ * Helper function to wait for async operations
+ */
+const wait = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 describe('E2E Performance Benchmarks', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   let originalFetch: typeof global.fetch;
@@ -159,9 +166,7 @@ describe('E2E Performance Benchmarks', () => {
       console.log('Test log 2');
       console.error('Test error');
 
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 50);
-      });
+      await wait(50);
 
       const startTime = performance.now();
       const report = await bugspotter.capture();
@@ -188,9 +193,7 @@ describe('E2E Performance Benchmarks', () => {
       });
 
       console.log('Test log');
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 50);
-      });
+      await wait(50);
 
       const startTime = performance.now();
       const report = await bugspotter.capture();
@@ -220,9 +223,7 @@ describe('E2E Performance Benchmarks', () => {
       }
       document.body.appendChild(container);
 
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 100);
-      });
+      await wait(100);
 
       const startTime = performance.now();
       const report = await bugspotter.capture();
@@ -255,9 +256,7 @@ describe('E2E Performance Benchmarks', () => {
       console.log('Card: 4532-1234-5678-9010');
       console.log('Phone: +1-555-123-4567');
 
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 100);
-      });
+      await wait(100);
 
       const startTime = performance.now();
 
@@ -338,9 +337,7 @@ describe('E2E Performance Benchmarks', () => {
         );
       }
 
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 100);
-      });
+      await wait(100);
 
       const startTimeWithSanitization = performance.now();
       const _reportWithSanitization = await bugspotter.capture();
@@ -360,9 +357,7 @@ describe('E2E Performance Benchmarks', () => {
         );
       }
 
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 100);
-      });
+      await wait(100);
 
       const startTimeWithoutSanitization = performance.now();
       const _reportWithoutSanitization = await bugspotterNoSanitization.capture();
@@ -404,9 +399,7 @@ describe('E2E Performance Benchmarks', () => {
         div.textContent = `Content ${i}`;
         document.body.appendChild(div);
 
-        await new Promise((resolve) => {
-          return setTimeout(resolve, 10);
-        });
+        await wait(10);
       }
 
       const report = await bugspotter.capture();
@@ -444,9 +437,7 @@ describe('E2E Performance Benchmarks', () => {
         document.body.appendChild(div);
       }
 
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 100);
-      });
+      await wait(100);
 
       // 3. Capture
       const report = await bugspotter.capture();
@@ -484,9 +475,7 @@ describe('E2E Performance Benchmarks', () => {
       });
 
       console.log('Test data');
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 50);
-      });
+      await wait(50);
 
       const startTime = performance.now();
 
@@ -513,71 +502,4 @@ describe('E2E Performance Benchmarks', () => {
     });
   });
 
-  describe('Performance Summary', () => {
-    it('should meet all performance requirements', async () => {
-      console.log('\n=== BugSpotter SDK Performance Summary ===\n');
-
-      const results: Array<{ metric: string; target: string; status: string }> = [];
-
-      // 1. SDK Init
-      const initStart = performance.now();
-      const bugspotter = BugSpotter.init({
-        auth: { type: 'api-key', apiKey: 'test-key' },
-        endpoint: 'https://api.example.com/bugs',
-        showWidget: false,
-        replay: { enabled: true },
-        sanitize: { enabled: true },
-      });
-      const initTime = performance.now() - initStart;
-      results.push({
-        metric: 'SDK Initialization',
-        target: '<50ms',
-        status: initTime < 50 ? `✓ ${initTime.toFixed(2)}ms` : `✗ ${initTime.toFixed(2)}ms`,
-      });
-
-      // 2. Bug Capture
-      console.log('Test with PII: user@example.com');
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 50);
-      });
-
-      const captureStart = performance.now();
-      const report = await bugspotter.capture();
-      const captureTime = performance.now() - captureStart;
-      results.push({
-        metric: 'Bug Capture',
-        target: '<2000ms',
-        status:
-          captureTime < 2000 ? `✓ ${captureTime.toFixed(2)}ms` : `✗ ${captureTime.toFixed(2)}ms`,
-      });
-
-      // 3. Payload Preparation
-      const payloadStart = performance.now();
-      const payload = {
-        title: 'Test',
-        description: 'Test description with data',
-        report,
-      };
-      const _compressed = await compressData(payload);
-      const payloadTime = performance.now() - payloadStart;
-      results.push({
-        metric: 'Payload Ready',
-        target: '<2s',
-        status:
-          payloadTime < 2000 ? `✓ ${payloadTime.toFixed(2)}ms` : `✗ ${payloadTime.toFixed(2)}ms`,
-      });
-
-      // Print summary
-      results.forEach(({ metric, target, status }) => {
-        console.log(`${metric.padEnd(25)} ${target.padEnd(10)} ${status}`);
-      });
-
-      console.log('\n==========================================\n');
-
-      // All should pass
-      results.forEach((result) => {
-        expect(result.status).toContain('✓');
-      });
-    });
-  });
 });
