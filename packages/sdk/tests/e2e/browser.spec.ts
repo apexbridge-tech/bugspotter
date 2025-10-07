@@ -391,9 +391,7 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
 
       // @ts-expect-error - Will be injected
       if (typeof BugSpotter === 'undefined') {
-        throw new Error(
-          'BugSpotter SDK is not loaded. Cannot measure performance.'
-        );
+        throw new Error('BugSpotter SDK is not loaded. Cannot measure performance.');
       }
 
       // Measure initialization
