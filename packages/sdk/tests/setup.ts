@@ -18,16 +18,17 @@ beforeAll(() => {
   console.error = (...args: any[]) => {
     // Suppress specific JSDOM warnings that are expected in test environment
     const message = args[0]?.toString() || '';
-    if (
-      message.includes('Not implemented: window.getComputedStyle') ||
-      message.includes('Not implemented: HTMLCanvasElement.prototype.getContext') ||
-      message.includes('Not implemented: HTMLCanvasElement.prototype.toDataURL') ||
-      message.includes('Error: Not implemented: window.getComputedStyle') ||
-      message.includes('ReferenceError: SVGImageElement is not defined') ||
-      message.includes('[BugSpotter] ScreenshotCapture capturing screenshot') ||
-      message.includes('[BugSpotter] Canvas redaction not available') ||
-      message.includes('[BugSpotter] Image compression failed')
-    ) {
+    const suppressedMessages = [
+      'Not implemented: window.getComputedStyle',
+      'Not implemented: HTMLCanvasElement.prototype.getContext',
+      'Not implemented: HTMLCanvasElement.prototype.toDataURL',
+      'Error: Not implemented: window.getComputedStyle',
+      'ReferenceError: SVGImageElement is not defined',
+      '[BugSpotter] ScreenshotCapture capturing screenshot',
+      '[BugSpotter] Canvas redaction not available',
+      '[BugSpotter] Image compression failed',
+    ];
+    if (suppressedMessages.some((suppressed) => message.includes(suppressed))) {
       return; // Suppress this warning
     }
     originalError.apply(console, args);
