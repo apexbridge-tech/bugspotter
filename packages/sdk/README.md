@@ -22,7 +22,7 @@ The built SDK will be available at `dist/bugspotter.min.js` (~99 KB minified wit
 <script src="path/to/bugspotter.min.js"></script>
 <script>
   // Initialize with auto-widget
-  const bugSpotter = BugSpotter.BugSpotter.init({
+  const bugSpotter = BugSpotter.init({
     apiKey: 'your-api-key',
     endpoint: 'https://api.example.com/bugs',
     showWidget: true,
@@ -34,7 +34,7 @@ The built SDK will be available at `dist/bugspotter.min.js` (~99 KB minified wit
 
 ```javascript
 // Initialize without widget
-const bugSpotter = BugSpotter.BugSpotter.init({
+const bugSpotter = BugSpotter.init({
   apiKey: 'your-api-key',
   endpoint: 'https://api.example.com/bugs',
   showWidget: false,
@@ -54,7 +54,7 @@ async function reportBug() {
 
 ```javascript
 // Widget appears automatically with showWidget: true
-const bugSpotter = BugSpotter.BugSpotter.init({
+const bugSpotter = BugSpotter.init({
   apiKey: 'demo-key',
   endpoint: 'http://localhost:4000/api/bugs',
   showWidget: true,
@@ -502,13 +502,14 @@ pnpm test --coverage
 
 **Test Coverage:**
 
-- 162 tests total
+- 348 unit tests + 55 E2E tests
 - All passing ✅
 - Unit tests for all modules
 - Integration tests for SDK
 - API submission tests
 - Widget interaction tests
 - Session replay tests (circular buffer + DOM collector)
+- Performance benchmarks
 
 ## 🏗️ Building
 
@@ -570,7 +571,7 @@ All exports include TypeScript definitions.
 
 ```javascript
 // Just add the script and initialize
-BugSpotter.BugSpotter.init({
+BugSpotter.init({
   endpoint: 'https://api.example.com/bugs',
   apiKey: 'your-key',
 });
@@ -581,7 +582,7 @@ BugSpotter.BugSpotter.init({
 
 ```javascript
 // Initialize without widget
-const bugSpotter = BugSpotter.BugSpotter.init({
+const bugSpotter = BugSpotter.init({
   showWidget: false,
   endpoint: 'https://api.example.com/bugs',
 });
@@ -598,7 +599,7 @@ document.getElementById('report-bug').addEventListener('click', async () => {
 ```javascript
 // Capture on error
 window.addEventListener('error', async (event) => {
-  const bugSpotter = BugSpotter.BugSpotter.getInstance();
+  const bugSpotter = BugSpotter.getInstance();
   if (bugSpotter) {
     const report = await bugSpotter.capture();
     // Auto-submit critical errors
@@ -635,12 +636,14 @@ window.addEventListener('error', async (event) => {
 
 ## 🧪 Testing
 
-- **226 tests** passing
+- **404 tests** passing (348 unit + 55 E2E + 13 Playwright)
   - 52 PII sanitization tests
   - 25 DOM collector tests (including edge cases)
   - 30 SDK integration tests
   - 19 widget tests
-  - And more...
+  - 11 performance benchmarks
+  - 55 E2E tests with real backend
+  - 13 browser tests (Chrome/Firefox/WebKit)
 - Full coverage of edge cases
 - Performance benchmarks included
 

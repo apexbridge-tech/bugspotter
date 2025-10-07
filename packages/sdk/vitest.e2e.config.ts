@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/browser.spec.ts'],
+    include: ['./tests/e2e/**/*.test.ts'],
     environmentOptions: {
       jsdom: {
         resources: 'usable',
@@ -16,5 +16,7 @@ export default defineConfig({
         inline: ['rrweb', 'rrweb-snapshot', '@rrweb/types'],
       },
     },
+    testTimeout: 30000, // E2E tests may take longer
+    hookTimeout: 30000,
   },
 });

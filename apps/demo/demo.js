@@ -17,7 +17,7 @@ function switchTab(tabName) {
 }
 
 // Initialize BugSpotter SDK with API Key authentication (simpler for demo)
-const bugSpotter = BugSpotter.BugSpotter.init({
+const bugSpotter = BugSpotter.init({
   endpoint: 'http://localhost:4000/api/bugs',
   apiKey: 'demo-api-key-12345',
   showWidget: false, // Disable auto-widget, we'll create our own
@@ -166,7 +166,7 @@ function reinitializeSDK(authConfig) {
     ...authConfig,
   };
 
-  window.bugSpotterInstance = BugSpotter.BugSpotter.init(config);
+  window.bugSpotterInstance = BugSpotter.init(config);
 }
 
 // Modal demo handler

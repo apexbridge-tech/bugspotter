@@ -365,7 +365,7 @@ Files to update:
 
 ```javascript
 // Enable verbose logging
-const bugSpotter = BugSpotter.BugSpotter.init({
+const bugSpotter = BugSpotter.init({
   // ... config
 });
 

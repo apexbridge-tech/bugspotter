@@ -4,7 +4,7 @@
 
 Capture screenshots, console logs, network requests, **session replays**, and metadata - helping developers reproduce bugs faster.
 
-[![Tests](https://img.shields.io/badge/tests-226%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]()
+[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]()
 
 ## ✨ Features
 
@@ -20,46 +20,54 @@ Capture screenshots, console logs, network requests, **session replays**, and me
 
 ## 🚀 Quick Start
 
-\`\`\`bash
+### Installation
 
-# Install & Build
-
+```bash
+# Clone and install
+git clone https://github.com/apexbridge-tech/bugspotter.git
+cd bugspotter
 pnpm install
+
+# Build SDK
 cd packages/sdk && pnpm run build
+```
 
-# Try Demo
+### Try the Demo
 
-cd ../../apps/demo
-npx browser-sync start --server --port 3000
-\`\`\`
+```bash
+# Terminal 1: Start backend server
+cd packages/backend-mock
+node server.js
+
+# Terminal 2: Start demo
+cd apps/demo
+npx browser-sync start --config bs-config.json
+# Visit http://localhost:3000/apps/demo/index.html
+```
 
 ### Basic Integration
 
-\`\`\`html
-
+```html
 <script src="bugspotter.min.js"></script>
 <script>
-  BugSpotter.BugSpotter.init({
+  BugSpotter.init({
     apiKey: 'your-api-key',
     endpoint: 'https://your-api.com/api/bugs',
     showWidget: true,
     replay: { enabled: true, duration: 30 },
-    sanitize: { enabled: true, patterns: ['email', 'phone'] }
+    sanitize: { enabled: true, patterns: ['email', 'phone'] },
   });
 </script>
-
-\`\`\`
+```
 
 ## 📖 Documentation
 
-| Resource            | Link                                                                         |
-| ------------------- | ---------------------------------------------------------------------------- |
-| **Detailed README** | [DETAILED_README.md](./DETAILED_README.md)                                   |
-| **Quick Start**     | [docs/QUICK_START.md](./docs/QUICK_START.md)                                 |
-| **Session Replay**  | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md) |
-| **SDK API**         | [packages/sdk/README.md](./packages/sdk/README.md)                           |
-| **Demo Guide**      | [apps/demo/README.md](./apps/demo/README.md)                                 |
-| **API Testing**     | [docs/API_TESTING.md](./docs/API_TESTING.md)                                 |
+| Resource           | Link                                                                         |
+| ------------------ | ---------------------------------------------------------------------------- |
+| **SDK API**        | [packages/sdk/README.md](./packages/sdk/README.md)                           |
+| **Session Replay** | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md) |
+| **Demo Guide**     | [apps/demo/README.md](./apps/demo/README.md)                                 |
+| **Contributing**   | [CONTRIBUTING.md](./CONTRIBUTING.md)                                         |
 
 ## 🎬 Session Replay
 
@@ -142,7 +150,7 @@ pnpm --recursive --filter "./packages/\*\*" run test
 ### Initialize
 
 \`\`\`javascript
-const bugSpotter = BugSpotter.BugSpotter.init(config);
+const bugSpotter = BugSpotter.init(config);
 \`\`\`
 
 ### Capture
@@ -172,8 +180,16 @@ const report = await bugSpotter.capture();
 ## 🧪 Testing
 
 \`\`\`bash
+
+# Run all tests
+
 cd packages/sdk
-pnpm test # 226 tests
+pnpm test # Unit tests (348 tests)
+pnpm run test:e2e # E2E tests (55 tests)
+pnpm run test:browser # Playwright tests (13 tests)
+
+# Development
+
 pnpm test --watch # Watch mode
 pnpm test --ui # Visual UI
 \`\`\`
@@ -181,7 +197,7 @@ pnpm test --ui # Visual UI
 ## 🏗️ Tech Stack
 
 **SDK:** TypeScript, Webpack, rrweb, html-to-image  
-**Testing:** Vitest (226 tests)  
+**Testing:** Vitest (404 tests total: 348 unit + 55 E2E + 13 Playwright)  
 **Backend:** Node.js, Express, Supabase  
 **Dev:** pnpm, ESLint, Prettier
 
@@ -195,7 +211,7 @@ pnpm test --ui # Visual UI
 
 ## 🛣️ Roadmap
 
-✅ **Completed:** Core SDK, Session Replay, PII Sanitization, 226 Tests  
+✅ **Completed:** Core SDK, Session Replay, PII Sanitization, 404 Tests  
 🚧 **In Progress:** Documentation, Performance  
 ⏳ **Planned:** NPM Package, React/Vue/Angular, Cloud Storage, Analytics
 

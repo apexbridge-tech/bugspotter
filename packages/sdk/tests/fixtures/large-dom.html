@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Large DOM Snapshot - E2E Test Fixture</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .user-card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+      }
+      .sensitive {
+        color: #e74c3c;
+        font-weight: bold;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Test Application - Large DOM with PII</h1>
+
+    <!-- User Profile Section -->
+    <section id="user-profile">
+      <h2>User Profile</h2>
+      <div class="user-card">
+        <p><strong>Name:</strong> <span data-pii="name">John Anderson Smith</span></p>
+        <p><strong>Email:</strong> <span class="sensitive">john.smith@example.com</span></p>
+        <p><strong>Phone:</strong> <span class="sensitive">+1 (555) 123-4567</span></p>
+        <p><strong>SSN:</strong> <span class="sensitive">123-45-6789</span></p>
+        <p><strong>IP Address:</strong> <span class="sensitive">192.168.1.100</span></p>
+        <p>
+          <strong>Credit Card:</strong> <span class="sensitive" data-cc>4532-1234-5678-9010</span>
+        </p>
+        <p><strong>Address:</strong> 123 Main St, Apt 4B, New York, NY 10001</p>
+      </div>
+    </section>
+
+    <!-- Multiple User Records -->
+    <section id="user-directory">
+      <h2>User Directory (1000+ Records)</h2>
+      <table id="user-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>SSN</th>
+            <th>Card Number</th>
+            <th>IP Address</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- JavaScript will populate this -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Payment Form -->
+    <section id="payment-form">
+      <h2>Payment Information</h2>
+      <form>
+        <div>
+          <label
+            >Card Number: <input type="text" value="5555-5555-5555-4444" data-pii="cc"
+          /></label>
+        </div>
+        <div>
+          <label>CVV: <input type="text" value="123" data-pii="cvv" /></label>
+        </div>
+        <div>
+          <label>Expiry: <input type="text" value="12/25" /></label>
+        </div>
+        <div>
+          <label>Email: <input type="email" value="customer@email.com" data-pii="email" /></label>
+        </div>
+      </form>
+    </section>
+
+    <!-- API Responses Section -->
+    <section id="api-responses">
+      <h2>API Response Data</h2>
+      <pre id="api-data">
+{
+  "user": {
+    "id": "usr_abc123",
+    "email": "admin@company.com",
+    "phone": "+1-800-555-0199",
+    "ssn": "987-65-4321",
+    "iin": "940825123456",
+    "apiKey": "test_key_fake_1234567890abcdef",
+    "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123",
+    "creditCard": {
+      "number": "378282246310005",
+      "cvv": "456",
+      "expiry": "09/26"
+    },
+    "billing": {
+      "address": "456 Oak Avenue",
+      "ip": "10.0.0.50"
+    }
+  },
+  "transactions": [
+    {
+      "id": "txn_001",
+      "card": "6011-1111-1111-1117",
+      "amount": 99.99,
+      "email": "buyer@example.org"
+    }
+  ]
+}</pre
+      >
+    </section>
+
+    <!-- Large Content to Exceed 1MB -->
+    <section id="large-content">
+      <h2>Large Content Section</h2>
+      <div id="repeated-content">
+        <!-- JavaScript will generate large content -->
+      </div>
+    </section>
+
+    <script>
+      // Generate 1000+ user records with PII
+      const tbody = document.querySelector('#user-table tbody');
+      const firstNames = [
+        'John',
+        'Jane',
+        'Bob',
+        'Alice',
+        'Charlie',
+        'Diana',
+        'Eve',
+        'Frank',
+        'Grace',
+        'Henry',
+      ];
+      const lastNames = [
+        'Smith',
+        'Johnson',
+        'Williams',
+        'Brown',
+        'Jones',
+        'Garcia',
+        'Miller',
+        'Davis',
+        'Rodriguez',
+        'Martinez',
+      ];
+
+      for (let i = 1; i <= 1000; i++) {
+        const firstName = firstNames[i % firstNames.length];
+        const lastName = lastNames[i % lastNames.length];
+        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`;
+        const phone = `+1 (555) ${String(i).padStart(3, '0')}-${String(i * 2).padStart(4, '0')}`;
+        const ssn = `${String(i).padStart(3, '0')}-${String(i % 100).padStart(2, '0')}-${String((i * 3) % 10000).padStart(4, '0')}`;
+        const card = `4532-${String(i).padStart(4, '0')}-${String(i * 2).padStart(4, '0')}-${String(i * 3).padStart(4, '0')}`;
+        const ip = `192.168.${Math.floor(i / 256)}.${i % 256}`;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+                <td>${i}</td>
+                <td data-pii="name">${firstName} ${lastName}</td>
+                <td class="sensitive">${email}</td>
+                <td class="sensitive">${phone}</td>
+                <td class="sensitive">${ssn}</td>
+                <td class="sensitive" data-cc>${card}</td>
+                <td class="sensitive">${ip}</td>
+            `;
+        tbody.appendChild(row);
+      }
+
+      // Generate large repeated content to exceed 1MB
+      const repeatedContent = document.getElementById('repeated-content');
+      const paragraph = `
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
+            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
+            exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure 
+            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+            Email: test${Math.random()}@example.com, Phone: +1-555-${Math.floor(Math.random() * 10000)}</p>
+        `;
+
+      // Repeat content to reach ~1MB
+      for (let i = 0; i < 1000; i++) {
+        const div = document.createElement('div');
+        div.innerHTML = paragraph;
+        repeatedContent.appendChild(div);
+      }
+
+      console.log(
+        'Large DOM fixture loaded with',
+        document.querySelectorAll('*').length,
+        'elements'
+      );
+      console.log(
+        'Approximate size:',
+        new Blob([document.documentElement.outerHTML]).size,
+        'bytes'
+      );
+    </script>
+  </body>
+</html>
