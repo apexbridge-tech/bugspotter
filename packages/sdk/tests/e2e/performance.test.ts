@@ -325,7 +325,7 @@ describe('E2E Performance Benchmarks', () => {
   });
 
   describe('Sanitization Performance', () => {
-    it('should sanitize console logs with minimal overhead (<10ms)', async () => {
+    it('should sanitize console logs with minimal overhead (<500ms in JSDOM)', async () => {
       const bugspotter = BugSpotter.init({
         showWidget: false,
         sanitize: { enabled: true, patterns: 'all' },

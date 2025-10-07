@@ -16,22 +16,42 @@ const LARGE_DOM_FIXTURE = path.join(__dirname, '../fixtures/large-dom-e2e.html')
 async function injectSDK(page: Page, config: Record<string, unknown> = {}) {
   // In a real scenario, you'd load the built SDK file
   // For now, we'll inject minimal SDK setup
+  let sdkLoaded = false;
   await page
     .addScriptTag({
       path: path.join(__dirname, '../../dist/bugspotter.min.js'),
     })
+    .then(() => {
+      sdkLoaded = true;
+    })
     .catch(() => {
-      // If dist doesn't exist, skip - this is expected in development
-      console.warn('SDK bundle not found, skipping injection');
+      // If dist doesn't exist, this is a critical error
+      sdkLoaded = false;
     });
 
-  await page.evaluate((cfg) => {
+  if (!sdkLoaded) {
+    throw new Error(
+      'BugSpotter SDK bundle not found at dist/bugspotter.min.js. ' +
+        'Please build the SDK first by running: pnpm build'
+    );
+  }
+
+  const isInitialized = await page.evaluate((cfg) => {
     // @ts-expect-error - BugSpotter is injected
-    if (typeof BugSpotter !== 'undefined') {
-      // @ts-expect-error - Playwright types not fully compatible with test setup
-      window.bugspotterInstance = BugSpotter.BugSpotter.init(cfg);
+    if (typeof BugSpotter === 'undefined') {
+      return false;
     }
+    // @ts-expect-error - Playwright types not fully compatible with test setup
+    window.bugspotterInstance = BugSpotter.BugSpotter.init(cfg);
+    return true;
   }, config);
+
+  if (!isInitialized) {
+    throw new Error(
+      'BugSpotter SDK failed to initialize. The global BugSpotter object is undefined. ' +
+        'This may indicate a build or loading issue.'
+    );
+  }
 }
 
 test.describe('BugSpotter SDK - Real Browser Tests', () => {
@@ -369,31 +389,35 @@ test.describe('BugSpotter SDK - Real Browser Tests', () => {
         captureTime: 0,
       };
 
+      // @ts-expect-error - Will be injected
+      if (typeof BugSpotter === 'undefined') {
+        throw new Error(
+          'BugSpotter SDK is not loaded. Cannot measure performance.'
+        );
+      }
+
       // Measure initialization
       const initStart = performance.now();
-      // @ts-expect-error - Will be injected
-      if (typeof BugSpotter !== 'undefined') {
-        // @ts-expect-error - Playwright types not fully compatible with test setup
-        window.bugspotterInstance = BugSpotter.BugSpotter.init({
-          showWidget: false,
-          replay: { enabled: true },
-        });
-        results.initTime = performance.now() - initStart;
+      // @ts-expect-error - Playwright types not fully compatible with test setup
+      window.bugspotterInstance = BugSpotter.BugSpotter.init({
+        showWidget: false,
+        replay: { enabled: true },
+      });
+      results.initTime = performance.now() - initStart;
 
-        // Add some logs
-        console.log('Test log 1');
-        console.log('Test log 2');
+      // Add some logs
+      console.log('Test log 1');
+      console.log('Test log 2');
 
-        await new Promise((resolve) => {
-          return setTimeout(resolve, 100);
-        });
+      await new Promise((resolve) => {
+        return setTimeout(resolve, 100);
+      });
 
-        // Measure capture
-        const captureStart = performance.now();
-        // @ts-expect-error - Playwright types not fully compatible with test setup
-        await window.bugspotterInstance.capture();
-        results.captureTime = performance.now() - captureStart;
-      }
+      // Measure capture
+      const captureStart = performance.now();
+      // @ts-expect-error - Playwright types not fully compatible with test setup
+      await window.bugspotterInstance.capture();
+      results.captureTime = performance.now() - captureStart;
 
       return results;
     });

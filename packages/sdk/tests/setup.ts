@@ -9,9 +9,6 @@ import { beforeAll } from 'vitest';
 // These are expected when using html-to-image in JSDOM environment
 beforeAll(() => {
   // Suppress console.log, console.info, and console.debug during tests
-  const originalLog = console.log;
-  const originalInfo = console.info;
-  const originalDebug = console.debug;
   const originalError = console.error;
 
   console.log = () => {}; // Suppress all console.log
