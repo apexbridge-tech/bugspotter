@@ -78,14 +78,34 @@ jobs:
           echo "Available packages:"
           ls -1 packages/ | sed 's/^/  - /'
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
-          # Run SDK tests (full test suite)
+          # Run SDK unit tests
           pnpm --filter @bugspotter/sdk run test
           
           # Skip API contract tests in CI (they require running server)
           # API contract tests should be run locally or in integration test environment
           echo "⏭️  Skipping API contract tests (require running server)"
+
+      - name: Run E2E tests
+        run: |
+          # Run SDK E2E tests (integration, config, performance)
+          pnpm --filter @bugspotter/sdk run test:e2e
+
+      - name: Install Playwright browsers
+        run: |
+          # Install Chromium only for browser tests (faster CI)
+          pnpm --filter @bugspotter/sdk exec playwright install --with-deps chromium
+
+      - name: Build SDK for browser tests
+        run: |
+          # Playwright tests require built SDK bundle
+          pnpm --filter @bugspotter/sdk run build
+
+      - name: Run Playwright browser tests
+        run: |
+          # Run browser tests in Chromium only
+          pnpm --filter @bugspotter/sdk run test:playwright --project=chromium
 
 
   build:
@@ -167,8 +187,11 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          # Run SDK tests with coverage
+          # Run SDK unit tests with coverage
           pnpm --filter "@bugspotter/sdk" run test -- --coverage
+          
+          # Run SDK E2E tests with coverage
+          pnpm --filter "@bugspotter/sdk" run test:e2e -- --coverage
           
           # Skip API tests in CI (contract tests require running server)
           echo "⏭️  Skipping API tests in CI environment"
