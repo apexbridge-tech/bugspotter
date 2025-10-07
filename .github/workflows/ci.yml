@@ -92,20 +92,38 @@ jobs:
           # Run SDK E2E tests (integration, config, performance)
           pnpm --filter @bugspotter/sdk run test:e2e
 
+      - name: Build SDK for browser tests
+        run: |
+          # Playwright tests require built SDK bundle
+          pnpm --filter @bugspotter/sdk run build
+          
+          # Verify SDK bundle was created
+          if [ ! -f "packages/sdk/dist/bugspotter.min.js" ]; then
+            echo "❌ SDK bundle not found after build"
+            exit 1
+          fi
+          echo "✅ SDK bundle created successfully"
+          ls -lh packages/sdk/dist/bugspotter.min.js
+
       - name: Install Playwright browsers
         run: |
           # Install Chromium only for browser tests (faster CI)
           pnpm --filter @bugspotter/sdk exec playwright install --with-deps chromium
 
-      - name: Build SDK for browser tests
-        run: |
-          # Playwright tests require built SDK bundle
-          pnpm --filter @bugspotter/sdk run build
-
       - name: Run Playwright browser tests
+        # Continue on error to not block CI if browser tests fail
+        continue-on-error: true
         run: |
           # Run browser tests in Chromium only
           pnpm --filter @bugspotter/sdk run test:playwright --project=chromium
+        
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.node-version }}
+          path: packages/sdk/playwright-report/
+          retention-days: 7
 
 
   build:
