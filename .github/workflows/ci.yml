@@ -40,7 +40,7 @@ jobs:
         run: pnpm run format:check
 
   test:
-    name: Test
+    name: Test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     
     strategy:
@@ -92,6 +92,29 @@ jobs:
           # Run SDK E2E tests (integration, config, performance)
           pnpm --filter @bugspotter/sdk run test:e2e
 
+  playwright:
+    name: Playwright Browser Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build SDK for browser tests
         run: |
           # Playwright tests require built SDK bundle
@@ -121,7 +144,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ matrix.node-version }}
+          name: playwright-report
           path: packages/sdk/playwright-report/
           retention-days: 7
 
@@ -129,7 +152,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [lint, test, playwright]
     
     steps:
       - name: Checkout code
@@ -175,6 +198,7 @@ jobs:
   test-coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
+    needs: [test]
     
     steps:
       - name: Checkout code
@@ -194,18 +218,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify packages directory exists
-        run: |
-          if [ ! -d "packages" ]; then
-            echo "Error: packages directory not found. This workflow expects a monorepo structure with packages/"
-            exit 1
-          fi
-          echo "Found packages directory with the following packages:"
-          ls -1 packages/
-
       - name: Run tests with coverage
         run: |
-          # Run SDK unit tests with coverage
+          # Run SDK unit tests with coverage (single run on Node 20)
           pnpm --filter "@bugspotter/sdk" run test -- --coverage
           
           # Run SDK E2E tests with coverage
