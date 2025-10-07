@@ -71,7 +71,7 @@ We love pull requests! Here's how to contribute code:
 
    # Or test specific package
    pnpm --filter @bugspotter/sdk run test
-   pnpm --filter @bugspotter/api run test
+   pnpm --filter @bugspotter/backend-mock run test
 
    # Run linter
    pnpm run lint
@@ -268,7 +268,6 @@ bugspotter/
 │   │   │   └── widget/      # UI components
 │   │   ├── tests/           # Test files
 │   │   └── dist/            # Build output (gitignored)
-│   ├── api/                 # @bugspotter/api - Production API
 │   ├── types/               # @bugspotter/types - Shared types
 │   └── backend-mock/        # @bugspotter/backend-mock - Dev server
 ├── apps/                    # Applications
@@ -290,7 +289,7 @@ pnpm --recursive run test
 
 # Run command in specific package
 pnpm --filter @bugspotter/sdk run build
-pnpm --filter @bugspotter/api run test
+pnpm --filter @bugspotter/sdk run test
 
 # Run command in all packages under a directory
 pnpm --filter "./packages/**" run lint

@@ -18,8 +18,7 @@ This package provides a **single source of truth** for all type definitions shar
 cd packages/sdk
 pnpm add @bugspotter/types@workspace:*
 
-# In API
-cd packages/api
+# In your backend
 pnpm add @bugspotter/types@workspace:*
 ```
 
@@ -54,7 +53,7 @@ export class BugSpotter {
 }
 ```
 
-### In API
+### In Backend API
 
 ```typescript
 import type {

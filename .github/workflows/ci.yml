@@ -2,7 +2,7 @@ name: CI
 
 # This workflow runs CI checks for the BugSpotter monorepo
 # Structure: pnpm workspace with packages/ and apps/ directories
-# Packages: @bugspotter/sdk, @bugspotter/api, @bugspotter/types, @bugspotter/backend-mock
+# Packages: @bugspotter/sdk, @bugspotter/types, @bugspotter/backend-mock
 
 on:
   push:
