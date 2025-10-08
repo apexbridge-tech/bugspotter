@@ -27,9 +27,7 @@ async function main() {
         bug_report_id: bug.id,
         events: {
           type: 'rrweb',
-          recordedEvents: [
-            { type: 'FullSnapshot', timestamp: Date.now() },
-          ],
+          recordedEvents: [{ type: 'FullSnapshot', timestamp: Date.now() }],
         },
         duration: 5000,
       });
