@@ -157,9 +157,7 @@ async function main() {
 }
 
 // Run if executed directly
-if (import.meta.url.startsWith('file:')) {
-  const modulePath = fileURLToPath(import.meta.url);
-  if (process.argv[1] === modulePath) {
-    main().catch(console.error);
-  }
+const modulePath = fileURLToPath(import.meta.url);
+if (process.argv[1] === modulePath) {
+  main().catch(console.error);
 }

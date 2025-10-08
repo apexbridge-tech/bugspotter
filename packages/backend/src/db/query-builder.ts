@@ -136,6 +136,10 @@ export function buildOrderByClause(
 
 /**
  * Serialize JSON fields for database storage
+ * @param data - Data to serialize to JSON string
+ * @returns JSON string representation
+ * @note null and undefined values are converted to empty objects ({})
+ *       If you need SQL NULL, don't call this function (leave field undefined in serialization)
  */
 export function serializeJsonField(data: unknown): string {
   return JSON.stringify(data ?? {});

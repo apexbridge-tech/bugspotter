@@ -23,7 +23,7 @@ function validateSqlIdentifier(identifier: string): void {
  */
 export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<T>> {
   constructor(
-    protected pool: Pool,
+    protected pool: Pool | PoolClient,
     protected tableName: string,
     protected jsonFields: string[] = []
   ) {}

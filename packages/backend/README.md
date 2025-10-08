@@ -180,19 +180,16 @@ console.log('Created bug report:', bugReport.id);
 
 ```typescript
 // List bug reports with filters and pagination
-const result = await db.listBugReports(
-  // Filters
+const result = await db.bugReports.list(
   {
     project_id: 'project-uuid',
     status: 'open',
     priority: 'high',
   },
-  // Sorting
   {
     sort_by: 'created_at',
     order: 'desc',
   },
-  // Pagination
   {
     page: 1,
     limit: 20,

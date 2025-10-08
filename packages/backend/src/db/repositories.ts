@@ -3,7 +3,7 @@
  * Specific repository implementations for each entity type
  */
 
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { BaseRepository } from './base-repository.js';
 import type {
   Project,
@@ -32,7 +32,7 @@ import {
  * Project Repository
  */
 export class ProjectRepository extends BaseRepository<Project, ProjectInsert, ProjectUpdate> {
-  constructor(pool: Pool) {
+  constructor(pool: Pool | PoolClient) {
     super(pool, 'projects', ['settings']);
   }
 
@@ -52,7 +52,7 @@ export class BugReportRepository extends BaseRepository<
   BugReportInsert,
   BugReportUpdate
 > {
-  constructor(pool: Pool) {
+  constructor(pool: Pool | PoolClient) {
     super(pool, 'bug_reports', ['metadata']);
   }
 
@@ -245,7 +245,7 @@ export class BugReportRepository extends BaseRepository<
  * User Repository
  */
 export class UserRepository extends BaseRepository<User, UserInsert, Partial<User>> {
-  constructor(pool: Pool) {
+  constructor(pool: Pool | PoolClient) {
     super(pool, 'users', []);
   }
 
@@ -281,7 +281,7 @@ export class UserRepository extends BaseRepository<User, UserInsert, Partial<Use
  * Session Repository
  */
 export class SessionRepository extends BaseRepository<Session, Partial<Session>, never> {
-  constructor(pool: Pool) {
+  constructor(pool: Pool | PoolClient) {
     super(pool, 'sessions', ['events']);
   }
 
@@ -312,7 +312,7 @@ export class SessionRepository extends BaseRepository<Session, Partial<Session>,
  * Ticket Repository
  */
 export class TicketRepository extends BaseRepository<Ticket, Partial<Ticket>, never> {
-  constructor(pool: Pool) {
+  constructor(pool: Pool | PoolClient) {
     super(pool, 'tickets', []);
   }
 

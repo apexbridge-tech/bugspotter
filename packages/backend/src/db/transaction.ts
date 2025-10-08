@@ -25,10 +25,10 @@ export type TransactionCallback<T> = (tx: TransactionContext) => Promise<T>;
 
 export function createRepositories(pool: Pool | PoolClient): RepositoryRegistry {
   return {
-    projects: new ProjectRepository(pool as Pool),
-    bugReports: new BugReportRepository(pool as Pool),
-    users: new UserRepository(pool as Pool),
-    sessions: new SessionRepository(pool as Pool),
-    tickets: new TicketRepository(pool as Pool),
+    projects: new ProjectRepository(pool),
+    bugReports: new BugReportRepository(pool),
+    users: new UserRepository(pool),
+    sessions: new SessionRepository(pool),
+    tickets: new TicketRepository(pool),
   };
 }
