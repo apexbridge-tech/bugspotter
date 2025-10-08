@@ -3,6 +3,10 @@
  * Automatically starts and manages PostgreSQL container for tests
  */
 
+// CRITICAL: Polyfill File/Blob BEFORE importing testcontainers/undici
+// This MUST be the first import to avoid "File is not defined" errors
+import './setup-file-polyfill.js';
+
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { exec } from 'child_process';
