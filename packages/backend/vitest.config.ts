@@ -14,5 +14,8 @@ export default defineConfig({
         singleFork: true,
       },
     },
+    // Workaround for undici "File is not defined" error in Node 18
+    // https://github.com/nodejs/undici/issues/1650
+    setupFiles: ['./tests/setup-file-polyfill.ts'],
   },
 });
