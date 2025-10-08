@@ -36,7 +36,7 @@ describe('DatabaseClient', () => {
     // Clean up all created projects (will cascade delete related records)
     for (const projectId of createdProjectIds) {
       try {
-        await db.deleteProject(projectId);
+        await db.projects.delete(projectId);
       } catch (error) {
         // Ignore errors if already deleted
       }
@@ -52,7 +52,7 @@ describe('DatabaseClient', () => {
       api_key: `test-key-${generateUniqueId()}`,
       settings: { theme: 'dark' },
     };
-    const project = await db.createProject(projectData);
+    const project = await db.projects.create(projectData);
     testProjectId = project.id;
     createdProjectIds.push(project.id);
   });
@@ -72,7 +72,7 @@ describe('DatabaseClient', () => {
         settings: { color: 'blue' },
       };
 
-      const project = await db.createProject(data);
+      const project = await db.projects.create(data);
       createdProjectIds.push(project.id); // Track for cleanup
 
       expect(project).toBeDefined();
@@ -84,7 +84,7 @@ describe('DatabaseClient', () => {
     });
 
     it('should get project by ID', async () => {
-      const project = await db.getProject(testProjectId);
+      const project = await db.projects.findById(testProjectId);
 
       expect(project).toBeDefined();
       expect(project?.id).toBe(testProjectId);
@@ -92,15 +92,15 @@ describe('DatabaseClient', () => {
     });
 
     it('should get project by API key', async () => {
-      const created = await db.getProject(testProjectId);
-      const project = await db.getProjectByApiKey(created!.api_key);
+      const created = await db.projects.findById(testProjectId);
+      const project = await db.projects.findByApiKey(created!.api_key);
 
       expect(project).toBeDefined();
       expect(project?.id).toBe(testProjectId);
     });
 
     it('should update project', async () => {
-      const updated = await db.updateProject(testProjectId, {
+      const updated = await db.projects.update(testProjectId, {
         name: 'Updated Project',
         settings: { theme: 'light' },
       });
@@ -111,15 +111,15 @@ describe('DatabaseClient', () => {
     });
 
     it('should delete project', async () => {
-      const result = await db.deleteProject(testProjectId);
+      const result = await db.projects.delete(testProjectId);
       expect(result).toBe(true);
 
-      const project = await db.getProject(testProjectId);
+      const project = await db.projects.findById(testProjectId);
       expect(project).toBeNull();
     });
 
     it('should return null for non-existent project', async () => {
-      const project = await db.getProject('00000000-0000-0000-0000-000000000000');
+      const project = await db.projects.findById('00000000-0000-0000-0000-000000000000');
       expect(project).toBeNull();
     });
   });
@@ -135,7 +135,7 @@ describe('DatabaseClient', () => {
         priority: 'high',
       };
 
-      const bugReport = await db.createBugReport(data);
+      const bugReport = await db.bugReports.create(data);
 
       expect(bugReport).toBeDefined();
       expect(bugReport.id).toBeDefined();
@@ -147,12 +147,12 @@ describe('DatabaseClient', () => {
     });
 
     it('should get bug report by ID', async () => {
-      const created = await db.createBugReport({
+      const created = await db.bugReports.create({
         project_id: testProjectId,
         title: 'Get Test Bug',
       });
 
-      const bugReport = await db.getBugReport(created.id);
+      const bugReport = await db.bugReports.findById(created.id);
 
       expect(bugReport).toBeDefined();
       expect(bugReport?.id).toBe(created.id);
@@ -160,13 +160,13 @@ describe('DatabaseClient', () => {
     });
 
     it('should update bug report', async () => {
-      const created = await db.createBugReport({
+      const created = await db.bugReports.create({
         project_id: testProjectId,
         title: 'Original Title',
         status: 'open',
       });
 
-      const updated = await db.updateBugReport(created.id, {
+      const updated = await db.bugReports.update(created.id, {
         title: 'Updated Title',
         status: 'in-progress',
         priority: 'critical',
@@ -181,14 +181,14 @@ describe('DatabaseClient', () => {
     it('should list bug reports with pagination', async () => {
       // Create multiple bug reports
       for (let i = 1; i <= 5; i++) {
-        await db.createBugReport({
+        await db.bugReports.create({
           project_id: testProjectId,
           title: `Bug ${i}`,
           priority: i <= 2 ? 'high' : 'low',
         });
       }
 
-      const result = await db.listBugReports(
+      const result = await db.bugReports.list(
         { project_id: testProjectId },
         { sort_by: 'created_at', order: 'desc' },
         { page: 1, limit: 3 }
@@ -201,19 +201,19 @@ describe('DatabaseClient', () => {
     });
 
     it('should filter bug reports by status', async () => {
-      await db.createBugReport({
+      await db.bugReports.create({
         project_id: testProjectId,
         title: 'Open Bug',
         status: 'open',
       });
 
-      await db.createBugReport({
+      await db.bugReports.create({
         project_id: testProjectId,
         title: 'Resolved Bug',
         status: 'resolved',
       });
 
-      const result = await db.listBugReports({ project_id: testProjectId, status: 'open' });
+      const result = await db.bugReports.list({ project_id: testProjectId, status: 'open' });
 
       expect(result.data.length).toBeGreaterThan(0);
       result.data.forEach((bug) => {
@@ -222,13 +222,13 @@ describe('DatabaseClient', () => {
     });
 
     it('should filter bug reports by priority', async () => {
-      await db.createBugReport({
+      await db.bugReports.create({
         project_id: testProjectId,
         title: 'Critical Bug',
         priority: 'critical',
       });
 
-      const result = await db.listBugReports({ project_id: testProjectId, priority: 'critical' });
+      const result = await db.bugReports.list({ project_id: testProjectId, priority: 'critical' });
 
       expect(result.data.length).toBeGreaterThan(0);
       result.data.forEach((bug) => {
@@ -237,15 +237,15 @@ describe('DatabaseClient', () => {
     });
 
     it('should delete bug report', async () => {
-      const created = await db.createBugReport({
+      const created = await db.bugReports.create({
         project_id: testProjectId,
         title: 'To Delete',
       });
 
-      const result = await db.deleteBugReport(created.id);
+      const result = await db.bugReports.delete(created.id);
       expect(result).toBe(true);
 
-      const bugReport = await db.getBugReport(created.id);
+      const bugReport = await db.bugReports.findById(created.id);
       expect(bugReport).toBeNull();
     });
   });
@@ -254,7 +254,7 @@ describe('DatabaseClient', () => {
     let bugReportId: string;
 
     beforeEach(async () => {
-      const bugReport = await db.createBugReport({
+      const bugReport = await db.bugReports.create({
         project_id: testProjectId,
         title: 'Bug with Session',
       });
@@ -267,7 +267,7 @@ describe('DatabaseClient', () => {
         events: [{ type: 'FullSnapshot', data: {} }],
       };
 
-      const session = await db.createSession(bugReportId, events, 5000);
+      const session = await db.sessions.createSession(bugReportId, events, 5000);
 
       expect(session).toBeDefined();
       expect(session.id).toBeDefined();
@@ -277,10 +277,10 @@ describe('DatabaseClient', () => {
     });
 
     it('should get sessions by bug report', async () => {
-      await db.createSession(bugReportId, { event: 1 }, 1000);
-      await db.createSession(bugReportId, { event: 2 }, 2000);
+      await db.sessions.createSession(bugReportId, { event: 1 }, 1000);
+      await db.sessions.createSession(bugReportId, { event: 2 }, 2000);
 
-      const sessions = await db.getSessionsByBugReport(bugReportId);
+      const sessions = await db.sessions.findByBugReport(bugReportId);
 
       expect(sessions).toHaveLength(2);
       expect(sessions[0].bug_report_id).toBe(bugReportId);
@@ -290,7 +290,7 @@ describe('DatabaseClient', () => {
   describe('Users', () => {
     it('should create a user', async () => {
       const email = `test-${Date.now()}@example.com`;
-      const user = await db.createUser({
+      const user = await db.users.create({
         email,
         password_hash: 'hashed_password',
         role: 'user',
@@ -304,12 +304,12 @@ describe('DatabaseClient', () => {
 
     it('should get user by email', async () => {
       const email = `test-${Date.now()}@example.com`;
-      await db.createUser({
+      await db.users.create({
         email,
         password_hash: 'hashed_password',
       });
 
-      const user = await db.getUserByEmail(email);
+      const user = await db.users.findByEmail(email);
 
       expect(user).toBeDefined();
       expect(user?.email).toBe(email);
@@ -317,7 +317,7 @@ describe('DatabaseClient', () => {
 
     it('should create OAuth user', async () => {
       const email = `oauth-${Date.now()}@example.com`;
-      const user = await db.createUser({
+      const user = await db.users.create({
         email,
         oauth_provider: 'google',
         oauth_id: '12345',
@@ -331,13 +331,13 @@ describe('DatabaseClient', () => {
 
     it('should get user by OAuth credentials', async () => {
       const email = `oauth-${Date.now()}@example.com`;
-      await db.createUser({
+      await db.users.create({
         email,
         oauth_provider: 'github',
         oauth_id: 'gh123',
       });
 
-      const user = await db.getUserByOAuth('github', 'gh123');
+      const user = await db.users.findByOAuth('github', 'gh123');
 
       expect(user).toBeDefined();
       expect(user?.email).toBe(email);
@@ -346,14 +346,14 @@ describe('DatabaseClient', () => {
     it('should enforce unique email addresses', async () => {
       const email = `duplicate-${Date.now()}@example.com`;
 
-      await db.createUser({
+      await db.users.create({
         email,
         password_hash: 'password1',
       });
 
       // Try to create another user with same email (different auth method)
       await expect(
-        db.createUser({
+        db.users.create({
           email,
           oauth_provider: 'google',
           oauth_id: 'google123',
@@ -365,7 +365,7 @@ describe('DatabaseClient', () => {
       const email1 = `oauth1-${Date.now()}@example.com`;
       const email2 = `oauth2-${Date.now()}@example.com`;
 
-      await db.createUser({
+      await db.users.create({
         email: email1,
         oauth_provider: 'google',
         oauth_id: 'same-id-123',
@@ -373,7 +373,7 @@ describe('DatabaseClient', () => {
 
       // Try to create another user with same OAuth credentials
       await expect(
-        db.createUser({
+        db.users.create({
           email: email2,
           oauth_provider: 'google',
           oauth_id: 'same-id-123',
@@ -386,7 +386,7 @@ describe('DatabaseClient', () => {
 
       // This violates the check_auth_method constraint
       await expect(
-        db.createUser({
+        db.users.create({
           email,
           password_hash: 'password123',
           oauth_provider: 'google',
@@ -400,7 +400,7 @@ describe('DatabaseClient', () => {
 
       // This violates the check_auth_method constraint
       await expect(
-        db.createUser({
+        db.users.create({
           email,
           // No password_hash, no oauth_provider/oauth_id
         })
@@ -412,7 +412,7 @@ describe('DatabaseClient', () => {
     let bugReportId: string;
 
     beforeEach(async () => {
-      const bugReport = await db.createBugReport({
+      const bugReport = await db.bugReports.create({
         project_id: testProjectId,
         title: 'Bug with Ticket',
       });
@@ -420,7 +420,7 @@ describe('DatabaseClient', () => {
     });
 
     it('should create a ticket', async () => {
-      const ticket = await db.createTicket(bugReportId, 'JIRA-123', 'jira', 'open');
+      const ticket = await db.tickets.createTicket(bugReportId, 'JIRA-123', 'jira', 'open');
 
       expect(ticket).toBeDefined();
       expect(ticket.id).toBeDefined();
@@ -430,10 +430,10 @@ describe('DatabaseClient', () => {
     });
 
     it('should get tickets by bug report', async () => {
-      await db.createTicket(bugReportId, 'JIRA-789', 'jira');
-      await db.createTicket(bugReportId, 'LIN-456', 'linear');
+      await db.tickets.createTicket(bugReportId, 'JIRA-789', 'jira');
+      await db.tickets.createTicket(bugReportId, 'LIN-456', 'linear');
 
-      const tickets = await db.getTicketsByBugReport(bugReportId);
+      const tickets = await db.tickets.findByBugReport(bugReportId);
 
       expect(tickets).toHaveLength(2);
       expect(tickets[0].bug_report_id).toBe(bugReportId);
@@ -443,20 +443,20 @@ describe('DatabaseClient', () => {
   describe('Error Handling', () => {
     it('should handle invalid project ID gracefully', async () => {
       // PostgreSQL will throw an error for invalid UUID format
-      await expect(db.getProject('invalid-id')).rejects.toThrow();
+      await expect(db.projects.findById('invalid-id')).rejects.toThrow();
     });
 
     it('should handle duplicate API key', async () => {
       const apiKey = `duplicate-${generateUniqueId()}`;
 
-      const firstProject = await db.createProject({
+      const firstProject = await db.projects.create({
         name: 'First',
         api_key: apiKey,
       });
       createdProjectIds.push(firstProject.id); // Track for cleanup
 
       await expect(
-        db.createProject({
+        db.projects.create({
           name: 'Second',
           api_key: apiKey,
         })
@@ -466,13 +466,13 @@ describe('DatabaseClient', () => {
 
   describe('Transactions', () => {
     it('should commit transaction on success', async () => {
-      const result = await db.transaction(async (client) => {
-        const bug = await client.createBugReport({
+      const result = await db.transaction(async (tx) => {
+        const bug = await tx.bugReports.create({
           project_id: testProjectId,
           title: 'Transaction Test Bug',
         });
 
-        const session = await client.createSession(bug.id, { events: [] });
+        const session = await tx.sessions.createSession(bug.id, { events: [] });
 
         return { bug, session };
       });
@@ -482,7 +482,7 @@ describe('DatabaseClient', () => {
       expect(result.session.bug_report_id).toBe(result.bug.id);
 
       // Verify data persisted
-      const bug = await db.getBugReport(result.bug.id);
+      const bug = await db.bugReports.findById(result.bug.id);
       expect(bug).toBeDefined();
     });
 
@@ -490,8 +490,8 @@ describe('DatabaseClient', () => {
       let createdBugId: string | null = null;
 
       await expect(
-        db.transaction(async (client) => {
-          const bug = await client.createBugReport({
+        db.transaction(async (tx) => {
+          const bug = await tx.bugReports.create({
             project_id: testProjectId,
             title: 'Rollback Test Bug',
           });
@@ -504,7 +504,7 @@ describe('DatabaseClient', () => {
 
       // Verify data was rolled back
       if (createdBugId) {
-        const bug = await db.getBugReport(createdBugId);
+        const bug = await db.bugReports.findById(createdBugId);
         expect(bug).toBeNull();
       }
     });
@@ -530,7 +530,7 @@ describe('DatabaseClient', () => {
         },
       ];
 
-      const results = await db.createBugReports(bugData);
+      const results = await db.bugReports.createBatch(bugData);
 
       expect(results).toHaveLength(3);
       expect(results[0].title).toBe('Batch Bug 1');
@@ -539,13 +539,13 @@ describe('DatabaseClient', () => {
 
       // Verify all were created
       for (const bug of results) {
-        const found = await db.getBugReport(bug.id);
+        const found = await db.bugReports.findById(bug.id);
         expect(found).toBeDefined();
       }
     });
 
     it('should return empty array for empty batch', async () => {
-      const results = await db.createBugReports([]);
+      const results = await db.bugReports.createBatch([]);
       expect(results).toHaveLength(0);
     });
   });
@@ -554,7 +554,7 @@ describe('DatabaseClient', () => {
     it('should prevent SQL injection in ORDER BY clause', async () => {
       // Attempt SQL injection through sort parameter
       await expect(
-        db.listBugReports(
+        db.bugReports.list(
           { project_id: testProjectId },
           // @ts-expect-error - Testing runtime injection attempt
           { sort_by: 'created_at; DROP TABLE bug_reports--', order: 'desc' },
@@ -565,7 +565,7 @@ describe('DatabaseClient', () => {
 
     it('should allow valid column names in ORDER BY', async () => {
       // Valid column names should work
-      const result = await db.listBugReports(
+      const result = await db.bugReports.list(
         { project_id: testProjectId },
         { sort_by: 'created_at', order: 'desc' },
         { page: 1, limit: 10 }

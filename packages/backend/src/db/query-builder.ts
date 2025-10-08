@@ -16,10 +16,6 @@ export interface PaginationClause {
   values: unknown[];
 }
 
-/** Type alias for backward compatibility */
-export type WhereClause = ClauseResult;
-export type UpdateClause = ClauseResult;
-
 /**
  * Helper to build parameterized clauses with consistent logic
  */
@@ -50,7 +46,7 @@ function buildParameterizedClause(
 export function buildWhereClause(
   filters: Record<string, unknown | { value: unknown; operator?: string }>,
   startParamCount: number = 1
-): WhereClause {
+): ClauseResult {
   // Normalize filters to { key, value, operator } format
   const entries = Object.entries(filters).map(([key, filter]) => {
     if (filter && typeof filter === 'object' && 'value' in filter) {
@@ -72,7 +68,7 @@ export function buildWhereClause(
 export function buildUpdateClause(
   data: Record<string, unknown>,
   startParamCount: number = 1
-): UpdateClause {
+): ClauseResult {
   const entries = Object.entries(data)
     .filter(([, value]) => {
       return value !== undefined;

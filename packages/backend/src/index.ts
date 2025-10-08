@@ -16,3 +16,22 @@ export * from './db/types.js';
 export { config, validateConfig } from './config.js';
 export { runMigrations } from './db/migrations/migrate.js';
 export { setLogger, getLogger, type Logger } from './logger.js';
+
+// Export new retry utilities and transaction types
+export {
+  executeWithRetry,
+  isRetryableError,
+  withRetry,
+  ExponentialBackoffStrategy,
+  LinearBackoffStrategy,
+  FixedDelayStrategy,
+  DEFAULT_RETRY_CONFIG,
+  type RetryStrategy,
+  type RetryConfig,
+} from './db/retry.js';
+export {
+  createRepositories,
+  type RepositoryRegistry,
+  type TransactionContext,
+  type TransactionCallback,
+} from './db/transaction.js';

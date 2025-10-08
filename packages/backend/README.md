@@ -159,7 +159,8 @@ The logger is used for:
 ### Create a Bug Report
 
 ```typescript
-const bugReport = await db.createBugReport({
+// Recommended: Direct repository access
+const bugReport = await db.bugReports.create({
   project_id: 'project-uuid',
   title: 'Button click not working',
   description: 'The submit button does not respond to clicks',
@@ -210,18 +211,18 @@ Execute multiple operations atomically with automatic rollback on error:
 
 ```typescript
 // Create bug report with session in a single transaction
-const result = await db.transaction(async (client) => {
-  const bug = await client.createBugReport({
+const result = await db.transaction(async (tx) => {
+  const bug = await tx.bugReports.create({
     project_id: 'project-uuid',
     title: 'Critical issue',
     priority: 'critical',
   });
 
-  const session = await client.createSession(bug.id, {
+  const session = await tx.sessions.createSession(bug.id, {
     events: [...rrwebEvents],
   });
 
-  const ticket = await client.createTicket(bug.id, 'JIRA-123', 'jira');
+  const ticket = await tx.tickets.createTicket(bug.id, 'JIRA-123', 'jira');
 
   return { bug, session, ticket };
 });
@@ -425,23 +426,23 @@ DatabaseClient (Facade)
          └── BaseRepository (abstract)
 ```
 
-#### Using DatabaseClient (Facade Pattern)
+#### Using DatabaseClient
 
-The `DatabaseClient` provides a simple, backward-compatible API:
+The `DatabaseClient` provides convenient access to all repositories:
 
 ```typescript
 import { createDatabaseClient } from '@bugspotter/backend';
 
 const db = createDatabaseClient();
 
-// All methods delegate to repositories internally
-const project = await db.createProject({ name: 'My App', api_key: 'key' });
-const bug = await db.createBugReport({ project_id: project.id, title: 'Bug' });
+// Access repositories through the client
+const project = await db.projects.create({ name: 'My App', api_key: 'key' });
+const bug = await db.bugReports.create({ project_id: project.id, title: 'Bug' });
 ```
 
 #### Using Repositories Directly
 
-For more control, dependency injection, or testing, use repositories directly:
+For dependency injection or testing, use repositories directly:
 
 ```typescript
 import { ProjectRepository, BugReportRepository } from '@bugspotter/backend';
@@ -477,7 +478,7 @@ const results = await bugReportRepo.list(
 - ✅ **Testability** - Easy to mock repositories in unit tests
 - ✅ **Dependency Injection** - Inject repositories into services
 - ✅ **Reusability** - Share common CRUD logic in `BaseRepository`
-- ✅ **Backward Compatibility** - `DatabaseClient` facade maintains existing API
+- ✅ **Clean API** - Direct repository access with automatic retry logic
 
 See [examples/repository-usage.ts](./examples/repository-usage.ts) for a complete example.
 

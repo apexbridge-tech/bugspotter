@@ -111,14 +111,14 @@ POST /api/bugs
 
 **Authentication Methods:**
 
-1. **API Key (Deprecated, Backward Compatible)**
+1. **API Key**
 
 ```bash
 POST /api/bugs
 X-API-Key: demo-api-key-12345
 ```
 
-2. **Bearer Token (Recommended)**
+2. **Bearer Token**
 
 ```bash
 POST /api/bugs
@@ -214,7 +214,7 @@ Simulates HTTP error responses for testing. Supported codes:
 
 ### Test Authentication Methods
 
-#### 1. API Key Auth (Deprecated)
+#### 1. API Key Auth
 
 ```bash
 curl -X POST http://localhost:4000/api/bugs \
@@ -232,7 +232,7 @@ curl -X POST http://localhost:4000/api/bugs \
   }'
 ```
 
-#### 2. Bearer Token Auth (Recommended)
+#### 2. Bearer Token Auth
 
 ```bash
 curl -X POST http://localhost:4000/api/bugs \
