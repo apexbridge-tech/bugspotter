@@ -297,13 +297,15 @@ pnpm test:coverage
 
 ## Testing
 
-Tests use [Testcontainers](https://testcontainers.com/) for automatic PostgreSQL container management:
+Tests use [Testcontainers](https://testcontainers.com/) for automatic PostgreSQL container management. Docker must be installed and running.
 
 ```bash
-pnpm test
+pnpm test              # Run all tests
+pnpm test:watch        # Watch mode
+pnpm test:coverage     # With coverage
 ```
 
-That's all! No database setup required. See [TESTING.md](./TESTING.md) for details.
+See [TESTING.md](./TESTING.md) for comprehensive testing documentation, troubleshooting, and CI/CD integration.
 
 ## Architecture
 
