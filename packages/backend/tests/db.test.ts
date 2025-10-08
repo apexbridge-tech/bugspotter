@@ -8,6 +8,12 @@ const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ||
   'postgresql://postgres:postgres@localhost:5432/bugspotter_test';
 
+// Generate unique identifiers for tests to avoid collisions
+let uniqueCounter = 0;
+function generateUniqueId(): string {
+  return `${Date.now()}-${process.hrtime.bigint()}-${++uniqueCounter}`;
+}
+
 describe('DatabaseClient', () => {
   let db: DatabaseClient;
   let testProjectId: string;
@@ -43,7 +49,7 @@ describe('DatabaseClient', () => {
     // Create a test project before each test
     const projectData: ProjectInsert = {
       name: 'Test Project',
-      api_key: `test-key-${Date.now()}`,
+      api_key: `test-key-${generateUniqueId()}`,
       settings: { theme: 'dark' },
     };
     const project = await db.createProject(projectData);
@@ -62,7 +68,7 @@ describe('DatabaseClient', () => {
     it('should create a project', async () => {
       const data: ProjectInsert = {
         name: 'New Project',
-        api_key: `api-key-${Date.now()}`,
+        api_key: `api-key-${generateUniqueId()}`,
         settings: { color: 'blue' },
       };
 
@@ -441,7 +447,7 @@ describe('DatabaseClient', () => {
     });
 
     it('should handle duplicate API key', async () => {
-      const apiKey = `duplicate-${Date.now()}`;
+      const apiKey = `duplicate-${generateUniqueId()}`;
 
       const firstProject = await db.createProject({
         name: 'First',
