@@ -1,10 +1,18 @@
 /**
  * Database Client
- * PostgreSQL connection and query methods with connection pooling
+ * Facade providing backward-compatible API delegating to repositories
  */
 
 import pg from 'pg';
 import { config } from '../config.js';
+import { getLogger } from '../logger.js';
+import {
+  ProjectRepository,
+  BugReportRepository,
+  UserRepository,
+  SessionRepository,
+  TicketRepository,
+} from './repositories.js';
 import type {
   Project,
   ProjectInsert,
@@ -33,15 +41,25 @@ export interface DatabaseConfig {
   min?: number; // Minimum number of clients in the pool
   connectionTimeoutMillis?: number;
   idleTimeoutMillis?: number;
+  retryAttempts?: number; // Number of retry attempts for connection failures
+  retryDelayMs?: number; // Delay between retries in milliseconds
 }
 
 /**
  * Database client for PostgreSQL operations
+ * Delegates to repositories while maintaining backward compatibility
  */
 export class DatabaseClient {
   private pool: pg.Pool;
-  private retryAttempts: number = 3;
-  private retryDelay: number = 1000; // milliseconds
+  private retryAttempts: number;
+  private retryDelay: number;
+
+  // Repositories
+  public readonly projects: ProjectRepository;
+  public readonly bugReports: BugReportRepository;
+  public readonly users: UserRepository;
+  public readonly sessions: SessionRepository;
+  public readonly tickets: TicketRepository;
 
   constructor(config: DatabaseConfig) {
     this.pool = new Pool({
@@ -52,10 +70,69 @@ export class DatabaseClient {
       idleTimeoutMillis: config.idleTimeoutMillis ?? 30000,
     });
 
+    this.retryAttempts = config.retryAttempts ?? 3;
+    this.retryDelay = config.retryDelayMs ?? 1000;
+
+    // Initialize repositories
+    this.projects = new ProjectRepository(this.pool);
+    this.bugReports = new BugReportRepository(this.pool);
+    this.users = new UserRepository(this.pool);
+    this.sessions = new SessionRepository(this.pool);
+    this.tickets = new TicketRepository(this.pool);
+
     // Handle pool errors
     this.pool.on('error', (err) => {
-      console.error('Unexpected database error:', err);
+      getLogger().error('Unexpected database error', { error: err.message, stack: err.stack });
     });
+  }
+
+  /**
+   * Check if an error is retryable (connection-related)
+   */
+  private isRetryableError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const pgError = error as Error & { code?: string };
+
+    // Node.js network error codes
+    const nodeErrorCodes = [
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'EPIPE',
+      'ENOTFOUND',
+      'ENETUNREACH',
+      'EAI_AGAIN',
+    ];
+
+    if (pgError.code && nodeErrorCodes.includes(pgError.code)) {
+      return true;
+    }
+
+    // PostgreSQL connection-related error codes
+    const pgConnectionErrors = [
+      '08000', // connection_exception
+      '08003', // connection_does_not_exist
+      '08006', // connection_failure
+      '57P01', // admin_shutdown
+      '57P02', // crash_shutdown
+      '57P03', // cannot_connect_now
+    ];
+
+    if (pgError.code && pgConnectionErrors.includes(pgError.code)) {
+      return true;
+    }
+
+    // Fallback to message checking (less reliable but covers edge cases)
+    const errorMessage = error.message.toLowerCase();
+    return (
+      errorMessage.includes('connection terminated') ||
+      errorMessage.includes('server closed the connection') ||
+      errorMessage.includes('connection reset') ||
+      errorMessage.includes('socket hang up')
+    );
   }
 
   /**
@@ -69,15 +146,12 @@ export class DatabaseClient {
         throw error;
       }
 
-      // Retry on connection errors
-      const isConnectionError =
-        error instanceof Error &&
-        (error.message.includes('ECONNREFUSED') ||
-          error.message.includes('ETIMEDOUT') ||
-          error.message.includes('connection terminated'));
-
-      if (isConnectionError) {
-        console.warn(`Database connection error, retrying (${attempt}/${this.retryAttempts})...`);
+      if (this.isRetryableError(error)) {
+        getLogger().warn('Database connection error, retrying', {
+          attempt,
+          maxAttempts: this.retryAttempts,
+          delayMs: this.retryDelay * attempt,
+        });
         await this.delay(this.retryDelay * attempt);
         return this.executeWithRetry(queryFn, attempt + 1);
       }
@@ -102,7 +176,9 @@ export class DatabaseClient {
       });
       return result.rows.length > 0;
     } catch (error) {
-      console.error('Database connection test failed:', error);
+      getLogger().error('Database connection test failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
   }
@@ -114,100 +190,115 @@ export class DatabaseClient {
     await this.pool.end();
   }
 
+  /**
+   * Execute multiple operations in a transaction
+   * Automatically rolls back on error, commits on success
+   * @example
+   * await db.transaction(async (client) => {
+   *   const bug = await client.createBugReport({...});
+   *   await client.createSession(bug.id, events);
+   *   return bug;
+   * });
+   */
+  async transaction<T>(callback: (client: DatabaseClient) => Promise<T>): Promise<T> {
+    const poolClient = await this.pool.connect();
+
+    try {
+      await poolClient.query('BEGIN');
+      getLogger().debug('Transaction started');
+
+      // Create a new DatabaseClient that uses this specific connection
+      const transactionClient = new DatabaseClient({
+        connectionString: '', // Not used - we override the pool
+      });
+
+      // Override the pool with a single-client pool
+      const mockPool = {
+        query: poolClient.query.bind(poolClient),
+        connect: async () => {
+          return poolClient;
+        },
+        end: async () => {}, // Prevent closing during transaction
+        on: () => {},
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transactionClient as any).pool = mockPool;
+
+      // Re-initialize repositories with the transaction pool
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transactionClient as any).projects = new ProjectRepository(mockPool as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transactionClient as any).bugReports = new BugReportRepository(mockPool as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transactionClient as any).users = new UserRepository(mockPool as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transactionClient as any).sessions = new SessionRepository(mockPool as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (transactionClient as any).tickets = new TicketRepository(mockPool as any);
+
+      const result = await callback(transactionClient);
+
+      await poolClient.query('COMMIT');
+      getLogger().debug('Transaction committed');
+
+      return result;
+    } catch (error) {
+      await poolClient.query('ROLLBACK');
+      getLogger().warn('Transaction rolled back', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      poolClient.release();
+    }
+  }
+
   // ==================== PROJECT METHODS ====================
 
   /**
    * Create a new project
    */
   async createProject(data: ProjectInsert): Promise<Project> {
-    const query = `
-      INSERT INTO projects (name, api_key, settings)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    const values = [data.name, data.api_key, JSON.stringify(data.settings ?? {})];
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Project>(query, values);
+    return this.executeWithRetry(() => {
+      return this.projects.create(data);
     });
-
-    return this.deserializeProject(result.rows[0]);
   }
 
   /**
    * Get project by ID
    */
   async getProject(id: string): Promise<Project | null> {
-    const query = 'SELECT * FROM projects WHERE id = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Project>(query, [id]);
+    return this.executeWithRetry(() => {
+      return this.projects.findById(id);
     });
-
-    return result.rows.length > 0 ? this.deserializeProject(result.rows[0]) : null;
   }
 
   /**
    * Get project by API key (for authentication)
    */
   async getProjectByApiKey(apiKey: string): Promise<Project | null> {
-    const query = 'SELECT * FROM projects WHERE api_key = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Project>(query, [apiKey]);
+    return this.executeWithRetry(() => {
+      return this.projects.findByApiKey(apiKey);
     });
-
-    return result.rows.length > 0 ? this.deserializeProject(result.rows[0]) : null;
   }
 
   /**
    * Update project
    */
   async updateProject(id: string, data: ProjectUpdate): Promise<Project | null> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    let paramCount = 1;
-
-    if (data.name !== undefined) {
-      updates.push(`name = $${paramCount++}`);
-      values.push(data.name);
-    }
-    if (data.api_key !== undefined) {
-      updates.push(`api_key = $${paramCount++}`);
-      values.push(data.api_key);
-    }
-    if (data.settings !== undefined) {
-      updates.push(`settings = $${paramCount++}`);
-      values.push(JSON.stringify(data.settings));
-    }
-
-    if (updates.length === 0) {
-      return this.getProject(id);
-    }
-
-    values.push(id);
-    const query = `
-      UPDATE projects
-      SET ${updates.join(', ')}
-      WHERE id = $${paramCount}
-      RETURNING *
-    `;
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Project>(query, values);
+    return this.executeWithRetry(() => {
+      return this.projects.update(id, data);
     });
-
-    return result.rows.length > 0 ? this.deserializeProject(result.rows[0]) : null;
   }
 
   /**
    * Delete project
    */
   async deleteProject(id: string): Promise<boolean> {
-    const query = 'DELETE FROM projects WHERE id = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query(query, [id]);
+    return this.executeWithRetry(() => {
+      return this.projects.delete(id);
     });
-
-    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // ==================== BUG REPORT METHODS ====================
@@ -216,99 +307,27 @@ export class DatabaseClient {
    * Create a new bug report
    */
   async createBugReport(data: BugReportInsert): Promise<BugReport> {
-    const query = `
-      INSERT INTO bug_reports (
-        project_id, title, description, screenshot_url, replay_url,
-        metadata, status, priority
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-    `;
-
-    const values = [
-      data.project_id,
-      data.title,
-      data.description ?? null,
-      data.screenshot_url ?? null,
-      data.replay_url ?? null,
-      JSON.stringify(data.metadata ?? {}),
-      data.status ?? 'open',
-      data.priority ?? 'medium',
-    ];
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<BugReport>(query, values);
+    return this.executeWithRetry(() => {
+      return this.bugReports.create(data);
     });
-
-    return this.deserializeBugReport(result.rows[0]);
   }
 
   /**
    * Get bug report by ID
    */
   async getBugReport(id: string): Promise<BugReport | null> {
-    const query = 'SELECT * FROM bug_reports WHERE id = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<BugReport>(query, [id]);
+    return this.executeWithRetry(() => {
+      return this.bugReports.findById(id);
     });
-
-    return result.rows.length > 0 ? this.deserializeBugReport(result.rows[0]) : null;
   }
 
   /**
    * Update bug report
    */
   async updateBugReport(id: string, data: BugReportUpdate): Promise<BugReport | null> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    let paramCount = 1;
-
-    if (data.title !== undefined) {
-      updates.push(`title = $${paramCount++}`);
-      values.push(data.title);
-    }
-    if (data.description !== undefined) {
-      updates.push(`description = $${paramCount++}`);
-      values.push(data.description);
-    }
-    if (data.screenshot_url !== undefined) {
-      updates.push(`screenshot_url = $${paramCount++}`);
-      values.push(data.screenshot_url);
-    }
-    if (data.replay_url !== undefined) {
-      updates.push(`replay_url = $${paramCount++}`);
-      values.push(data.replay_url);
-    }
-    if (data.metadata !== undefined) {
-      updates.push(`metadata = $${paramCount++}`);
-      values.push(JSON.stringify(data.metadata));
-    }
-    if (data.status !== undefined) {
-      updates.push(`status = $${paramCount++}`);
-      values.push(data.status);
-    }
-    if (data.priority !== undefined) {
-      updates.push(`priority = $${paramCount++}`);
-      values.push(data.priority);
-    }
-
-    if (updates.length === 0) {
-      return this.getBugReport(id);
-    }
-
-    values.push(id);
-    const query = `
-      UPDATE bug_reports
-      SET ${updates.join(', ')}
-      WHERE id = $${paramCount}
-      RETURNING *
-    `;
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<BugReport>(query, values);
+    return this.executeWithRetry(() => {
+      return this.bugReports.update(id, data);
     });
-
-    return result.rows.length > 0 ? this.deserializeBugReport(result.rows[0]) : null;
   }
 
   /**
@@ -319,87 +338,33 @@ export class DatabaseClient {
     sort?: BugReportSortOptions,
     pagination?: PaginationOptions
   ): Promise<PaginatedResult<BugReport>> {
-    const whereClauses: string[] = [];
-    const values: unknown[] = [];
-    let paramCount = 1;
-
-    // Build WHERE clause
-    if (filters?.project_id) {
-      whereClauses.push(`project_id = $${paramCount++}`);
-      values.push(filters.project_id);
-    }
-    if (filters?.status) {
-      whereClauses.push(`status = $${paramCount++}`);
-      values.push(filters.status);
-    }
-    if (filters?.priority) {
-      whereClauses.push(`priority = $${paramCount++}`);
-      values.push(filters.priority);
-    }
-    if (filters?.created_after) {
-      whereClauses.push(`created_at >= $${paramCount++}`);
-      values.push(filters.created_after);
-    }
-    if (filters?.created_before) {
-      whereClauses.push(`created_at <= $${paramCount++}`);
-      values.push(filters.created_before);
-    }
-
-    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
-    // Get total count
-    const countQuery = `SELECT COUNT(*) FROM bug_reports ${whereClause}`;
-    const countResult = await this.executeWithRetry(() => {
-      return this.pool.query<{ count: string }>(countQuery, values);
+    return this.executeWithRetry(() => {
+      return this.bugReports.list(filters, sort, pagination);
     });
-    const total = parseInt(countResult.rows[0].count, 10);
-
-    // Build ORDER BY clause
-    const sortBy = sort?.sort_by ?? 'created_at';
-    const order = sort?.order ?? 'desc';
-    const orderClause = `ORDER BY ${sortBy} ${order.toUpperCase()}`;
-
-    // Build LIMIT and OFFSET
-    const page = pagination?.page ?? 1;
-    const limit = pagination?.limit ?? 20;
-    const offset = (page - 1) * limit;
-
-    // Get paginated results
-    const dataQuery = `
-      SELECT * FROM bug_reports
-      ${whereClause}
-      ${orderClause}
-      LIMIT $${paramCount++} OFFSET $${paramCount++}
-    `;
-    values.push(limit, offset);
-
-    const dataResult = await this.executeWithRetry(() => {
-      return this.pool.query<BugReport>(dataQuery, values);
-    });
-
-    return {
-      data: dataResult.rows.map((row) => {
-        return this.deserializeBugReport(row);
-      }),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
   }
 
   /**
    * Delete bug report
    */
   async deleteBugReport(id: string): Promise<boolean> {
-    const query = 'DELETE FROM bug_reports WHERE id = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query(query, [id]);
+    return this.executeWithRetry(() => {
+      return this.bugReports.delete(id);
     });
+  }
 
-    return result.rowCount !== null && result.rowCount > 0;
+  /**
+   * Create multiple bug reports in a single transaction
+   * More efficient than calling createBugReport multiple times
+   */
+  async createBugReports(data: BugReportInsert[]): Promise<BugReport[]> {
+    if (data.length === 0) {
+      return [];
+    }
+
+    return this.transaction(async (client) => {
+      // Use the transaction client's repositories for batch operations
+      return client.bugReports.createBatch(data);
+    });
   }
 
   // ==================== SESSION METHODS ====================
@@ -412,31 +377,17 @@ export class DatabaseClient {
     events: Record<string, unknown>,
     duration?: number
   ): Promise<Session> {
-    const query = `
-      INSERT INTO sessions (bug_report_id, events, duration)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    const values = [bugReportId, JSON.stringify(events), duration ?? null];
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Session>(query, values);
+    return this.executeWithRetry(() => {
+      return this.sessions.createSession(bugReportId, events, duration);
     });
-
-    return this.deserializeSession(result.rows[0]);
   }
 
   /**
    * Get sessions for a bug report
    */
   async getSessionsByBugReport(bugReportId: string): Promise<Session[]> {
-    const query = 'SELECT * FROM sessions WHERE bug_report_id = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Session>(query, [bugReportId]);
-    });
-
-    return result.rows.map((row) => {
-      return this.deserializeSession(row);
+    return this.executeWithRetry(() => {
+      return this.sessions.findByBugReport(bugReportId);
     });
   }
 
@@ -446,48 +397,27 @@ export class DatabaseClient {
    * Create a new user
    */
   async createUser(data: UserInsert): Promise<User> {
-    const query = `
-      INSERT INTO users (email, password_hash, role, oauth_provider, oauth_id)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-    `;
-    const values = [
-      data.email,
-      data.password_hash ?? null,
-      data.role ?? 'user',
-      data.oauth_provider ?? null,
-      data.oauth_id ?? null,
-    ];
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<User>(query, values);
+    return this.executeWithRetry(() => {
+      return this.users.create(data);
     });
-
-    return result.rows[0];
   }
 
   /**
    * Get user by email
    */
   async getUserByEmail(email: string): Promise<User | null> {
-    const query = 'SELECT * FROM users WHERE email = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<User>(query, [email]);
+    return this.executeWithRetry(() => {
+      return this.users.findByEmail(email);
     });
-
-    return result.rows.length > 0 ? result.rows[0] : null;
   }
 
   /**
    * Get user by OAuth credentials
    */
   async getUserByOAuth(provider: string, oauthId: string): Promise<User | null> {
-    const query = 'SELECT * FROM users WHERE oauth_provider = $1 AND oauth_id = $2';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<User>(query, [provider, oauthId]);
+    return this.executeWithRetry(() => {
+      return this.users.findByOAuth(provider, oauthId);
     });
-
-    return result.rows.length > 0 ? result.rows[0] : null;
   }
 
   // ==================== TICKET METHODS ====================
@@ -501,56 +431,18 @@ export class DatabaseClient {
     platform: string,
     status?: string
   ): Promise<Ticket> {
-    const query = `
-      INSERT INTO tickets (bug_report_id, external_id, platform, status)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    const values = [bugReportId, externalId, platform, status ?? null];
-
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Ticket>(query, values);
+    return this.executeWithRetry(() => {
+      return this.tickets.createTicket(bugReportId, externalId, platform, status);
     });
-
-    return result.rows[0];
   }
 
   /**
    * Get tickets for a bug report
    */
   async getTicketsByBugReport(bugReportId: string): Promise<Ticket[]> {
-    const query = 'SELECT * FROM tickets WHERE bug_report_id = $1';
-    const result = await this.executeWithRetry(() => {
-      return this.pool.query<Ticket>(query, [bugReportId]);
+    return this.executeWithRetry(() => {
+      return this.tickets.findByBugReport(bugReportId);
     });
-
-    return result.rows;
-  }
-
-  // ==================== SERIALIZATION HELPERS ====================
-
-  private deserializeProject(row: unknown): Project {
-    const r = row as Record<string, unknown>;
-    return {
-      ...r,
-      settings: typeof r.settings === 'string' ? JSON.parse(r.settings) : r.settings,
-    } as Project;
-  }
-
-  private deserializeBugReport(row: unknown): BugReport {
-    const r = row as Record<string, unknown>;
-    return {
-      ...r,
-      metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata,
-    } as BugReport;
-  }
-
-  private deserializeSession(row: unknown): Session {
-    const r = row as Record<string, unknown>;
-    return {
-      ...r,
-      events: typeof r.events === 'string' ? JSON.parse(r.events) : r.events,
-    } as Session;
   }
 }
 
@@ -570,5 +462,7 @@ export function createDatabaseClient(databaseUrl?: string): DatabaseClient {
     min: config.database.poolMin,
     connectionTimeoutMillis: config.database.connectionTimeout,
     idleTimeoutMillis: config.database.idleTimeout,
+    retryAttempts: config.database.retryAttempts,
+    retryDelayMs: config.database.retryDelayMs,
   });
 }

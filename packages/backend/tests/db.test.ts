@@ -11,6 +11,7 @@ const TEST_DATABASE_URL =
 describe('DatabaseClient', () => {
   let db: DatabaseClient;
   let testProjectId: string;
+  const createdProjectIds: string[] = [];
 
   beforeAll(async () => {
     // Create database client
@@ -26,7 +27,15 @@ describe('DatabaseClient', () => {
   });
 
   afterAll(async () => {
-    // Clean up and close connection
+    // Clean up all created projects (will cascade delete related records)
+    for (const projectId of createdProjectIds) {
+      try {
+        await db.deleteProject(projectId);
+      } catch (error) {
+        // Ignore errors if already deleted
+      }
+    }
+    // Close connection
     await db.close();
   });
 
@@ -39,6 +48,7 @@ describe('DatabaseClient', () => {
     };
     const project = await db.createProject(projectData);
     testProjectId = project.id;
+    createdProjectIds.push(project.id);
   });
 
   describe('Connection', () => {
@@ -57,6 +67,7 @@ describe('DatabaseClient', () => {
       };
 
       const project = await db.createProject(data);
+      createdProjectIds.push(project.id); // Track for cleanup
 
       expect(project).toBeDefined();
       expect(project.id).toBeDefined();
@@ -325,6 +336,70 @@ describe('DatabaseClient', () => {
       expect(user).toBeDefined();
       expect(user?.email).toBe(email);
     });
+
+    it('should enforce unique email addresses', async () => {
+      const email = `duplicate-${Date.now()}@example.com`;
+
+      await db.createUser({
+        email,
+        password_hash: 'password1',
+      });
+
+      // Try to create another user with same email (different auth method)
+      await expect(
+        db.createUser({
+          email,
+          oauth_provider: 'google',
+          oauth_id: 'google123',
+        })
+      ).rejects.toThrow();
+    });
+
+    it('should enforce unique OAuth credentials', async () => {
+      const email1 = `oauth1-${Date.now()}@example.com`;
+      const email2 = `oauth2-${Date.now()}@example.com`;
+
+      await db.createUser({
+        email: email1,
+        oauth_provider: 'google',
+        oauth_id: 'same-id-123',
+      });
+
+      // Try to create another user with same OAuth credentials
+      await expect(
+        db.createUser({
+          email: email2,
+          oauth_provider: 'google',
+          oauth_id: 'same-id-123',
+        })
+      ).rejects.toThrow();
+    });
+
+    it('should reject users with both password and OAuth', async () => {
+      const email = `invalid-${Date.now()}@example.com`;
+
+      // This violates the check_auth_method constraint
+      await expect(
+        db.createUser({
+          email,
+          password_hash: 'password123',
+          oauth_provider: 'google',
+          oauth_id: 'google123',
+        })
+      ).rejects.toThrow();
+    });
+
+    it('should reject users with neither password nor OAuth', async () => {
+      const email = `invalid2-${Date.now()}@example.com`;
+
+      // This violates the check_auth_method constraint
+      await expect(
+        db.createUser({
+          email,
+          // No password_hash, no oauth_provider/oauth_id
+        })
+      ).rejects.toThrow();
+    });
   });
 
   describe('Tickets', () => {
@@ -368,10 +443,11 @@ describe('DatabaseClient', () => {
     it('should handle duplicate API key', async () => {
       const apiKey = `duplicate-${Date.now()}`;
 
-      await db.createProject({
+      const firstProject = await db.createProject({
         name: 'First',
         api_key: apiKey,
       });
+      createdProjectIds.push(firstProject.id); // Track for cleanup
 
       await expect(
         db.createProject({
@@ -379,6 +455,92 @@ describe('DatabaseClient', () => {
           api_key: apiKey,
         })
       ).rejects.toThrow();
+    });
+  });
+
+  describe('Transactions', () => {
+    it('should commit transaction on success', async () => {
+      const result = await db.transaction(async (client) => {
+        const bug = await client.createBugReport({
+          project_id: testProjectId,
+          title: 'Transaction Test Bug',
+        });
+
+        const session = await client.createSession(bug.id, { events: [] });
+
+        return { bug, session };
+      });
+
+      expect(result.bug).toBeDefined();
+      expect(result.session).toBeDefined();
+      expect(result.session.bug_report_id).toBe(result.bug.id);
+
+      // Verify data persisted
+      const bug = await db.getBugReport(result.bug.id);
+      expect(bug).toBeDefined();
+    });
+
+    it('should rollback transaction on error', async () => {
+      let createdBugId: string | null = null;
+
+      await expect(
+        db.transaction(async (client) => {
+          const bug = await client.createBugReport({
+            project_id: testProjectId,
+            title: 'Rollback Test Bug',
+          });
+          createdBugId = bug.id;
+
+          // Intentionally cause an error
+          throw new Error('Test error - should rollback');
+        })
+      ).rejects.toThrow('Test error - should rollback');
+
+      // Verify data was rolled back
+      if (createdBugId) {
+        const bug = await db.getBugReport(createdBugId);
+        expect(bug).toBeNull();
+      }
+    });
+  });
+
+  describe('Batch Operations', () => {
+    it('should create multiple bug reports in batch', async () => {
+      const bugData: BugReportInsert[] = [
+        {
+          project_id: testProjectId,
+          title: 'Batch Bug 1',
+          priority: 'high',
+        },
+        {
+          project_id: testProjectId,
+          title: 'Batch Bug 2',
+          priority: 'low',
+        },
+        {
+          project_id: testProjectId,
+          title: 'Batch Bug 3',
+          priority: 'medium',
+        },
+      ];
+
+      const results = await db.createBugReports(bugData);
+
+      expect(results).toHaveLength(3);
+      expect(results[0].title).toBe('Batch Bug 1');
+      expect(results[1].title).toBe('Batch Bug 2');
+      expect(results[2].title).toBe('Batch Bug 3');
+
+      // Verify all were created
+      for (const bug of results) {
+        const found = await db.getBugReport(bug.id);
+        expect(found).toBeDefined();
+      }
+    });
+
+    it('should return empty array for empty batch', async () => {
+      const results = await db.createBugReports([]);
+      expect(results).toEqual([]);
     });
   });
 });

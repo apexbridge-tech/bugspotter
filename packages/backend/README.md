@@ -38,6 +38,8 @@ Optional configuration:
 - `DB_POOL_MAX` - Maximum connections in pool (default: 10)
 - `DB_CONNECTION_TIMEOUT_MS` - Connection timeout (default: 30000)
 - `DB_IDLE_TIMEOUT_MS` - Idle connection timeout (default: 30000)
+- `DB_RETRY_ATTEMPTS` - Number of retry attempts on connection failure (default: 3)
+- `DB_RETRY_DELAY_MS` - Delay between retries in milliseconds (default: 1000)
 
 ## Database Setup
 
@@ -109,6 +111,51 @@ const isConnected = await db.testConnection();
 console.log('Database connected:', isConnected);
 ```
 
+### Custom Logger (Optional)
+
+The backend uses a simple console-based logger by default. You can replace it with your own logger (pino, winston, etc.):
+
+```typescript
+import { setLogger } from '@bugspotter/backend';
+import pino from 'pino';
+
+// Use pino for structured logging
+setLogger(pino());
+
+// Or winston
+import winston from 'winston';
+setLogger(
+  winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+    transports: [new winston.transports.Console()],
+  })
+);
+
+// Or your custom logger (must implement Logger interface)
+setLogger({
+  debug: (msg, meta) => {
+    /* your implementation */
+  },
+  info: (msg, meta) => {
+    /* your implementation */
+  },
+  warn: (msg, meta) => {
+    /* your implementation */
+  },
+  error: (msg, meta) => {
+    /* your implementation */
+  },
+});
+```
+
+The logger is used for:
+
+- Database connection errors and retries
+- Pool errors and warnings
+- Migration status (if you implement it)
+- Any operational events
+
 ### Create a Bug Report
 
 ```typescript
@@ -155,6 +202,59 @@ console.log(`Found ${result.pagination.total} bug reports`);
 result.data.forEach((bug) => {
   console.log(`- ${bug.title} (${bug.status})`);
 });
+```
+
+### Transactions
+
+Execute multiple operations atomically with automatic rollback on error:
+
+```typescript
+// Create bug report with session in a single transaction
+const result = await db.transaction(async (client) => {
+  const bug = await client.createBugReport({
+    project_id: 'project-uuid',
+    title: 'Critical issue',
+    priority: 'critical',
+  });
+
+  const session = await client.createSession(bug.id, {
+    events: [...rrwebEvents],
+  });
+
+  const ticket = await client.createTicket(bug.id, 'JIRA-123', 'jira');
+
+  return { bug, session, ticket };
+});
+
+// All operations committed, or all rolled back on error
+console.log('Bug report created:', result.bug.id);
+```
+
+### Batch Operations
+
+Create multiple records efficiently:
+
+```typescript
+// Create multiple bug reports in a single transaction
+const bugs = await db.createBugReports([
+  {
+    project_id: 'project-uuid',
+    title: 'Bug 1',
+    priority: 'high',
+  },
+  {
+    project_id: 'project-uuid',
+    title: 'Bug 2',
+    priority: 'medium',
+  },
+  {
+    project_id: 'project-uuid',
+    title: 'Bug 3',
+    priority: 'low',
+  },
+]);
+
+console.log(`Created ${bugs.length} bug reports`);
 ```
 
 ### Update a Bug Report
@@ -308,6 +408,78 @@ pnpm test:coverage     # With coverage
 See [TESTING.md](./TESTING.md) for comprehensive testing documentation, troubleshooting, and CI/CD integration.
 
 ## Architecture
+
+### Repository Pattern
+
+The backend uses the **Repository Pattern** for clean separation of concerns and improved testability:
+
+#### Architecture Overview
+
+```
+DatabaseClient (Facade)
+    ├── ProjectRepository
+    ├── BugReportRepository
+    ├── UserRepository
+    ├── SessionRepository
+    └── TicketRepository
+         └── BaseRepository (abstract)
+```
+
+#### Using DatabaseClient (Facade Pattern)
+
+The `DatabaseClient` provides a simple, backward-compatible API:
+
+```typescript
+import { createDatabaseClient } from '@bugspotter/backend';
+
+const db = createDatabaseClient();
+
+// All methods delegate to repositories internally
+const project = await db.createProject({ name: 'My App', api_key: 'key' });
+const bug = await db.createBugReport({ project_id: project.id, title: 'Bug' });
+```
+
+#### Using Repositories Directly
+
+For more control, dependency injection, or testing, use repositories directly:
+
+```typescript
+import { ProjectRepository, BugReportRepository } from '@bugspotter/backend';
+import { Pool } from 'pg';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const projectRepo = new ProjectRepository(pool);
+const bugReportRepo = new BugReportRepository(pool);
+
+// Direct repository access
+const project = await projectRepo.create({ name: 'My App', api_key: 'key' });
+const project = await projectRepo.findByApiKey('key');
+
+// Advanced repository methods
+const results = await bugReportRepo.list(
+  { status: 'open', priority: 'high' },
+  { sort_by: 'created_at', order: 'desc' },
+  { page: 1, limit: 20 }
+);
+```
+
+#### Available Repositories
+
+- **ProjectRepository** - `create`, `findById`, `findByApiKey`, `update`, `delete`
+- **BugReportRepository** - `create`, `findById`, `update`, `delete`, `list`, `createBatch`
+- **UserRepository** - `create`, `findById`, `findByEmail`, `findByOAuth`, `update`, `delete`
+- **SessionRepository** - `createSession`, `findById`, `findByBugReport`, `delete`
+- **TicketRepository** - `createTicket`, `findById`, `findByBugReport`, `delete`
+
+#### Benefits
+
+- ✅ **Single Responsibility** - Each repository handles one entity type
+- ✅ **Testability** - Easy to mock repositories in unit tests
+- ✅ **Dependency Injection** - Inject repositories into services
+- ✅ **Reusability** - Share common CRUD logic in `BaseRepository`
+- ✅ **Backward Compatibility** - `DatabaseClient` facade maintains existing API
+
+See [examples/repository-usage.ts](./examples/repository-usage.ts) for a complete example.
 
 ### Connection Management
 

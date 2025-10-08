@@ -12,6 +12,8 @@ export const config = {
     poolMin: parseInt(process.env.DB_POOL_MIN ?? '2', 10),
     connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS ?? '30000', 10),
     idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT_MS ?? '30000', 10),
+    retryAttempts: parseInt(process.env.DB_RETRY_ATTEMPTS ?? '3', 10),
+    retryDelayMs: parseInt(process.env.DB_RETRY_DELAY_MS ?? '1000', 10),
   },
   server: {
     port: parseInt(process.env.PORT ?? '3000', 10),

@@ -25,11 +25,18 @@ CREATE TABLE IF NOT EXISTS users (
     oauth_provider VARCHAR(50),
     oauth_id VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_oauth UNIQUE (oauth_provider, oauth_id)
+    
+    CONSTRAINT unique_oauth_credentials UNIQUE (oauth_provider, oauth_id),
+    CONSTRAINT check_auth_method CHECK (
+        (password_hash IS NOT NULL AND oauth_provider IS NULL AND oauth_id IS NULL) OR
+        (password_hash IS NULL AND oauth_provider IS NOT NULL AND oauth_id IS NOT NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth_unique 
+    ON users(oauth_provider, oauth_id) 
+    WHERE oauth_provider IS NOT NULL AND oauth_id IS NOT NULL;
 
 -- Bug reports table
 CREATE TABLE IF NOT EXISTS bug_reports (
