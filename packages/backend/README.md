@@ -263,7 +263,7 @@ console.log(`Created ${allBugs.length} bug reports in batches`);
 ### Update a Bug Report
 
 ```typescript
-const updated = await db.updateBugReport(bugReportId, {
+const updated = await db.bugReports.update(bugReportId, {
   status: 'in-progress',
   priority: 'critical',
 });
@@ -273,7 +273,7 @@ const updated = await db.updateBugReport(bugReportId, {
 
 ```typescript
 // Create project
-const project = await db.createProject({
+const project = await db.projects.create({
   name: 'My App',
   api_key: 'bs_live_abc123',
   settings: {
@@ -283,10 +283,10 @@ const project = await db.createProject({
 });
 
 // Get project by API key (for authentication)
-const project = await db.getProjectByApiKey('bs_live_abc123');
+const project = await db.projects.findByApiKey('bs_live_abc123');
 
 // Update project settings
-await db.updateProject(project.id, {
+await db.projects.update(project.id, {
   settings: {
     ...project.settings,
     maxReportsPerDay: 1000,
@@ -298,28 +298,28 @@ await db.updateProject(project.id, {
 
 ```typescript
 // Store session replay data
-const session = await db.createSession(
+const session = await db.sessions.createSession(
   bugReportId,
   { events: [...rrwebEvents] },
   120000 // duration in ms
 );
 
 // Retrieve sessions for a bug report
-const sessions = await db.getSessionsByBugReport(bugReportId);
+const sessions = await db.sessions.findByBugReport(bugReportId);
 ```
 
 ### User Management
 
 ```typescript
 // Create user with password
-const user = await db.createUser({
+const user = await db.users.create({
   email: 'user@example.com',
   password_hash: await bcrypt.hash('password', 10),
   role: 'user',
 });
 
 // Create OAuth user
-const oauthUser = await db.createUser({
+const oauthUser = await db.users.create({
   email: 'user@gmail.com',
   oauth_provider: 'google',
   oauth_id: 'google-user-id',
@@ -327,10 +327,10 @@ const oauthUser = await db.createUser({
 });
 
 // Get user by email
-const user = await db.getUserByEmail('user@example.com');
+const user = await db.users.findByEmail('user@example.com');
 
 // Get user by OAuth
-const user = await db.getUserByOAuth('google', 'google-user-id');
+const user = await db.users.findByOAuth('google', 'google-user-id');
 ```
 
 ## TypeScript Support
@@ -402,7 +402,7 @@ The client includes automatic retry logic for connection failures:
 
 ```typescript
 try {
-  const bugReport = await db.getBugReport(id);
+  const bugReport = await db.bugReports.findById(id);
   if (!bugReport) {
     console.log('Bug report not found');
   }

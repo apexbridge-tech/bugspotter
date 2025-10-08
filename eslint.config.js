@@ -44,7 +44,6 @@ export default tseslint.config(
       ],
       'no-console': 'off',
       curly: ['error', 'all'],
-      'arrow-body-style': ['error', 'always'],
     },
   },
   {
@@ -61,5 +60,24 @@ export default tseslint.config(
       '**/*.test.js',
       '**/*.md',
     ],
+  },
+  {
+    files: ['apps/demo/**/*.js'],
+    languageOptions: {
+      globals: {
+        BugSpotter: 'readonly',
+        rrwebPlayer: 'readonly',
+        localStorage: 'readonly',
+        navigator: 'readonly',
+        alert: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        event: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-undef': 'off',
+    },
   }
 );

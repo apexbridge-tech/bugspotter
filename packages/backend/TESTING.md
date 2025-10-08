@@ -214,7 +214,7 @@ Add tests to `tests/db.test.ts`:
 describe('Your Feature', () => {
   it('should do something', async () => {
     // Arrange
-    const project = await db.createProject({
+    const project = await db.projects.create({
       name: 'Test Project',
       api_key: 'test-key',
     });
