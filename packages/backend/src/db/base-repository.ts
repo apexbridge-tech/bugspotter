@@ -9,6 +9,16 @@ import { getLogger } from '../logger.js';
 import { deserializeRow, serializeJsonField } from './query-builder.js';
 
 /**
+ * Validate SQL identifier to prevent SQL injection
+ * Only allows alphanumeric characters and underscores
+ */
+function validateSqlIdentifier(identifier: string): void {
+  if (!/^[a-zA-Z0-9_]+$/.test(identifier)) {
+    throw new Error(`Invalid SQL identifier: ${identifier}`);
+  }
+}
+
+/**
  * Base repository with common CRUD operations
  */
 export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<T>> {
@@ -46,6 +56,10 @@ export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<
   async create(data: TInsert): Promise<T> {
     const serialized = this.serializeForInsert(data);
     const columns = Object.keys(serialized);
+
+    // Validate all column names to prevent SQL injection
+    columns.forEach(validateSqlIdentifier);
+
     const placeholders = columns
       .map((_, i) => {
         return `$${i + 1}`;
@@ -73,6 +87,11 @@ export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<
     if (entries.length === 0) {
       return this.findById(id);
     }
+
+    // Validate all column names to prevent SQL injection
+    entries.forEach(([key]) => {
+      return validateSqlIdentifier(key);
+    });
 
     const setClauses = entries
       .map(([key], i) => {
@@ -156,5 +175,71 @@ export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<
    */
   protected log(message: string, meta?: Record<string, unknown>): void {
     getLogger().debug(message, { table: this.tableName, ...meta });
+  }
+
+  /**
+   * Find records by a single column value
+   * Generic helper to eliminate repeated query patterns
+   */
+  protected async findBy(column: string, value: unknown): Promise<T | null> {
+    validateSqlIdentifier(column);
+    const query = `SELECT * FROM ${this.tableName} WHERE ${column} = $1`;
+    const result = await this.getClient().query(query, [value]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return this.deserialize(result.rows[0]);
+  }
+
+  /**
+   * Find multiple records by a single column value
+   * Generic helper for foreign key lookups
+   */
+  protected async findManyBy(column: string, value: unknown): Promise<T[]> {
+    validateSqlIdentifier(column);
+    const query = `SELECT * FROM ${this.tableName} WHERE ${column} = $1`;
+    const result = await this.getClient().query(query, [value]);
+    return this.deserializeMany(result.rows);
+  }
+
+  /**
+   * Deserialize multiple rows
+   * Eliminates repeated map patterns
+   */
+  protected deserializeMany(rows: unknown[]): T[] {
+    return rows.map((row) => {
+      return this.deserialize(row);
+    });
+  }
+
+  /**
+   * Find a record matching multiple column conditions
+   * Useful for composite lookups like OAuth (provider + id)
+   */
+  protected async findByMultiple(conditions: Record<string, unknown>): Promise<T | null> {
+    const entries = Object.entries(conditions);
+
+    // Validate all column names to prevent SQL injection
+    entries.forEach(([key]) => {
+      return validateSqlIdentifier(key);
+    });
+
+    const whereClauses = entries.map(([key], i) => {
+      return `${key} = $${i + 1}`;
+    });
+    const values = entries.map(([, value]) => {
+      return value;
+    });
+
+    const query = `SELECT * FROM ${this.tableName} WHERE ${whereClauses.join(' AND ')}`;
+    const result = await this.getClient().query(query, values);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return this.deserialize(result.rows[0]);
   }
 }

@@ -29,6 +29,22 @@ export interface DatabaseConfig {
  * Database client for PostgreSQL operations with automatic retry logic
  */
 export class DatabaseClient implements RepositoryRegistry {
+  /**
+   * Methods that are safe to retry (idempotent read operations)
+   * Shared across all instances to avoid unnecessary memory allocation
+   */
+  private static readonly RETRYABLE_METHODS = new Set([
+    'findById',
+    'findBy',
+    'findManyBy',
+    'findByMultiple',
+    'findByApiKey',
+    'findByEmail',
+    'findByOAuth',
+    'findByBugReport',
+    'list',
+  ]);
+
   private pool: pg.Pool;
   private retryConfig: RetryConfig;
   private repositories: RepositoryRegistry;
@@ -69,19 +85,35 @@ export class DatabaseClient implements RepositoryRegistry {
 
   /**
    * Wrap repository methods with automatic retry logic using Proxy pattern
+   * Only wraps read operations - write operations should not be auto-retried
+   * as they may not be idempotent and could cause data corruption
    */
   private wrapWithRetry<T extends object>(target: T): T {
     return new Proxy(target, {
       get: (obj, prop) => {
         const value = obj[prop as keyof T];
-        if (typeof value === 'function') {
+
+        // Only wrap functions
+        if (typeof value !== 'function') {
+          return value;
+        }
+
+        const methodName = String(prop);
+
+        // Only retry safe, idempotent read operations (use class-level constant)
+        if (DatabaseClient.RETRYABLE_METHODS.has(methodName)) {
           return (...args: unknown[]) => {
             return executeWithRetry(() => {
               return value.apply(obj, args);
             }, this.retryConfig);
           };
         }
-        return value;
+
+        // Write operations are NOT retried automatically
+        // User must implement retry logic if needed (with proper idempotency)
+        return (...args: unknown[]) => {
+          return value.apply(obj, args);
+        };
       },
     });
   }

@@ -40,14 +40,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
    * Find project by API key (for authentication)
    */
   async findByApiKey(apiKey: string): Promise<Project | null> {
-    const query = `SELECT * FROM ${this.tableName} WHERE api_key = $1`;
-    const result = await this.getClient().query(query, [apiKey]);
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return this.deserialize(result.rows[0]);
+    return this.findBy('api_key', apiKey);
   }
 }
 
@@ -129,9 +122,7 @@ export class BugReportRepository extends BaseRepository<
     const dataResult = await this.getClient().query(dataQuery, dataValues);
 
     return {
-      data: dataResult.rows.map((row) => {
-        return this.deserialize(row);
-      }),
+      data: this.deserializeMany(dataResult.rows),
       pagination: {
         page,
         limit,
@@ -143,10 +134,24 @@ export class BugReportRepository extends BaseRepository<
 
   /**
    * Create multiple bug reports in batch (single query, much faster)
+   * @param dataArray - Array of bug reports to create
+   * @throws Error if array exceeds maximum batch size (1000)
+   * @throws Error if array contains invalid data
    */
   async createBatch(dataArray: BugReportInsert[]): Promise<BugReport[]> {
     if (dataArray.length === 0) {
       return [];
+    }
+
+    // Validate batch size to prevent DoS and PostgreSQL parameter limit
+    // PostgreSQL limit: 65,535 parameters. With 8 columns = max 8,191 rows
+    // We set a conservative limit of 1000 for safety and performance
+    const MAX_BATCH_SIZE = 1000;
+    if (dataArray.length > MAX_BATCH_SIZE) {
+      throw new Error(
+        `Batch size ${dataArray.length} exceeds maximum allowed (${MAX_BATCH_SIZE}). ` +
+          `Split into smaller batches.`
+      );
     }
 
     // Serialize all data first
@@ -154,50 +159,85 @@ export class BugReportRepository extends BaseRepository<
       return this.serializeForInsert(data);
     });
 
-    // Build VALUES clause with placeholders
+    // Use first row to determine columns (all rows must have same structure)
+    const columns = Object.keys(serializedData[0]);
+    const columnCount = columns.length;
+
+    // Validate that we have columns
+    if (columnCount === 0) {
+      throw new Error('Cannot create batch: serialized data has no columns');
+    }
+
+    // Validate all column names to prevent SQL injection
+    columns.forEach((col) => {
+      if (!/^[a-zA-Z0-9_]+$/.test(col)) {
+        throw new Error(`Invalid SQL identifier: ${col}`);
+      }
+    });
+
+    // Build VALUES placeholders and collect all values
     const valuesPlaceholders: string[] = [];
     const allValues: unknown[] = [];
     let paramCount = 1;
 
     for (const data of serializedData) {
-      const rowPlaceholders = [
-        `$${paramCount++}`, // project_id
-        `$${paramCount++}`, // title
-        `$${paramCount++}`, // description
-        `$${paramCount++}`, // screenshot_url
-        `$${paramCount++}`, // replay_url
-        `$${paramCount++}`, // metadata
-        `$${paramCount++}`, // status
-        `$${paramCount++}`, // priority
-      ];
+      const rowPlaceholders = Array.from({ length: columnCount }, () => {
+        return `$${paramCount++}`;
+      });
       valuesPlaceholders.push(`(${rowPlaceholders.join(', ')})`);
-
-      // Add values in the same order
       allValues.push(
-        data.project_id,
-        data.title,
-        data.description,
-        data.screenshot_url,
-        data.replay_url,
-        data.metadata,
-        data.status,
-        data.priority
+        ...columns.map((col) => {
+          return data[col];
+        })
       );
     }
 
-    // Single INSERT query with all rows
     const query = `
-      INSERT INTO ${this.tableName} 
-        (project_id, title, description, screenshot_url, replay_url, metadata, status, priority)
+      INSERT INTO ${this.tableName} (${columns.join(', ')})
       VALUES ${valuesPlaceholders.join(', ')}
       RETURNING *
     `;
 
     const result = await this.getClient().query(query, allValues);
+    return this.deserializeMany(result.rows);
+  }
 
-    return result.rows.map((row) => {
-      return this.deserialize(row);
-    });
+  /**
+   * Create bug reports in batches, automatically splitting large arrays
+   * @param dataArray - Array of bug reports to create (any size)
+   * @param batchSize - Size of each batch (default: 500, max: 1000)
+   * @returns Array of all created bug reports
+   * @example
+   * // Create 5000 reports in batches of 500
+   * const reports = await repo.createBatchAuto(hugeArray);
+   */
+  async createBatchAuto(
+    dataArray: BugReportInsert[],
+    batchSize: number = 500
+  ): Promise<BugReport[]> {
+    if (dataArray.length === 0) {
+      return [];
+    }
+
+    // Validate batch size
+    if (batchSize < 1 || batchSize > 1000) {
+      throw new Error(`Batch size must be between 1 and 1000, got ${batchSize}`);
+    }
+
+    // If array fits in one batch, use regular createBatch
+    if (dataArray.length <= batchSize) {
+      return this.createBatch(dataArray);
+    }
+
+    // Split into chunks and process sequentially
+    const results: BugReport[] = [];
+    for (let i = 0; i < dataArray.length; i += batchSize) {
+      const chunk = dataArray.slice(i, i + batchSize);
+      const chunkResults = await this.createBatch(chunk);
+      results.push(...chunkResults);
+    }
+
+    return results;
   }
 }
 
@@ -226,28 +266,14 @@ export class UserRepository extends BaseRepository<User, UserInsert, Partial<Use
    * Find user by email
    */
   async findByEmail(email: string): Promise<User | null> {
-    const query = `SELECT * FROM ${this.tableName} WHERE email = $1`;
-    const result = await this.getClient().query(query, [email]);
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return this.deserialize(result.rows[0]);
+    return this.findBy('email', email);
   }
 
   /**
    * Find user by OAuth credentials
    */
   async findByOAuth(provider: string, oauthId: string): Promise<User | null> {
-    const query = `SELECT * FROM ${this.tableName} WHERE oauth_provider = $1 AND oauth_id = $2`;
-    const result = await this.getClient().query(query, [provider, oauthId]);
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    return this.deserialize(result.rows[0]);
+    return this.findByMultiple({ oauth_provider: provider, oauth_id: oauthId });
   }
 }
 
@@ -278,12 +304,7 @@ export class SessionRepository extends BaseRepository<Session, Partial<Session>,
    * Find sessions by bug report ID
    */
   async findByBugReport(bugReportId: string): Promise<Session[]> {
-    const query = `SELECT * FROM ${this.tableName} WHERE bug_report_id = $1`;
-    const result = await this.getClient().query(query, [bugReportId]);
-
-    return result.rows.map((row) => {
-      return this.deserialize(row);
-    });
+    return this.findManyBy('bug_report_id', bugReportId);
   }
 }
 
@@ -316,11 +337,6 @@ export class TicketRepository extends BaseRepository<Ticket, Partial<Ticket>, ne
    * Find tickets by bug report ID
    */
   async findByBugReport(bugReportId: string): Promise<Ticket[]> {
-    const query = `SELECT * FROM ${this.tableName} WHERE bug_report_id = $1`;
-    const result = await this.getClient().query(query, [bugReportId]);
-
-    return result.rows.map((row) => {
-      return this.deserialize(row);
-    });
+    return this.findManyBy('bug_report_id', bugReportId);
   }
 }

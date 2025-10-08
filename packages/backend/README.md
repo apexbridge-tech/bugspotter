@@ -236,8 +236,8 @@ console.log('Bug report created:', result.bug.id);
 Create multiple records efficiently:
 
 ```typescript
-// Create multiple bug reports in a single transaction
-const bugs = await db.createBugReports([
+// Create up to 1000 bug reports in a single query (fastest)
+const bugs = await db.bugReports.createBatch([
   {
     project_id: 'project-uuid',
     title: 'Bug 1',
@@ -256,6 +256,11 @@ const bugs = await db.createBugReports([
 ]);
 
 console.log(`Created ${bugs.length} bug reports`);
+
+// For larger arrays, use createBatchAuto (automatically splits into chunks)
+const hugeArray = [...]; // 5000+ items
+const allBugs = await db.bugReports.createBatchAuto(hugeArray, 500); // 500 per batch
+console.log(`Created ${allBugs.length} bug reports in batches`);
 ```
 
 ### Update a Bug Report
@@ -348,7 +353,7 @@ import type {
 } from '@bugspotter/backend';
 ```
 
-## Connection Pooling
+## Connection Pooling & Retry Logic
 
 The database client uses connection pooling for optimal performance:
 
@@ -356,6 +361,38 @@ The database client uses connection pooling for optimal performance:
 - Configurable pool size (min/max connections)
 - Connection timeout and idle timeout settings
 - Graceful connection cleanup
+
+### Automatic Retry for Read Operations
+
+**Read operations** are automatically retried on connection failures (exponential backoff):
+
+```typescript
+// ✅ Automatically retried on connection failure
+await db.bugReports.findById(id);
+await db.bugReports.list(filters);
+await db.projects.findByApiKey(apiKey);
+```
+
+**Write operations** are NOT automatically retried to prevent data corruption:
+
+```typescript
+// ❌ NOT automatically retried (could cause duplicates)
+await db.bugReports.create(data);
+await db.bugReports.update(id, data);
+await db.bugReports.delete(id);
+await db.bugReports.createBatch(dataArray);
+
+// If you need retry for writes, implement with idempotency:
+import { executeWithRetry } from '@bugspotter/backend';
+
+// Manual retry with idempotency key
+await executeWithRetry(async () => {
+  return await db.bugReports.create({
+    ...data,
+    idempotency_key: uniqueKey, // Prevent duplicates
+  });
+});
+```
 
 ```typescript
 // Close all connections when shutting down

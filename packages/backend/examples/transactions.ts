@@ -11,11 +11,9 @@ async function main() {
   const db = createDatabaseClient();
 
   try {
-    // Example 1: Create bug report with session atomically
     console.log('\n=== Example 1: Bug Report + Session ===');
     const result1 = await db.transaction(async (client) => {
-      // Create the bug report
-      const bug = await client.createBugReport({
+      const bug = await client.bugReports.create({
         project_id: 'some-project-uuid',
         title: 'Payment button not working',
         description: 'Users cannot complete checkout',
@@ -25,18 +23,16 @@ async function main() {
 
       console.log(`Created bug report: ${bug.id}`);
 
-      // Create associated session replay
-      const session = await client.createSession(
-        bug.id,
-        {
+      const session = await client.sessions.create({
+        bug_report_id: bug.id,
+        events: {
           type: 'rrweb',
           recordedEvents: [
             { type: 'FullSnapshot', timestamp: Date.now() },
-            // ... more events
           ],
         },
-        5000 // duration in milliseconds
-      );
+        duration: 5000,
+      });
 
       console.log(`Created session: ${session.id}`);
 
@@ -46,29 +42,29 @@ async function main() {
     console.log('Transaction committed successfully!');
     console.log(`Bug: ${result1.bug.id}, Session: ${result1.session.id}`);
 
-    // Example 2: Transaction rollback on error
     console.log('\n=== Example 2: Transaction Rollback ===');
     try {
       await db.transaction(async (client) => {
-        // Create first bug report
-        const bug1 = await client.createBugReport({
+        const bug1 = await client.bugReports.create({
           project_id: 'some-project-uuid',
           title: 'First Bug',
+          description: 'Description for first bug',
           priority: 'high',
+          status: 'open',
         });
 
         console.log(`Created bug 1: ${bug1.id}`);
 
-        // This would normally create a second bug
-        const bug2 = await client.createBugReport({
+        const bug2 = await client.bugReports.create({
           project_id: 'some-project-uuid',
           title: 'Second Bug',
+          description: 'Description for second bug',
           priority: 'low',
+          status: 'open',
         });
 
         console.log(`Created bug 2: ${bug2.id}`);
 
-        // Simulate an error - this will rollback both inserts
         throw new Error('Test error - should rollback');
       });
     } catch (error) {
@@ -78,23 +74,28 @@ async function main() {
       );
     }
 
-    // Example 3: Batch operations with transaction
-    console.log('\n=== Example 4: Batch Insert ===');
-    const bugs = await db.createBugReports([
+    console.log('\n=== Example 3: Batch Insert ===');
+    const bugs = await db.bugReports.createBatch([
       {
         project_id: 'some-project-uuid',
         title: 'Issue 1',
+        description: 'First issue description',
         priority: 'low',
+        status: 'open',
       },
       {
         project_id: 'some-project-uuid',
         title: 'Issue 2',
+        description: 'Second issue description',
         priority: 'medium',
+        status: 'open',
       },
       {
         project_id: 'some-project-uuid',
         title: 'Issue 3',
+        description: 'Third issue description',
         priority: 'high',
+        status: 'open',
       },
     ]);
 

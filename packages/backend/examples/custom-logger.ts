@@ -7,7 +7,6 @@
 
 import { createDatabaseClient, setLogger, type Logger } from '../src/index.js';
 
-// Example 1: Simple custom logger
 class CustomLogger implements Logger {
   debug(message: string, meta?: Record<string, unknown>): void {
     console.log(`[DEBUG] ${message}`, meta);
@@ -26,7 +25,6 @@ class CustomLogger implements Logger {
   }
 }
 
-// Example 2: Structured JSON logger for production
 class StructuredLogger implements Logger {
   private log(level: string, message: string, meta?: Record<string, unknown>): void {
     const entry = {
@@ -55,7 +53,6 @@ class StructuredLogger implements Logger {
   }
 }
 
-// Example 3: Silent logger for tests
 class SilentLogger implements Logger {
   debug(): void {}
   info(): void {}
@@ -64,7 +61,6 @@ class SilentLogger implements Logger {
 }
 
 async function main() {
-  // Use custom logger
   if (process.env.NODE_ENV === 'production') {
     setLogger(new StructuredLogger());
   } else if (process.env.NODE_ENV === 'test') {
@@ -73,7 +69,6 @@ async function main() {
     setLogger(new CustomLogger());
   }
 
-  // Now all database operations will use your logger
   const db = createDatabaseClient();
   const isConnected = await db.testConnection();
   console.log('Connected:', isConnected);

@@ -263,6 +263,77 @@ describe('Query Builder', () => {
       expect(result.clause).toBe('LIMIT $1 OFFSET $2');
       expect(result.values).toEqual([100, 0]);
     });
+
+    it('should handle maximum allowed limit (1000)', () => {
+      const result = buildPaginationClause(1, 1000);
+
+      expect(result.clause).toBe('LIMIT $1 OFFSET $2');
+      expect(result.values).toEqual([1000, 0]);
+    });
+
+    it('should throw error for negative page number', () => {
+      expect(() => buildPaginationClause(-1, 20)).toThrow(
+        'Invalid page number: -1. Must be an integer >= 1'
+      );
+    });
+
+    it('should throw error for zero page number', () => {
+      expect(() => buildPaginationClause(0, 20)).toThrow(
+        'Invalid page number: 0. Must be an integer >= 1'
+      );
+    });
+
+    it('should throw error for decimal page number', () => {
+      expect(() => buildPaginationClause(1.5, 20)).toThrow(
+        'Invalid page number: 1.5. Must be an integer >= 1'
+      );
+    });
+
+    it('should throw error for negative limit', () => {
+      expect(() => buildPaginationClause(1, -10)).toThrow(
+        'Invalid limit: -10. Must be an integer between 1 and 1000'
+      );
+    });
+
+    it('should throw error for zero limit', () => {
+      expect(() => buildPaginationClause(1, 0)).toThrow(
+        'Invalid limit: 0. Must be an integer between 1 and 1000'
+      );
+    });
+
+    it('should throw error for decimal limit', () => {
+      expect(() => buildPaginationClause(1, 20.7)).toThrow(
+        'Invalid limit: 20.7. Must be an integer between 1 and 1000'
+      );
+    });
+
+    it('should throw error for limit exceeding maximum (1000)', () => {
+      expect(() => buildPaginationClause(1, 1001)).toThrow(
+        'Invalid limit: 1001. Must be an integer between 1 and 1000'
+      );
+    });
+
+    it('should throw error for excessively large limit (DoS protection)', () => {
+      expect(() => buildPaginationClause(1, 999999)).toThrow(
+        'Invalid limit: 999999. Must be an integer between 1 and 1000'
+      );
+    });
+
+    it('should throw error for NaN page', () => {
+      expect(() => buildPaginationClause(NaN, 20)).toThrow('Invalid page number');
+    });
+
+    it('should throw error for NaN limit', () => {
+      expect(() => buildPaginationClause(1, NaN)).toThrow('Invalid limit');
+    });
+
+    it('should throw error for Infinity page', () => {
+      expect(() => buildPaginationClause(Infinity, 20)).toThrow('Invalid page number');
+    });
+
+    it('should throw error for Infinity limit', () => {
+      expect(() => buildPaginationClause(1, Infinity)).toThrow('Invalid limit');
+    });
   });
 
   describe('buildOrderByClause', () => {
@@ -550,6 +621,104 @@ describe('Query Builder', () => {
         id: '123',
         metadata: { browser: 'Chrome' },
       });
+    });
+  });
+
+  describe('SQL Injection Protection', () => {
+    it('should prevent SQL injection in buildWhereClause with malicious column names', () => {
+      expect(() =>
+        buildWhereClause({
+          'id; DROP TABLE users--': 'value',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should prevent SQL injection in buildWhereClause with OR statement', () => {
+      expect(() =>
+        buildWhereClause({
+          'id = 1 OR 1=1 --': 'value',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should prevent SQL injection in buildWhereClause with spaces', () => {
+      expect(() =>
+        buildWhereClause({
+          'id DESC; DROP': 'value',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should prevent SQL injection in buildWhereClause with special characters', () => {
+      expect(() =>
+        buildWhereClause({
+          'user.email': 'test@example.com',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should prevent SQL injection in buildUpdateClause with malicious column names', () => {
+      expect(() =>
+        buildUpdateClause({
+          'name; DROP TABLE users--': 'John',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should prevent SQL injection in buildUpdateClause with OR statement', () => {
+      expect(() =>
+        buildUpdateClause({
+          'name = "admin" OR 1=1 --': 'value',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should prevent SQL injection in buildUpdateClause with parentheses', () => {
+      expect(() =>
+        buildUpdateClause({
+          'name); DROP TABLE users--': 'value',
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should allow valid column names in buildWhereClause', () => {
+      const result = buildWhereClause({
+        user_id: '123',
+        email_address: 'test@example.com',
+        field123: 'value',
+      });
+
+      expect(result.clause).toContain('WHERE');
+      expect(result.values).toHaveLength(3);
+    });
+
+    it('should allow valid column names in buildUpdateClause', () => {
+      const result = buildUpdateClause({
+        first_name: 'John',
+        last_name: 'Doe',
+        age123: 30,
+      });
+
+      expect(result.clause).toBeTruthy();
+      expect(result.values).toHaveLength(3);
+    });
+
+    it('should prevent SQL injection with custom operators in buildWhereClause', () => {
+      expect(() =>
+        buildWhereClause({
+          'id; DROP TABLE users--': { value: 1, operator: '=' },
+        })
+      ).toThrow('Invalid SQL identifier');
+    });
+
+    it('should allow valid column names with custom operators', () => {
+      const result = buildWhereClause({
+        created_at: { value: '2025-01-01', operator: '>=' },
+        age: { value: 18, operator: '>' },
+      });
+
+      expect(result.clause).toContain('WHERE');
+      expect(result.values).toEqual(['2025-01-01', 18]);
     });
   });
 });

@@ -17,6 +17,16 @@ export interface PaginationClause {
 }
 
 /**
+ * Validate SQL identifier to prevent SQL injection
+ * Only allows alphanumeric characters and underscores
+ */
+function validateSqlIdentifier(identifier: string): void {
+  if (!/^[a-zA-Z0-9_]+$/.test(identifier)) {
+    throw new Error(`Invalid SQL identifier: ${identifier}`);
+  }
+}
+
+/**
  * Helper to build parameterized clauses with consistent logic
  */
 function buildParameterizedClause(
@@ -30,6 +40,8 @@ function buildParameterizedClause(
 
   for (const { key, value, operator = '=' } of entries) {
     if (value !== undefined && value !== null) {
+      // Validate column name to prevent SQL injection
+      validateSqlIdentifier(key);
       clauses.push(`${key} ${operator} $${paramCount++}`);
       values.push(value);
     }
@@ -81,29 +93,32 @@ export function buildUpdateClause(
 }
 
 /**
- * Build LIMIT and OFFSET clause
+ * Build LIMIT and OFFSET clause with validation
+ * @param page - Page number (must be >= 1)
+ * @param limit - Items per page (must be 1-1000)
+ * @param startParamCount - Starting parameter count
+ * @throws Error if page or limit are invalid
  */
 export function buildPaginationClause(
   page: number = 1,
   limit: number = 20,
   startParamCount: number = 1
 ): PaginationClause {
+  // Validate page number
+  if (!Number.isInteger(page) || page < 1) {
+    throw new Error(`Invalid page number: ${page}. Must be an integer >= 1`);
+  }
+
+  // Validate limit (reasonable maximum to prevent DoS)
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    throw new Error(`Invalid limit: ${limit}. Must be an integer between 1 and 1000`);
+  }
+
   const offset = (page - 1) * limit;
   const clause = `LIMIT $${startParamCount} OFFSET $${startParamCount + 1}`;
   const values = [limit, offset];
 
   return { clause, values };
-}
-
-/**
- * Validate SQL identifier to prevent SQL injection
- * @param identifier - Column name or table name
- * @throws Error if identifier contains invalid characters
- */
-function validateSqlIdentifier(identifier: string): void {
-  if (!/^[a-zA-Z0-9_]+$/.test(identifier)) {
-    throw new Error(`Invalid SQL identifier: ${identifier}`);
-  }
 }
 
 /**
