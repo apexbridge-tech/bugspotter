@@ -3,16 +3,29 @@
  * https://github.com/nodejs/undici/issues/1650
  */
 
-// @ts-ignore - File may not be defined in Node 18
-if (typeof File === 'undefined') {
+import { Blob as NodeBlob } from 'buffer';
+
+// Ensure Blob is available (should be in Node 18+)
+if (typeof Blob === 'undefined') {
   // @ts-ignore
-  globalThis.File = class File extends Blob {
+  globalThis.Blob = NodeBlob;
+}
+
+// Add File polyfill for Node 18
+if (typeof File === 'undefined') {
+  const BlobClass = globalThis.Blob || NodeBlob;
+  
+  // @ts-ignore - File may not be defined in Node 18
+  globalThis.File = class File extends BlobClass {
+    name: string;
+    lastModified: number;
+
     constructor(chunks: BlobPart[], name: string, options?: FilePropertyBag) {
       super(chunks, options);
-      // @ts-ignore
       this.name = name;
-      // @ts-ignore
       this.lastModified = options?.lastModified ?? Date.now();
     }
   };
 }
+
+export {};
