@@ -137,6 +137,7 @@ export class DatabaseClient {
 
   /**
    * Execute a query with automatic retry on connection failures
+   * Uses exponential backoff with jitter to avoid thundering herd
    */
   private async executeWithRetry<T>(queryFn: () => Promise<T>, attempt: number = 1): Promise<T> {
     try {
@@ -147,12 +148,19 @@ export class DatabaseClient {
       }
 
       if (this.isRetryableError(error)) {
+        // Exponential backoff: baseDelay * 2^(attempt-1)
+        // With jitter: add random 0-50% of the delay to avoid thundering herd
+        const exponentialDelay = this.retryDelay * Math.pow(2, attempt - 1);
+        const jitter = Math.random() * exponentialDelay * 0.5;
+        const totalDelay = Math.min(exponentialDelay + jitter, 30000); // Cap at 30s
+
         getLogger().warn('Database connection error, retrying', {
           attempt,
           maxAttempts: this.retryAttempts,
-          delayMs: this.retryDelay * attempt,
+          delayMs: Math.round(totalDelay),
         });
-        await this.delay(this.retryDelay * attempt);
+
+        await this.delay(totalDelay);
         return this.executeWithRetry(queryFn, attempt + 1);
       }
 

@@ -26,13 +26,17 @@ async function main() {
       console.log(`Created bug report: ${bug.id}`);
 
       // Create associated session replay
-      const session = await client.createSession(bug.id, {
-        type: 'rrweb',
-        events: [
-          { type: 'FullSnapshot', timestamp: Date.now() },
-          // ... more events
-        ],
-      });
+      const session = await client.createSession(
+        bug.id,
+        {
+          type: 'rrweb',
+          recordedEvents: [
+            { type: 'FullSnapshot', timestamp: Date.now() },
+            // ... more events
+          ],
+        },
+        5000 // duration in milliseconds
+      );
 
       console.log(`Created session: ${session.id}`);
 

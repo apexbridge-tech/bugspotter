@@ -142,15 +142,62 @@ export class BugReportRepository extends BaseRepository<
   }
 
   /**
-   * Create multiple bug reports in batch (uses transaction)
+   * Create multiple bug reports in batch (single query, much faster)
    */
   async createBatch(dataArray: BugReportInsert[]): Promise<BugReport[]> {
-    const results: BugReport[] = [];
-    for (const data of dataArray) {
-      const result = await this.create(data);
-      results.push(result);
+    if (dataArray.length === 0) {
+      return [];
     }
-    return results;
+
+    // Serialize all data first
+    const serializedData = dataArray.map((data) => {
+      return this.serializeForInsert(data);
+    });
+
+    // Build VALUES clause with placeholders
+    const valuesPlaceholders: string[] = [];
+    const allValues: unknown[] = [];
+    let paramCount = 1;
+
+    for (const data of serializedData) {
+      const rowPlaceholders = [
+        `$${paramCount++}`, // project_id
+        `$${paramCount++}`, // title
+        `$${paramCount++}`, // description
+        `$${paramCount++}`, // screenshot_url
+        `$${paramCount++}`, // replay_url
+        `$${paramCount++}`, // metadata
+        `$${paramCount++}`, // status
+        `$${paramCount++}`, // priority
+      ];
+      valuesPlaceholders.push(`(${rowPlaceholders.join(', ')})`);
+
+      // Add values in the same order
+      allValues.push(
+        data.project_id,
+        data.title,
+        data.description,
+        data.screenshot_url,
+        data.replay_url,
+        data.metadata,
+        data.status,
+        data.priority
+      );
+    }
+
+    // Single INSERT query with all rows
+    const query = `
+      INSERT INTO ${this.tableName} 
+        (project_id, title, description, screenshot_url, replay_url, metadata, status, priority)
+      VALUES ${valuesPlaceholders.join(', ')}
+      RETURNING *
+    `;
+
+    const result = await this.getClient().query(query, allValues);
+
+    return result.rows.map((row) => {
+      return this.deserialize(row);
+    });
   }
 }
 
@@ -272,6 +319,8 @@ export class TicketRepository extends BaseRepository<Ticket, Partial<Ticket>, ne
     const query = `SELECT * FROM ${this.tableName} WHERE bug_report_id = $1`;
     const result = await this.getClient().query(query, [bugReportId]);
 
-    return result.rows;
+    return result.rows.map((row) => {
+      return this.deserialize(row);
+    });
   }
 }

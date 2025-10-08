@@ -3,6 +3,7 @@
  * Shows how to use repositories directly for more control and testability
  */
 
+import { fileURLToPath } from 'url';
 import pg from 'pg';
 import {
   ProjectRepository,
@@ -156,6 +157,9 @@ async function main() {
 }
 
 // Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    main().catch(console.error);
+  }
 }

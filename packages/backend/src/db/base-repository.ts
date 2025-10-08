@@ -120,13 +120,13 @@ export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<
   }
 
   /**
-   * Serialize data for insert
-   * Override in subclasses for custom serialization
+   * Serialize data for database operations (shared logic for insert/update)
+   * Handles JSON field serialization and filters out undefined values
    */
-  protected serializeForInsert(data: TInsert): Record<string, unknown> {
+  protected serialize(data: Record<string, unknown>): Record<string, unknown> {
     const serialized: Record<string, unknown> = {};
 
-    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    for (const [key, value] of Object.entries(data)) {
       if (value !== undefined) {
         serialized[key] = this.jsonFields.includes(key) ? serializeJsonField(value) : value;
       }
@@ -136,19 +136,19 @@ export abstract class BaseRepository<T, TInsert = Partial<T>, TUpdate = Partial<
   }
 
   /**
+   * Serialize data for insert
+   * Override in subclasses for custom serialization
+   */
+  protected serializeForInsert(data: TInsert): Record<string, unknown> {
+    return this.serialize(data as Record<string, unknown>);
+  }
+
+  /**
    * Serialize data for update
    * Override in subclasses for custom serialization
    */
   protected serializeForUpdate(data: TUpdate): Record<string, unknown> {
-    const serialized: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-      if (value !== undefined) {
-        serialized[key] = this.jsonFields.includes(key) ? serializeJsonField(value) : value;
-      }
-    }
-
-    return serialized;
+    return this.serialize(data as Record<string, unknown>);
   }
 
   /**
