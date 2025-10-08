@@ -100,21 +100,6 @@ jobs:
       matrix:
         node-version: [18, 20, 22]
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: bugspotter_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -133,15 +118,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
-        run: pnpm --filter @bugspotter/backend run migrate
-
       - name: Run backend tests
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
-        run: pnpm --filter @bugspotter/backend run test
+        run: |
+          # Testcontainers will automatically start PostgreSQL
+          # Docker is available on GitHub Actions runners by default
+          pnpm --filter @bugspotter/backend run test
 
   playwright:
     name: Playwright Browser Tests
@@ -250,21 +231,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, test-backend]
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: bugspotter_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -291,15 +257,10 @@ jobs:
           # Run SDK E2E tests with coverage
           pnpm --filter "@bugspotter/sdk" run test:e2e -- --coverage
 
-      - name: Run backend migrations
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
-        run: pnpm --filter @bugspotter/backend run migrate
-
       - name: Run backend tests with coverage
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
-        run: pnpm --filter @bugspotter/backend run test:coverage
+        run: |
+          # Testcontainers will automatically start PostgreSQL
+          pnpm --filter @bugspotter/backend run test:coverage
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4

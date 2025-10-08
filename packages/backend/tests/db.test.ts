@@ -540,7 +540,33 @@ describe('DatabaseClient', () => {
 
     it('should return empty array for empty batch', async () => {
       const results = await db.createBugReports([]);
-      expect(results).toEqual([]);
+      expect(results).toHaveLength(0);
+    });
+  });
+
+  describe('SQL Injection Protection', () => {
+    it('should prevent SQL injection in ORDER BY clause', async () => {
+      // Attempt SQL injection through sort parameter
+      await expect(
+        db.listBugReports(
+          { project_id: testProjectId },
+          // @ts-expect-error - Testing runtime injection attempt
+          { sort_by: 'created_at; DROP TABLE bug_reports--', order: 'desc' },
+          { page: 1, limit: 10 }
+        )
+      ).rejects.toThrow('Invalid SQL identifier');
+    });
+
+    it('should allow valid column names in ORDER BY', async () => {
+      // Valid column names should work
+      const result = await db.listBugReports(
+        { project_id: testProjectId },
+        { sort_by: 'created_at', order: 'desc' },
+        { page: 1, limit: 10 }
+      );
+
+      expect(result).toBeDefined();
+      expect(result.data).toBeDefined();
     });
   });
 });

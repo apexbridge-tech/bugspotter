@@ -147,11 +147,14 @@ async function runMigrations(): Promise<void> {
 }
 
 // Run migrations if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runMigrations().catch((error) => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  });
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = fileURLToPath(import.meta.url);
+  if (process.argv[1] === modulePath) {
+    runMigrations().catch((error) => {
+      console.error('Fatal error:', error);
+      process.exit(1);
+    });
+  }
 }
 
 export { runMigrations };

@@ -3,68 +3,67 @@
  * Consolidates WHERE clause, UPDATE clause, and pagination logic
  */
 
-export interface WhereClause {
+/** Generic result for clause builders with parameter tracking */
+export interface ClauseResult {
   clause: string;
   values: unknown[];
   paramCount: number;
 }
 
-export interface UpdateClause {
-  clause: string;
-  values: unknown[];
-  paramCount: number;
-}
-
+/** Result for pagination clause (no paramCount needed in return) */
 export interface PaginationClause {
   clause: string;
   values: unknown[];
 }
 
+/** Type alias for backward compatibility */
+export type WhereClause = ClauseResult;
+export type UpdateClause = ClauseResult;
+
 /**
- * Build WHERE clause from filters
+ * Helper to build parameterized clauses with consistent logic
  */
-export function buildWhereClause(
-  filters: Record<string, unknown>,
-  startParamCount: number = 1
-): WhereClause {
-  const whereClauses: string[] = [];
+function buildParameterizedClause(
+  entries: Array<{ key: string; value: unknown; operator?: string }>,
+  startParamCount: number,
+  separator: string
+): ClauseResult {
+  const clauses: string[] = [];
   const values: unknown[] = [];
   let paramCount = startParamCount;
 
-  for (const [key, value] of Object.entries(filters)) {
+  for (const { key, value, operator = '=' } of entries) {
     if (value !== undefined && value !== null) {
-      whereClauses.push(`${key} = $${paramCount++}`);
+      clauses.push(`${key} ${operator} $${paramCount++}`);
       values.push(value);
     }
   }
 
-  const clause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
+  const clause = clauses.join(separator);
   return { clause, values, paramCount };
 }
 
 /**
- * Build WHERE clause with custom operators
+ * Build WHERE clause from filters
+ * Supports both simple equality filters and custom operators
  */
-export function buildWhereClauseWithOperators(
-  filters: Record<string, { value: unknown; operator?: string }>,
+export function buildWhereClause(
+  filters: Record<string, unknown | { value: unknown; operator?: string }>,
   startParamCount: number = 1
 ): WhereClause {
-  const whereClauses: string[] = [];
-  const values: unknown[] = [];
-  let paramCount = startParamCount;
-
-  for (const [key, filter] of Object.entries(filters)) {
-    if (filter.value !== undefined && filter.value !== null) {
-      const operator = filter.operator ?? '=';
-      whereClauses.push(`${key} ${operator} $${paramCount++}`);
-      values.push(filter.value);
+  // Normalize filters to { key, value, operator } format
+  const entries = Object.entries(filters).map(([key, filter]) => {
+    if (filter && typeof filter === 'object' && 'value' in filter) {
+      const f = filter as { value: unknown; operator?: string };
+      return { key, value: f.value, operator: f.operator };
     }
-  }
+    return { key, value: filter, operator: '=' };
+  });
 
-  const clause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  const result = buildParameterizedClause(entries, startParamCount, ' AND ');
+  const clause = result.clause ? `WHERE ${result.clause}` : '';
 
-  return { clause, values, paramCount };
+  return { ...result, clause };
 }
 
 /**
@@ -74,20 +73,15 @@ export function buildUpdateClause(
   data: Record<string, unknown>,
   startParamCount: number = 1
 ): UpdateClause {
-  const updates: string[] = [];
-  const values: unknown[] = [];
-  let paramCount = startParamCount;
+  const entries = Object.entries(data)
+    .filter(([, value]) => {
+      return value !== undefined;
+    })
+    .map(([key, value]) => {
+      return { key, value };
+    });
 
-  for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined) {
-      updates.push(`${key} = $${paramCount++}`);
-      values.push(value);
-    }
-  }
-
-  const clause = updates.join(', ');
-
-  return { clause, values, paramCount };
+  return buildParameterizedClause(entries, startParamCount, ', ');
 }
 
 /**
@@ -106,12 +100,26 @@ export function buildPaginationClause(
 }
 
 /**
- * Build ORDER BY clause
+ * Validate SQL identifier to prevent SQL injection
+ * @param identifier - Column name or table name
+ * @throws Error if identifier contains invalid characters
+ */
+function validateSqlIdentifier(identifier: string): void {
+  if (!/^[a-zA-Z0-9_]+$/.test(identifier)) {
+    throw new Error(`Invalid SQL identifier: ${identifier}`);
+  }
+}
+
+/**
+ * Build ORDER BY clause with SQL injection protection
+ * @param sortBy - Column name (validated against whitelist pattern)
+ * @param order - Sort direction
  */
 export function buildOrderByClause(
   sortBy: string = 'created_at',
   order: 'asc' | 'desc' = 'desc'
 ): string {
+  validateSqlIdentifier(sortBy);
   return `ORDER BY ${sortBy} ${order.toUpperCase()}`;
 }
 
