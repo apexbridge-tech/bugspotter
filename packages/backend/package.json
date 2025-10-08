@@ -1,0 +1,36 @@
+{
+  "name": "@bugspotter/backend",
+  "version": "0.1.0",
+  "description": "BugSpotter self-hosted backend with PostgreSQL",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "migrate": "tsx src/db/migrations/migrate.ts",
+    "migrate:create": "tsx src/db/migrations/create-migration.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@bugspotter/types": "workspace:*",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.7.1",
+    "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^20.11.0",
+    "@types/pg": "^8.11.10",
+    "@vitest/coverage-v8": "^3.2.4",
+    "testcontainers": "^11.7.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.3.3",
+    "vitest": "^3.2.4"
+  }
+}
