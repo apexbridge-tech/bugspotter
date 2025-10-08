@@ -14,7 +14,7 @@ if (typeof Blob === 'undefined') {
 // Add File polyfill for Node 18
 if (typeof File === 'undefined') {
   const BlobClass = globalThis.Blob || NodeBlob;
-  
+
   // @ts-ignore - File may not be defined in Node 18
   globalThis.File = class File extends BlobClass {
     name: string;
