@@ -92,6 +92,57 @@ jobs:
           # Run SDK E2E tests (integration, config, performance)
           pnpm --filter @bugspotter/sdk run test:e2e
 
+  test-backend:
+    name: Backend Tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: bugspotter_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
+        run: pnpm --filter @bugspotter/backend run migrate
+
+      - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
+        run: pnpm --filter @bugspotter/backend run test
+
   playwright:
     name: Playwright Browser Tests
     runs-on: ubuntu-latest
@@ -151,7 +202,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test, playwright]
+    needs: [lint, test, test-backend, playwright]
 
     steps:
       - name: Checkout code
@@ -197,7 +248,22 @@ jobs:
   test-coverage:
     name: Test Coverage
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [test, test-backend]
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: bugspotter_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - name: Checkout code
@@ -217,7 +283,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests with coverage
+      - name: Run SDK tests with coverage
         run: |
           # Run SDK unit tests with coverage (single run on Node 20)
           pnpm --filter "@bugspotter/sdk" run test -- --coverage
@@ -225,8 +291,15 @@ jobs:
           # Run SDK E2E tests with coverage
           pnpm --filter "@bugspotter/sdk" run test:e2e -- --coverage
 
-          # Skip API tests in CI (contract tests require running server)
-          echo "⏭️  Skipping API tests in CI environment"
+      - name: Run backend migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
+        run: pnpm --filter @bugspotter/backend run migrate
+
+      - name: Run backend tests with coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bugspotter_test
+        run: pnpm --filter @bugspotter/backend run test:coverage
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
