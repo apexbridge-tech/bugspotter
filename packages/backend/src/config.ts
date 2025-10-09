@@ -38,6 +38,25 @@ export const config = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10), // 1 minute
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10),
   },
+  storage: {
+    backend: (process.env.STORAGE_BACKEND ?? 'local') as 'local' | 's3' | 'minio' | 'r2',
+    // Local storage config
+    local: {
+      baseDirectory: process.env.STORAGE_BASE_DIR ?? './data/uploads',
+      baseUrl: process.env.STORAGE_BASE_URL ?? 'http://localhost:3000/uploads',
+    },
+    // S3-compatible storage config
+    s3: {
+      endpoint: process.env.S3_ENDPOINT, // Optional - for MinIO/R2
+      region: process.env.S3_REGION ?? 'us-east-1',
+      accessKeyId: process.env.S3_ACCESS_KEY ?? '',
+      secretAccessKey: process.env.S3_SECRET_KEY ?? '',
+      bucket: process.env.S3_BUCKET ?? 'bugspotter',
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true', // Required for MinIO
+      maxRetries: parseInt(process.env.S3_MAX_RETRIES ?? '3', 10),
+      timeout: parseInt(process.env.S3_TIMEOUT_MS ?? '30000', 10),
+    },
+  },
 } as const;
 
 /**
@@ -103,6 +122,48 @@ export function validateConfig(): void {
     errors.push('JWT_SECRET is required in production');
   } else if (config.jwt.secret && config.jwt.secret.length < MIN_JWT_SECRET_LENGTH) {
     errors.push(`JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters for security`);
+  }
+
+  // Storage validation
+  if (!['local', 's3', 'minio', 'r2'].includes(config.storage.backend)) {
+    errors.push(`Invalid STORAGE_BACKEND: ${config.storage.backend}`);
+  }
+
+  // Validate S3 config if using S3-compatible backend
+  if (['s3', 'minio', 'r2'].includes(config.storage.backend)) {
+    if (!config.storage.s3.accessKeyId) {
+      errors.push('S3_ACCESS_KEY is required for S3-compatible storage');
+    }
+    if (!config.storage.s3.secretAccessKey) {
+      errors.push('S3_SECRET_KEY is required for S3-compatible storage');
+    }
+    if (!config.storage.s3.bucket) {
+      errors.push('S3_BUCKET is required for S3-compatible storage');
+    }
+    if (!config.storage.s3.region) {
+      errors.push('S3_REGION is required for S3-compatible storage');
+    }
+
+    const s3NumericChecks = [
+      validateNumber(config.storage.s3.maxRetries, 'S3_MAX_RETRIES', 0),
+      validateNumber(config.storage.s3.timeout, 'S3_TIMEOUT_MS', MIN_TIMEOUT_MS),
+    ];
+
+    errors.push(
+      ...s3NumericChecks.filter((error): error is string => {
+        return error !== null;
+      })
+    );
+  }
+
+  // Validate local storage config
+  if (config.storage.backend === 'local') {
+    if (!config.storage.local.baseDirectory) {
+      errors.push('STORAGE_BASE_DIR is required for local storage');
+    }
+    if (!config.storage.local.baseUrl) {
+      errors.push('STORAGE_BASE_URL is required for local storage');
+    }
   }
 
   if (errors.length > 0) {
