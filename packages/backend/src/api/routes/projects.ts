@@ -14,7 +14,7 @@ import {
 } from '../schemas/project.schema.js';
 import { requireUser, requireRole } from '../middleware/auth.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
-import { findOrThrow } from '../utils/resource.js';
+import { findOrThrow, checkProjectAccess } from '../utils/resource.js';
 import { API_KEY_PREFIX, API_KEY_BYTES } from '../utils/constants.js';
 
 interface CreateProjectBody {
@@ -52,6 +52,7 @@ export function projectRoutes(fastify: FastifyInstance, db: DatabaseClient) {
         name,
         api_key: generateApiKey(),
         settings: settings ?? {},
+        created_by: request.authUser?.id,
       });
 
       return sendCreated(reply, project);
@@ -73,6 +74,9 @@ export function projectRoutes(fastify: FastifyInstance, db: DatabaseClient) {
 
       const project = await findOrThrow(() => db.projects.findById(id), 'Project');
 
+      // Check if user has access to this project
+      await checkProjectAccess(project.id, request.authUser, request.authProject, db, 'Project');
+
       return sendSuccess(reply, project);
     }
   );
@@ -92,7 +96,10 @@ export function projectRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       const updates = request.body;
 
       // Check if project exists
-      await findOrThrow(() => db.projects.findById(id), 'Project');
+      const project = await findOrThrow(() => db.projects.findById(id), 'Project');
+
+      // Check if user has access to this project
+      await checkProjectAccess(project.id, request.authUser, request.authProject, db, 'Project');
 
       // Update the project
       const updated = await db.projects.update(id, updates);
@@ -115,7 +122,10 @@ export function projectRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       const { id } = request.params;
 
       // Check if project exists
-      await findOrThrow(() => db.projects.findById(id), 'Project');
+      const project = await findOrThrow(() => db.projects.findById(id), 'Project');
+
+      // Check if user has access to this project (admin-only endpoint via requireRole)
+      await checkProjectAccess(project.id, request.authUser, request.authProject, db, 'Project');
 
       // Generate new API key
       const newApiKey = generateApiKey();

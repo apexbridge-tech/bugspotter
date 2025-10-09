@@ -40,6 +40,8 @@ export async function setup() {
   process.env.JWT_REFRESH_EXPIRES_IN = '7d';
   process.env.NODE_ENV = 'test';
   process.env.LOG_LEVEL = 'error'; // Reduce log noise in tests
+  process.env.RATE_LIMIT_MAX_REQUESTS = '10000'; // Very high limit for tests
+  process.env.RATE_LIMIT_WINDOW_MS = '60000'; // 1 minute window
 
   console.log('✅ PostgreSQL container started');
   console.log('📍 Database:', connectionUri.replace(/:[^:@]+@/, ':***@'));
@@ -58,7 +60,7 @@ export async function setup() {
   }
 
   // Create a temporary client just to verify the connection
-  const testDb = new DatabaseClient({
+  const testDb = DatabaseClient.create({
     connectionString: connectionUri,
   });
 
@@ -103,7 +105,7 @@ export function createTestDatabase(): DatabaseClient {
     throw new Error('DATABASE_URL not set. Make sure globalSetup has run.');
   }
 
-  return new DatabaseClient({
+  return DatabaseClient.create({
     connectionString: process.env.DATABASE_URL,
   });
 }

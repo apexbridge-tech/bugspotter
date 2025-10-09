@@ -42,3 +42,11 @@ export const PAGINATION = {
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 20,
 } as const;
+
+/**
+ * Default sorting configuration
+ */
+export const SORTING = {
+  DEFAULT_SORT_BY: 'created_at',
+  DEFAULT_ORDER: 'desc',
+} as const;

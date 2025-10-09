@@ -33,7 +33,6 @@ export const createBugReportSchema = {
       title: { type: 'string', minLength: 1, maxLength: 500 },
       description: { type: 'string', maxLength: 5000 },
       priority: { type: 'string', enum: bugPriorityEnum, default: 'medium' },
-      project_id: { type: 'string', format: 'uuid' },
       report: {
         type: 'object',
         required: ['consoleLogs', 'networkRequests', 'browserMetadata'],

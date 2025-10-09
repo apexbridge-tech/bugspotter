@@ -489,7 +489,7 @@ describe('Database Integration Tests', () => {
     });
 
     it('should handle duplicate unique constraints', async () => {
-      const apiKey = 'bs_duplicate_key_12345';
+      const apiKey = 'bgs_duplicate_key_12345';
 
       const project1 = await db.projects.create({
         name: 'Project 1',

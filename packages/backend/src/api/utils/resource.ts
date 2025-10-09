@@ -4,6 +4,8 @@
  */
 
 import { AppError } from '../middleware/error.js';
+import type { User, Project } from '../../db/types.js';
+import type { DatabaseClient } from '../../db/client.js';
 
 /**
  * Find a resource or throw 404 error
@@ -23,15 +25,55 @@ export async function findOrThrow<T>(
 
 /**
  * Check if user has access to a resource
+ * Handles both API key authentication (project-based) and JWT authentication (user-based)
  */
 export function checkAccess(
   resourceProjectId: string,
   authProjectId: string | undefined,
   _resourceName: string
 ): void {
+  // API key authentication - check project access
   if (authProjectId && resourceProjectId !== authProjectId) {
     throw new AppError('Access denied', 403, 'Forbidden');
   }
+}
+
+/**
+ * Check if user has access to a project resource
+ * For JWT authenticated users, verifies project ownership or membership
+ */
+export async function checkProjectAccess(
+  projectId: string,
+  authUser: User | undefined,
+  authProject: Project | undefined,
+  db: DatabaseClient,
+  resourceName: string = 'Resource'
+): Promise<void> {
+  // API key authentication - project must match
+  if (authProject) {
+    if (authProject.id !== projectId) {
+      throw new AppError(`Access denied to ${resourceName}`, 403, 'Forbidden');
+    }
+    return;
+  }
+
+  // JWT authentication - check user access
+  if (authUser) {
+    // Admins have access to everything
+    if (authUser.role === 'admin') {
+      return;
+    }
+
+    // Check if user has access to this project
+    const hasAccess = await db.projects.hasAccess(projectId, authUser.id);
+    if (!hasAccess) {
+      throw new AppError(`Access denied to ${resourceName}`, 403, 'Forbidden');
+    }
+    return;
+  }
+
+  // No authentication provided
+  throw new AppError('Authentication required', 401, 'Unauthorized');
 }
 
 /**

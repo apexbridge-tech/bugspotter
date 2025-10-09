@@ -13,16 +13,15 @@ import {
   updateBugReportSchema,
 } from '../schemas/bug-report.schema.js';
 import { requireProject } from '../middleware/auth.js';
-import { AppError } from '../middleware/error.js';
 import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
-import { findOrThrow, checkAccess } from '../utils/resource.js';
-import { PAGINATION } from '../utils/constants.js';
+import { findOrThrow, checkProjectAccess } from '../utils/resource.js';
+import { resolveAccessibleProjectId } from '../utils/access-control.js';
+import { buildPagination, buildSort } from '../utils/query-builder.js';
 
 interface CreateReportBody {
   title: string;
   description?: string;
   priority?: BugPriority;
-  project_id?: string;
   report: {
     consoleLogs: unknown[];
     networkRequests: unknown[];
@@ -63,18 +62,14 @@ export function bugReportRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       preHandler: requireProject,
     },
     async (request, reply) => {
-      const { title, description, priority, project_id, report } = request.body;
+      const { title, description, priority, report } = request.body;
 
-      // Use project from API key or from request body
-      const finalProjectId = request.authProject?.id || project_id;
-
-      if (!finalProjectId) {
-        throw new AppError('Project ID required', 400, 'BadRequest');
-      }
+      // Project ID comes from authenticated API key (guaranteed by requireProject middleware)
+      const projectId = request.authProject!.id;
 
       // Create bug report
       const bugReport = await db.bugReports.create({
-        project_id: finalProjectId,
+        project_id: projectId,
         title,
         description: description || null,
         priority: priority || 'medium',
@@ -113,23 +108,24 @@ export function bugReportRoutes(fastify: FastifyInstance, db: DatabaseClient) {
     async (request, reply) => {
       const { page, limit, status, priority, project_id, sort_by, order } = request.query;
 
-      // Filter by authenticated project if using API key
+      // Resolve project access (handles both API key and JWT auth)
+      const filterProjectId = await resolveAccessibleProjectId(
+        project_id,
+        request.authUser,
+        request.authProject,
+        db
+      );
+
+      // Build query parameters
       const filters = {
-        project_id: request.authProject?.id || project_id,
+        project_id: filterProjectId,
         status,
         priority,
       };
+      const sort = buildSort(sort_by, order, 'created_at' as const);
+      const pagination = buildPagination(page, limit);
 
-      const sort = {
-        sort_by: sort_by || 'created_at',
-        order: order || 'desc',
-      };
-
-      const pagination = {
-        page: page || PAGINATION.DEFAULT_PAGE,
-        limit: limit || PAGINATION.DEFAULT_LIMIT,
-      };
-
+      // Execute query
       const result = await db.bugReports.list(filters, sort, pagination);
 
       return sendPaginated(reply, result.data, result.pagination);
@@ -150,8 +146,14 @@ export function bugReportRoutes(fastify: FastifyInstance, db: DatabaseClient) {
 
       const bugReport = await findOrThrow(() => db.bugReports.findById(id), 'Bug report');
 
-      // Check if user has access to this report
-      checkAccess(bugReport.project_id, request.authProject?.id, 'Bug report');
+      // Check if user has access to this report's project
+      await checkProjectAccess(
+        bugReport.project_id,
+        request.authUser,
+        request.authProject,
+        db,
+        'Bug report'
+      );
 
       return sendSuccess(reply, bugReport);
     }
@@ -174,7 +176,13 @@ export function bugReportRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       const existing = await findOrThrow(() => db.bugReports.findById(id), 'Bug report');
 
       // Check access rights
-      checkAccess(existing.project_id, request.authProject?.id, 'Bug report');
+      await checkProjectAccess(
+        existing.project_id,
+        request.authUser,
+        request.authProject,
+        db,
+        'Bug report'
+      );
 
       // Update the report
       const updated = await db.bugReports.update(id, updates);

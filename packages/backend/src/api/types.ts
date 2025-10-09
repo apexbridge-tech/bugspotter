@@ -9,6 +9,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     authProject?: Project;
     authUser?: User;
+    jwtVerify(): Promise<{ userId: string }>;
   }
 
   interface FastifyContextConfig {

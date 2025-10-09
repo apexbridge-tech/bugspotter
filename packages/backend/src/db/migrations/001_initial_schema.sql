@@ -1,22 +1,10 @@
--- Initial database schema migration
--- This migration creates all the core tables for BugSpotter
+-- Initial database schema for BugSpotter
+-- Complete schema with all tables, indexes, and constraints
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Projects table
-CREATE TABLE IF NOT EXISTS projects (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    api_key VARCHAR(255) UNIQUE NOT NULL,
-    settings JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_projects_api_key ON projects(api_key);
-
--- Users table
+-- Users table (created first as it's referenced by other tables)
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -37,6 +25,39 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth_unique 
     ON users(oauth_provider, oauth_id) 
     WHERE oauth_provider IS NOT NULL AND oauth_id IS NOT NULL;
+
+-- Projects table
+CREATE TABLE IF NOT EXISTS projects (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    api_key VARCHAR(255) UNIQUE NOT NULL,
+    settings JSONB DEFAULT '{}',
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_projects_api_key ON projects(api_key);
+CREATE INDEX IF NOT EXISTS idx_projects_created_by ON projects(created_by);
+
+COMMENT ON COLUMN projects.created_by IS 'User who created the project (owner)';
+
+-- Project members table for multi-user access
+CREATE TABLE IF NOT EXISTS project_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL DEFAULT 'member',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_project_member UNIQUE (project_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_members_project ON project_members(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_user_project ON project_members(user_id, project_id);
+
+COMMENT ON TABLE project_members IS 'Users who have access to projects (owner, admin, member, viewer)';
+COMMENT ON COLUMN project_members.role IS 'User role in project: owner, admin, member, viewer';
 
 -- Bug reports table
 CREATE TABLE IF NOT EXISTS bug_reports (

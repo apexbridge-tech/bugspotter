@@ -19,7 +19,7 @@ Production-ready backend for BugSpotter with PostgreSQL database and REST API.
 - 📝 **Session Replay** - Store and retrieve user session recordings
 - 🎯 **Role-Based Access** - Admin, user, and viewer permissions
 - 🔗 **Ticket Integration** - Track external tickets (Jira, Linear, etc.)
-- � **Filtering & Pagination** - Efficient data querying
+- 🔍 **Filtering & Pagination** - Efficient data querying
 - 🏥 **Health Checks** - Liveness and readiness endpoints
 
 ## Quick Start
@@ -61,8 +61,8 @@ JWT_EXPIRES_IN=1h
 JWT_REFRESH_EXPIRES_IN=7d
 
 # Optional - Rate Limiting
-RATE_LIMIT_MAX=100
-RATE_LIMIT_TIME_WINDOW=60000
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW_MS=60000
 
 # Optional - File Uploads
 MAX_FILE_SIZE=10485760

@@ -7,9 +7,7 @@ import type { DatabaseClient } from '../../src/db/client.js';
 import type { Project, User, BugReport } from '../../src/db/types.js';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-
-const API_KEY_PREFIX = 'bs_';
-const API_KEY_BYTES = 32;
+import { API_KEY_PREFIX, API_KEY_BYTES } from '../../src/api/utils/constants.js';
 
 /**
  * Generate a unique identifier for tests to avoid collisions
@@ -31,12 +29,13 @@ export function generateApiKey(): string {
  */
 export async function createTestProject(
   db: DatabaseClient,
-  overrides?: Partial<{ name: string; settings: Record<string, unknown> }>
+  overrides?: Partial<{ name: string; settings: Record<string, unknown>; created_by: string }>
 ): Promise<Project> {
   const project = await db.projects.create({
     name: overrides?.name || `Test Project ${generateUniqueId()}`,
     api_key: generateApiKey(),
     settings: overrides?.settings || { test: true },
+    created_by: overrides?.created_by,
   });
 
   return project;

@@ -12,6 +12,14 @@ import {
   type RepositoryRegistry,
   type TransactionCallback,
 } from './transaction.js';
+import {
+  ProjectRepository,
+  ProjectMemberRepository,
+  BugReportRepository,
+  UserRepository,
+  SessionRepository,
+  TicketRepository,
+} from './repositories.js';
 
 const { Pool } = pg;
 
@@ -67,32 +75,55 @@ export class DatabaseClient implements RepositoryRegistry {
 
   private pool: pg.Pool;
   private retryConfig: RetryConfig;
-  private repositories: RepositoryRegistry;
 
-  private _projects!: RepositoryRegistry['projects'];
-  private _bugReports!: RepositoryRegistry['bugReports'];
-  private _users!: RepositoryRegistry['users'];
-  private _sessions!: RepositoryRegistry['sessions'];
-  private _tickets!: RepositoryRegistry['tickets'];
+  public readonly projects: ProjectRepository;
+  public readonly projectMembers: ProjectMemberRepository;
+  public readonly bugReports: BugReportRepository;
+  public readonly users: UserRepository;
+  public readonly sessions: SessionRepository;
+  public readonly tickets: TicketRepository;
 
-  constructor(config: DatabaseConfig) {
-    this.pool = this.createConnectionPool(config);
-    this.retryConfig = this.createRetryConfig(config);
-    this.repositories = createRepositories(this.pool);
+  /**
+   * Private constructor - use static create() method instead
+   * This ensures proper initialization order and testability
+   */
+  private constructor(pool: pg.Pool, retryConfig: RetryConfig, repositories: RepositoryRegistry) {
+    this.pool = pool;
+    this.retryConfig = retryConfig;
 
-    // Wrap all repositories with retry logic
-    this.initializeRepositories();
+    // Initialize repositories with retry wrapping
+    this.projects = this.wrapWithRetry(repositories.projects);
+    this.projectMembers = this.wrapWithRetry(repositories.projectMembers);
+    this.bugReports = this.wrapWithRetry(repositories.bugReports);
+    this.users = this.wrapWithRetry(repositories.users);
+    this.sessions = this.wrapWithRetry(repositories.sessions);
+    this.tickets = this.wrapWithRetry(repositories.tickets);
+  }
 
-    // Set up connection monitoring
-    this.setupConnectionMonitoring();
+  /**
+   * Create a new DatabaseClient instance with proper initialization
+   * Factory method pattern for better testability and separation of concerns
+   */
+  static create(config: DatabaseConfig): DatabaseClient {
+    const pool = DatabaseClient.createConnectionPool(config);
+    const retryConfig = DatabaseClient.createRetryConfig(config);
+    const repositories = createRepositories(pool);
 
-    this.logConnectionInitialized(config);
+    const client = new DatabaseClient(pool, retryConfig, repositories);
+
+    // Set up monitoring after construction (optional side effect)
+    client.setupConnectionMonitoring();
+
+    // Log successful initialization
+    client.logConnectionInitialized(config);
+
+    return client;
   }
 
   /**
    * Create PostgreSQL connection pool with configuration
    */
-  private createConnectionPool(config: DatabaseConfig): pg.Pool {
+  private static createConnectionPool(config: DatabaseConfig): pg.Pool {
     return new Pool({
       connectionString: config.connectionString,
       max: config.max ?? DEFAULT_POOL_CONFIG.MAX_CONNECTIONS,
@@ -106,46 +137,12 @@ export class DatabaseClient implements RepositoryRegistry {
   /**
    * Create retry configuration from database config
    */
-  private createRetryConfig(config: DatabaseConfig): RetryConfig {
+  private static createRetryConfig(config: DatabaseConfig): RetryConfig {
     return {
       maxAttempts: config.retryAttempts ?? DEFAULT_RETRY_CONFIG.maxAttempts,
       baseDelay: config.retryDelayMs ?? DEFAULT_RETRY_CONFIG.baseDelay,
       strategy: DEFAULT_RETRY_CONFIG.strategy,
     };
-  }
-
-  /**
-   * Initialize all repositories with retry wrapping
-   */
-  private initializeRepositories(): void {
-    this._projects = this.wrapWithRetry(this.repositories.projects);
-    this._bugReports = this.wrapWithRetry(this.repositories.bugReports);
-    this._users = this.wrapWithRetry(this.repositories.users);
-    this._sessions = this.wrapWithRetry(this.repositories.sessions);
-    this._tickets = this.wrapWithRetry(this.repositories.tickets);
-  }
-
-  /**
-   * Public getters for repositories
-   */
-  get projects(): RepositoryRegistry['projects'] {
-    return this._projects;
-  }
-
-  get bugReports(): RepositoryRegistry['bugReports'] {
-    return this._bugReports;
-  }
-
-  get users(): RepositoryRegistry['users'] {
-    return this._users;
-  }
-
-  get sessions(): RepositoryRegistry['sessions'] {
-    return this._sessions;
-  }
-
-  get tickets(): RepositoryRegistry['tickets'] {
-    return this._tickets;
   }
 
   /**
@@ -394,7 +391,7 @@ export function createDatabaseClient(databaseUrl?: string): DatabaseClient {
     throw new Error('DATABASE_URL is required. Set it in environment variables or .env file');
   }
 
-  return new DatabaseClient({
+  return DatabaseClient.create({
     connectionString,
     max: config.database.poolMax,
     min: config.database.poolMin,

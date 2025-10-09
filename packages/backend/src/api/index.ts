@@ -63,25 +63,28 @@ async function main() {
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
       logger.error('Uncaught exception', { error });
-      process.exit(1);
+      void shutdown('uncaughtException');
     });
 
     process.on('unhandledRejection', (reason, promise) => {
       logger.error('Unhandled rejection', { reason, promise });
-      process.exit(1);
+      void shutdown('unhandledRejection');
     });
   } catch (error) {
     logger.error('Failed to start server', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    process.exit(1);
+    throw error;
   }
 }
 
 // Start the server if this file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  void main();
+  main().catch((error) => {
+    console.error('Fatal error during startup:', error);
+    process.exit(1);
+  });
 }
 
 // Export for programmatic use

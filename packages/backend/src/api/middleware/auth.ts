@@ -88,12 +88,10 @@ export function createAuthMiddleware(db: {
     if (authorization && authorization.startsWith('Bearer ')) {
       try {
         // Verify JWT token using Fastify JWT plugin
-        // The jwtVerify method is added by @fastify/jwt plugin
-        const decoded = (await (request as { jwtVerify: () => Promise<unknown> }).jwtVerify()) as {
-          userId: string;
-          role: string;
-        };
-        // Fetch full user details from database
+        const decoded = await request.jwtVerify();
+
+        // Fetch full user details from database to ensure fresh data
+        // This ensures role changes and account status are reflected
         const user = await db.users.findById(decoded.userId);
         if (!user) {
           return reply.code(401).send({
