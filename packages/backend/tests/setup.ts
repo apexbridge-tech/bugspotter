@@ -31,6 +31,9 @@ export async function setup() {
 
   const connectionUri = postgresContainer.getConnectionUri();
   process.env.DATABASE_URL = connectionUri;
+  process.env.JWT_SECRET = 'test-jwt-secret-for-testing-only-not-production';
+  process.env.JWT_EXPIRES_IN = '1h';
+  process.env.JWT_REFRESH_EXPIRES_IN = '7d';
 
   console.log('✅ PostgreSQL container started');
   console.log('📍 Database:', connectionUri.replace(/:[^:@]+@/, ':***@'));

@@ -45,7 +45,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        # Currently testing only Node 20 (Active LTS) for faster CI
+        # To test multiple versions, uncomment below:
+        # node-version: [18, 20, 22]  # Node 18 (EOL April 2025), 20 (LTS), 22 (Current)
+        node-version: [20]
 
     steps:
       - name: Checkout code
@@ -98,7 +101,12 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        # Currently testing only Node 20 (Active LTS) for faster CI
+        # Testcontainers spin up a new PostgreSQL container for each Node version
+        # Testing all versions increases CI time by ~6-9 minutes
+        # To test multiple versions, uncomment below:
+        # node-version: [18, 20, 22]  # Node 18 (EOL April 2025), 20 (LTS), 22 (Current)
+        node-version: [20]
 
     steps:
       - name: Checkout code

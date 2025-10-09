@@ -1,45 +1,112 @@
 # @bugspotter/backend
 
-Self-hosted backend for BugSpotter with PostgreSQL database layer.
+Production-ready backend for BugSpotter with PostgreSQL database and REST API.
 
 ## Features
 
-- 🗄️ **PostgreSQL Database Layer** - Full-featured database schema with migrations
-- 🔐 **Authentication Support** - User management with OAuth and password-based auth
-- 📊 **Bug Report Management** - CRUD operations for bug reports with filtering and pagination
-- 🎬 **Session Replay Storage** - Store and retrieve session replay data
-- 🔗 **Ticket Integration** - Track external ticket system integrations (Jira, Linear, etc.)
-- 🔒 **Enterprise Features** - Audit logs and role-based permissions (optional)
-- ♻️ **Connection Pooling** - Efficient database connection management with retry logic
-- 🚀 **Migration System** - Database schema versioning and migrations
+### Database Layer
 
-## Installation
+- 🗄️ **PostgreSQL Database** - Full-featured schema with migrations
+- ♻️ **Connection Pooling** - Efficient connection management with retry logic
+- 🔄 **Transactions** - ACID-compliant operations with automatic rollback
+- 📊 **Repository Pattern** - Clean architecture with dependency injection support
+- 🚀 **Migration System** - Version-controlled schema evolution
+
+### REST API
+
+- 🔐 **Dual Authentication** - API keys (SDK) + JWT tokens (users)
+- 🛡️ **Security** - CORS, Helmet, rate limiting, input validation
+- 📝 **Session Replay** - Store and retrieve user session recordings
+- 🎯 **Role-Based Access** - Admin, user, and viewer permissions
+- 🔗 **Ticket Integration** - Track external tickets (Jira, Linear, etc.)
+- � **Filtering & Pagination** - Efficient data querying
+- 🏥 **Health Checks** - Liveness and readiness endpoints
+
+## Quick Start
+
+### 1. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-## Configuration
-
-Create a `.env` file based on `.env.example`:
+### 2. Configure Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Required environment variables:
+Edit `.env` with your settings:
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secret key for JWT tokens (production only)
+```bash
+# Required
+DATABASE_URL=postgresql://user:password@localhost:5432/bugspotter
+JWT_SECRET=your-secret-key-min-32-characters-long  # Generate: openssl rand -base64 32
 
-Optional configuration:
+# Optional - Server
+PORT=3000
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 
-- `DB_POOL_MIN` - Minimum connections in pool (default: 2)
-- `DB_POOL_MAX` - Maximum connections in pool (default: 10)
-- `DB_CONNECTION_TIMEOUT_MS` - Connection timeout (default: 30000)
-- `DB_IDLE_TIMEOUT_MS` - Idle connection timeout (default: 30000)
-- `DB_RETRY_ATTEMPTS` - Number of retry attempts on connection failure (default: 3)
-- `DB_RETRY_DELAY_MS` - Delay between retries in milliseconds (default: 1000)
+# Optional - Database Connection Pool
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+DB_CONNECTION_TIMEOUT_MS=30000
+DB_IDLE_TIMEOUT_MS=30000
+DB_RETRY_ATTEMPTS=3
+DB_RETRY_DELAY_MS=1000
+
+# Optional - JWT
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Optional - Rate Limiting
+RATE_LIMIT_MAX=100
+RATE_LIMIT_TIME_WINDOW=60000
+
+# Optional - File Uploads
+MAX_FILE_SIZE=10485760
+```
+
+### 3. Set Up Database
+
+```bash
+# Create database
+createdb bugspotter
+
+# Run migrations
+pnpm migrate
+```
+
+### 4. Start the Server
+
+```bash
+# Development mode with hot reload
+pnpm dev
+
+# Production mode
+pnpm build && pnpm start
+```
+
+The API will be available at `http://localhost:3000`
+
+### 5. Test the API
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Register a user
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
+
+# Create a project (returns API key)
+curl -X POST http://localhost:3000/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"name":"My App"}'
+```
 
 ## Database Setup
 
@@ -93,7 +160,146 @@ Optimized indexes for common queries:
 - `projects(api_key)` - API key authentication
 - `tickets(external_id)` - External ticket lookups
 
-## Usage
+## API Reference
+
+### Authentication
+
+#### Register User
+
+```bash
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Returns JWT tokens (access + refresh)
+
+#### Login
+
+```bash
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+#### Refresh Token
+
+```bash
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "your-refresh-token"
+}
+```
+
+### Projects
+
+#### Create Project
+
+```bash
+POST /api/v1/projects
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "name": "My App",
+  "settings": {
+    "allowedOrigins": ["https://myapp.com"]
+  }
+}
+```
+
+Returns project with generated API key (`bgs_...`)
+
+#### Get Project
+
+```bash
+GET /api/v1/projects/:id
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+#### Regenerate API Key
+
+```bash
+POST /api/v1/projects/:id/regenerate-key
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Admin only
+
+### Bug Reports
+
+#### Create Report (SDK)
+
+```bash
+POST /api/v1/reports
+X-API-Key: bgs_your_api_key
+Content-Type: application/json
+
+{
+  "title": "Button not working",
+  "description": "Submit button doesn't respond",
+  "report": {
+    "consoleLogs": [...],
+    "networkRequests": [...],
+    "browserMetadata": {...},
+    "sessionReplay": {...}
+  }
+}
+```
+
+#### List Reports
+
+```bash
+GET /api/v1/reports?status=open&priority=high&page=1&limit=20
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Query parameters:
+- `status` - open, in-progress, resolved, closed
+- `priority` - low, medium, high, critical
+- `page` - Page number (default: 1)
+- `limit` - Results per page (default: 20)
+- `sort_by` - created_at, updated_at, priority
+- `order` - asc, desc
+
+#### Get Single Report
+
+```bash
+GET /api/v1/reports/:id
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+#### Update Report
+
+```bash
+PATCH /api/v1/reports/:id
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "status": "in-progress",
+  "priority": "critical"
+}
+```
+
+### Health Checks
+
+```bash
+GET /health           # Liveness check
+GET /ready            # Readiness check (includes DB)
+```
+
+## Database Usage
 
 ### Initialize Database Client
 

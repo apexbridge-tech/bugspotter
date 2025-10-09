@@ -25,12 +25,17 @@ export const config = {
   server: {
     port: parseInt(process.env.PORT ?? '3000', 10),
     env: process.env.NODE_ENV ?? 'development',
+    maxUploadSize: parseInt(process.env.MAX_UPLOAD_SIZE ?? '10485760', 10), // 10MB default
+    corsOrigins: process.env.CORS_ORIGINS?.split(',') ?? ['http://localhost:3000'],
+    logLevel: (process.env.LOG_LEVEL ?? 'info') as 'debug' | 'info' | 'warn' | 'error',
   },
   jwt: {
     secret: process.env.JWT_SECRET ?? '',
+    expiresIn: process.env.JWT_EXPIRES_IN ?? '24h',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   },
   rateLimit: {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '900000', 10),
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10), // 1 minute
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10),
   },
 } as const;
@@ -77,6 +82,7 @@ export function validateConfig(): void {
     validateNumber(config.database.retryAttempts, 'DB_RETRY_ATTEMPTS', 0),
     validateNumber(config.database.retryDelayMs, 'DB_RETRY_DELAY_MS', 0),
     validateNumber(config.server.port, 'PORT', MIN_PORT, MAX_PORT),
+    validateNumber(config.server.maxUploadSize, 'MAX_UPLOAD_SIZE', 1024),
     validateNumber(config.rateLimit.windowMs, 'RATE_LIMIT_WINDOW_MS', MIN_RATE_LIMIT_WINDOW_MS),
     validateNumber(config.rateLimit.maxRequests, 'RATE_LIMIT_MAX_REQUESTS', 1),
   ];
