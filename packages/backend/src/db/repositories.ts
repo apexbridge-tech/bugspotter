@@ -9,6 +9,8 @@ import type {
   Project,
   ProjectInsert,
   ProjectUpdate,
+  ProjectMember,
+  ProjectMemberInsert,
   BugReport,
   BugReportInsert,
   BugReportUpdate,
@@ -41,6 +43,59 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
    */
   async findByApiKey(apiKey: string): Promise<Project | null> {
     return this.findBy('api_key', apiKey);
+  }
+
+  /**
+   * Check if user has access to project
+   * Returns true if user is the owner, an admin, or member of the project
+   */
+  async hasAccess(projectId: string, userId: string): Promise<boolean> {
+    const query = `
+      SELECT 1 FROM projects p
+      WHERE p.id = $1
+        AND (
+          p.created_by = $2
+          OR EXISTS (
+            SELECT 1 FROM project_members pm
+            WHERE pm.project_id = p.id
+              AND pm.user_id = $2
+          )
+        )
+      LIMIT 1
+    `;
+
+    const result = await this.getClient().query(query, [projectId, userId]);
+    return result.rows.length > 0;
+  }
+
+  /**
+   * Get user's role in project
+   * Returns 'owner', 'admin', 'member', 'viewer', or null if no access
+   */
+  async getUserRole(projectId: string, userId: string): Promise<string | null> {
+    // Check if owner
+    const ownerQuery = `
+      SELECT 'owner' as role FROM projects
+      WHERE id = $1 AND created_by = $2
+      LIMIT 1
+    `;
+    const ownerResult = await this.getClient().query(ownerQuery, [projectId, userId]);
+    if (ownerResult.rows.length > 0) {
+      return 'owner';
+    }
+
+    // Check project membership
+    const memberQuery = `
+      SELECT role FROM project_members
+      WHERE project_id = $1 AND user_id = $2
+      LIMIT 1
+    `;
+    const memberResult = await this.getClient().query(memberQuery, [projectId, userId]);
+    if (memberResult.rows.length > 0) {
+      return memberResult.rows[0].role;
+    }
+
+    return null;
   }
 }
 
@@ -338,5 +393,55 @@ export class TicketRepository extends BaseRepository<Ticket, Partial<Ticket>, ne
    */
   async findByBugReport(bugReportId: string): Promise<Ticket[]> {
     return this.findManyBy('bug_report_id', bugReportId);
+  }
+}
+
+/**
+ * Project Member Repository
+ */
+export class ProjectMemberRepository extends BaseRepository<
+  ProjectMember,
+  ProjectMemberInsert,
+  never
+> {
+  constructor(pool: Pool | PoolClient) {
+    super(pool, 'project_members', []);
+  }
+
+  /**
+   * Add user to project
+   */
+  async addMember(
+    projectId: string,
+    userId: string,
+    role: 'owner' | 'admin' | 'member' | 'viewer' = 'member'
+  ): Promise<ProjectMember> {
+    return this.create({
+      project_id: projectId,
+      user_id: userId,
+      role,
+    });
+  }
+
+  /**
+   * Remove user from project
+   */
+  async removeMember(projectId: string, userId: string): Promise<void> {
+    const query = `DELETE FROM ${this.tableName} WHERE project_id = $1 AND user_id = $2`;
+    await this.getClient().query(query, [projectId, userId]);
+  }
+
+  /**
+   * Get all members of a project
+   */
+  async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    return this.findManyBy('project_id', projectId);
+  }
+
+  /**
+   * Get all projects for a user
+   */
+  async getUserProjects(userId: string): Promise<ProjectMember[]> {
+    return this.findManyBy('user_id', userId);
   }
 }

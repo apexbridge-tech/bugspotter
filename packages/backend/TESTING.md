@@ -37,32 +37,72 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 
 ### What Gets Tested
 
-- ✅ Database connection and pooling (24 tests)
+#### Unit Tests (244 tests)
+
+- ✅ Database connection and pooling
 - ✅ CRUD operations for all entities
 - ✅ Query filtering and pagination
 - ✅ JSON serialization/deserialization
 - ✅ Foreign key relationships
 - ✅ Unique constraints
-- ✅ Error handling
-- ✅ Connection retry logic
+- ✅ Error handling and retry logic
+- ✅ API routes and middleware
+- ✅ Repository-specific methods (access control, project members)
+
+#### Integration Tests (79 tests)
+
+- ✅ Full API endpoints with authentication
+- ✅ Database transactions and concurrency
+- ✅ User registration and login flows
+- ✅ JWT token generation and refresh
+- ✅ API key authentication
+- ✅ Role-based access control
+- ✅ Rate limiting
+- ✅ Cross-project access prevention
+
+#### Load Tests (13 tests)
+
+- ✅ 100+ concurrent operations
+- ✅ Connection pool management
+- ✅ Memory usage monitoring
+- ✅ Batch operation performance
+- ✅ Response time measurements
+- ✅ Resource cleanup verification
+
+**Total: 336 tests**
 
 ## Test Commands
 
+### All Tests
+
 ```bash
-# Run all tests once
+# Run all tests (unit + integration + load)
 pnpm test
 
-# Watch mode - auto-rerun on file changes
-pnpm test:watch
+# Run specific test suites
+pnpm test:unit              # Unit tests only (database layer)
+pnpm test:integration       # Integration tests (API + DB)
+pnpm test:load              # Load/performance tests
 
-# Generate coverage report
-pnpm test:coverage
+# Watch modes
+pnpm test:watch             # Watch unit tests
+pnpm test:integration:watch # Watch integration tests
 
+# Coverage
+pnpm test:coverage          # Generate coverage report
+```
+
+### Specific Tests
+
+```bash
 # Run specific test file
-pnpm test tests/db.test.ts
+pnpm vitest run tests/db.test.ts
 
 # Run tests matching pattern
-pnpm test -t "Bug Reports"
+pnpm vitest run -t "Bug Reports"
+
+# Run single integration test file
+pnpm vitest run --config vitest.integration.config.ts tests/integration/auth.integration.test.ts
 ```
 
 ## CI/CD Integration
@@ -201,10 +241,39 @@ docker container prune
 
 ```
 tests/
-├── setup.ts           # Global setup with testcontainers
-├── db.test.ts         # Database client integration tests
-└── README.md          # Test documentation
+├── setup.ts                       # Unit test setup
+├── setup.integration.ts           # Integration test setup (Testcontainers)
+├── setup.integration-env.ts       # Environment configuration
+├── setup-file-polyfill.ts         # Node compatibility polyfill
+│
+├── db.test.ts                     # Database unit tests
+├── repositories.test.ts           # Repository-specific methods (access control)
+├── query-builder.test.ts          # Query builder tests
+│
+├── api/                           # API unit tests
+│   ├── auth.test.ts
+│   ├── auth-middleware.test.ts
+│   ├── projects.test.ts
+│   ├── reports.test.ts
+│   ├── health.test.ts
+│   ├── error.test.ts
+│   └── server.test.ts
+│
+├── integration/                   # Integration tests
+│   ├── api.integration.test.ts    # Full API endpoint tests
+│   ├── db.integration.test.ts     # Database integration tests
+│   ├── auth.integration.test.ts   # Auth flow tests
+│   └── load.test.ts               # Performance tests
+│
+└── utils/                         # Test utilities
+    └── test-utils.ts              # Helper functions
 ```
+
+### Test Configurations
+
+- `vitest.config.ts` - Unit tests
+- `vitest.integration.config.ts` - Integration tests
+- `vitest.load.config.ts` - Load tests
 
 ### Adding New Tests
 
@@ -234,10 +303,10 @@ The database is automatically available and migrated.
 
 - **Container Start**: ~5 seconds
 - **Migration Run**: ~1 second
-- **Test Execution**: ~380ms (24 tests)
+- **Test Execution**: ~350ms (repository tests), ~20s (all unit tests)
 - **Container Stop**: ~1 second
 
-Total test run: **~8 seconds** including container lifecycle
+Total test run: **~27 seconds** for all 336 tests including container lifecycle
 
 ## Best Practices
 

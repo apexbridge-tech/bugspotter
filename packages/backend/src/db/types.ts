@@ -9,8 +9,17 @@ export interface Project {
   name: string;
   api_key: string;
   settings: Record<string, unknown>;
+  created_by: string | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  created_at: Date;
 }
 
 export interface User {
@@ -86,9 +95,17 @@ export type ProjectInsert = {
   name: string;
   api_key: string;
   settings?: Record<string, unknown>;
+  created_by?: string | null;
 };
 
 export type ProjectUpdate = Partial<Omit<Project, 'id' | 'created_at' | 'updated_at'>>;
+
+export type ProjectMemberInsert = {
+  id?: string;
+  project_id: string;
+  user_id: string;
+  role?: 'owner' | 'admin' | 'member' | 'viewer';
+};
 
 export type BugReportInsert = {
   project_id: string;

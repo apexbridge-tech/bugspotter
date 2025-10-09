@@ -37,7 +37,7 @@ async function example() {
     console.log('Creating a project...');
     const project: Project = await db.projects.create({
       name: 'Example Project',
-      api_key: `bs_test_${Date.now()}`,
+      api_key: `bgs_test_${Date.now()}`,
       settings: {
         allowedOrigins: ['http://localhost:3000'],
         notificationEmail: 'bugs@example.com',

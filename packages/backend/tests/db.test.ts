@@ -21,7 +21,7 @@ describe('DatabaseClient', () => {
 
   beforeAll(async () => {
     // Create database client
-    db = new DatabaseClient({
+    db = DatabaseClient.create({
       connectionString: TEST_DATABASE_URL,
     });
 

@@ -5,6 +5,7 @@
 import type { Pool, PoolClient } from 'pg';
 import {
   ProjectRepository,
+  ProjectMemberRepository,
   BugReportRepository,
   UserRepository,
   SessionRepository,
@@ -13,6 +14,7 @@ import {
 
 export interface RepositoryRegistry {
   projects: ProjectRepository;
+  projectMembers: ProjectMemberRepository;
   bugReports: BugReportRepository;
   users: UserRepository;
   sessions: SessionRepository;
@@ -26,6 +28,7 @@ export type TransactionCallback<T> = (tx: TransactionContext) => Promise<T>;
 export function createRepositories(pool: Pool | PoolClient): RepositoryRegistry {
   return {
     projects: new ProjectRepository(pool),
+    projectMembers: new ProjectMemberRepository(pool),
     bugReports: new BugReportRepository(pool),
     users: new UserRepository(pool),
     sessions: new SessionRepository(pool),

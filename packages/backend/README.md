@@ -1,45 +1,112 @@
 # @bugspotter/backend
 
-Self-hosted backend for BugSpotter with PostgreSQL database layer.
+Production-ready backend for BugSpotter with PostgreSQL database and REST API.
 
 ## Features
 
-- 🗄️ **PostgreSQL Database Layer** - Full-featured database schema with migrations
-- 🔐 **Authentication Support** - User management with OAuth and password-based auth
-- 📊 **Bug Report Management** - CRUD operations for bug reports with filtering and pagination
-- 🎬 **Session Replay Storage** - Store and retrieve session replay data
-- 🔗 **Ticket Integration** - Track external ticket system integrations (Jira, Linear, etc.)
-- 🔒 **Enterprise Features** - Audit logs and role-based permissions (optional)
-- ♻️ **Connection Pooling** - Efficient database connection management with retry logic
-- 🚀 **Migration System** - Database schema versioning and migrations
+### Database Layer
 
-## Installation
+- 🗄️ **PostgreSQL Database** - Full-featured schema with migrations
+- ♻️ **Connection Pooling** - Efficient connection management with retry logic
+- 🔄 **Transactions** - ACID-compliant operations with automatic rollback
+- 📊 **Repository Pattern** - Clean architecture with dependency injection support
+- 🚀 **Migration System** - Version-controlled schema evolution
+
+### REST API
+
+- 🔐 **Dual Authentication** - API keys (SDK) + JWT tokens (users)
+- 🛡️ **Security** - CORS, Helmet, rate limiting, input validation
+- 📝 **Session Replay** - Store and retrieve user session recordings
+- 🎯 **Role-Based Access** - Admin, user, and viewer permissions
+- 🔗 **Ticket Integration** - Track external tickets (Jira, Linear, etc.)
+- 🔍 **Filtering & Pagination** - Efficient data querying
+- 🏥 **Health Checks** - Liveness and readiness endpoints
+
+## Quick Start
+
+### 1. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-## Configuration
-
-Create a `.env` file based on `.env.example`:
+### 2. Configure Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Required environment variables:
+Edit `.env` with your settings:
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secret key for JWT tokens (production only)
+```bash
+# Required
+DATABASE_URL=postgresql://user:password@localhost:5432/bugspotter
+JWT_SECRET=your-secret-key-min-32-characters-long  # Generate: openssl rand -base64 32
 
-Optional configuration:
+# Optional - Server
+PORT=3000
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 
-- `DB_POOL_MIN` - Minimum connections in pool (default: 2)
-- `DB_POOL_MAX` - Maximum connections in pool (default: 10)
-- `DB_CONNECTION_TIMEOUT_MS` - Connection timeout (default: 30000)
-- `DB_IDLE_TIMEOUT_MS` - Idle connection timeout (default: 30000)
-- `DB_RETRY_ATTEMPTS` - Number of retry attempts on connection failure (default: 3)
-- `DB_RETRY_DELAY_MS` - Delay between retries in milliseconds (default: 1000)
+# Optional - Database Connection Pool
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+DB_CONNECTION_TIMEOUT_MS=30000
+DB_IDLE_TIMEOUT_MS=30000
+DB_RETRY_ATTEMPTS=3
+DB_RETRY_DELAY_MS=1000
+
+# Optional - JWT
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Optional - Rate Limiting
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW_MS=60000
+
+# Optional - File Uploads
+MAX_FILE_SIZE=10485760
+```
+
+### 3. Set Up Database
+
+```bash
+# Create database
+createdb bugspotter
+
+# Run migrations
+pnpm migrate
+```
+
+### 4. Start the Server
+
+```bash
+# Development mode with hot reload
+pnpm dev
+
+# Production mode
+pnpm build && pnpm start
+```
+
+The API will be available at `http://localhost:3000`
+
+### 5. Test the API
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Register a user
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
+
+# Create a project (returns API key)
+curl -X POST http://localhost:3000/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"name":"My App"}'
+```
 
 ## Database Setup
 
@@ -93,7 +160,147 @@ Optimized indexes for common queries:
 - `projects(api_key)` - API key authentication
 - `tickets(external_id)` - External ticket lookups
 
-## Usage
+## API Reference
+
+### Authentication
+
+#### Register User
+
+```bash
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Returns JWT tokens (access + refresh)
+
+#### Login
+
+```bash
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+#### Refresh Token
+
+```bash
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "your-refresh-token"
+}
+```
+
+### Projects
+
+#### Create Project
+
+```bash
+POST /api/v1/projects
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "name": "My App",
+  "settings": {
+    "allowedOrigins": ["https://myapp.com"]
+  }
+}
+```
+
+Returns project with generated API key (`bgs_...`)
+
+#### Get Project
+
+```bash
+GET /api/v1/projects/:id
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+#### Regenerate API Key
+
+```bash
+POST /api/v1/projects/:id/regenerate-key
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Admin only
+
+### Bug Reports
+
+#### Create Report (SDK)
+
+```bash
+POST /api/v1/reports
+X-API-Key: bgs_your_api_key
+Content-Type: application/json
+
+{
+  "title": "Button not working",
+  "description": "Submit button doesn't respond",
+  "report": {
+    "consoleLogs": [...],
+    "networkRequests": [...],
+    "browserMetadata": {...},
+    "sessionReplay": {...}
+  }
+}
+```
+
+#### List Reports
+
+```bash
+GET /api/v1/reports?status=open&priority=high&page=1&limit=20
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Query parameters:
+
+- `status` - open, in-progress, resolved, closed
+- `priority` - low, medium, high, critical
+- `page` - Page number (default: 1)
+- `limit` - Results per page (default: 20)
+- `sort_by` - created_at, updated_at, priority
+- `order` - asc, desc
+
+#### Get Single Report
+
+```bash
+GET /api/v1/reports/:id
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+#### Update Report
+
+```bash
+PATCH /api/v1/reports/:id
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "status": "in-progress",
+  "priority": "critical"
+}
+```
+
+### Health Checks
+
+```bash
+GET /health           # Liveness check
+GET /ready            # Readiness check (includes DB)
+```
+
+## Database Usage
 
 ### Initialize Database Client
 
@@ -330,7 +537,56 @@ const oauthUser = await db.users.create({
 const user = await db.users.findByEmail('user@example.com');
 
 // Get user by OAuth
+// Get user by OAuth
 const user = await db.users.findByOAuth('google', 'google-user-id');
+```
+
+### Access Control & Project Members
+
+```typescript
+// Check if user has access to project (owner or member)
+const hasAccess = await db.projects.hasAccess(projectId, userId);
+if (!hasAccess) {
+  throw new Error('Access denied');
+}
+
+// Get user's role in project
+const role = await db.projects.getUserRole(projectId, userId);
+// Returns: 'owner' | 'admin' | 'member' | 'viewer' | null
+
+// Add member to project
+await db.projectMembers.addMember(projectId, userId, 'admin');
+
+// Remove member from project
+await db.projectMembers.removeMember(projectId, userId);
+
+// Get all members of a project
+const members = await db.projectMembers.getProjectMembers(projectId);
+
+// Get all projects for a user
+const userProjects = await db.projectMembers.getUserProjects(userId);
+```
+
+### Ticket Integration
+
+```typescript
+// Link bug report to external ticket system
+const ticket = await db.tickets.createTicket(
+  bugReportId,
+  'JIRA-123', // External ticket ID
+  'jira' // System: jira, linear, github, asana, etc.
+);
+
+// Get all tickets linked to a bug report
+const tickets = await db.tickets.findByBugReport(bugReportId);
+
+// Check if specific external ticket exists
+tickets.forEach((ticket) => {
+  console.log(`Linked to ${ticket.system}: ${ticket.external_id}`);
+});
+
+// Delete ticket link
+await db.tickets.delete(ticket.id);
 ```
 
 ## TypeScript Support
@@ -444,6 +700,73 @@ See [TESTING.md](./TESTING.md) for comprehensive testing documentation, troubles
 
 ## Architecture
 
+### Authentication & Authorization
+
+#### Overview
+
+The backend uses **dual authentication**:
+
+- **API Keys** (`X-API-Key` header) - For SDK requests, project-scoped
+- **JWT Tokens** (`Authorization: Bearer` header) - For user requests, user-scoped
+
+#### Public Routes
+
+Routes can be marked as public (no authentication required) using route configuration:
+
+```typescript
+// Mark a route as public
+fastify.get('/public-route', { config: { public: true } }, async (request, reply) => {
+  return { message: 'This route is accessible without authentication' };
+});
+
+// Protected route (default)
+fastify.get('/protected-route', async (request, reply) => {
+  // Will require X-API-Key or Authorization header
+  return { message: 'Authentication required' };
+});
+```
+
+**Public routes by default:**
+
+- `GET /` - API information
+- `GET /health` - Health check
+- `GET /ready` - Readiness check
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/refresh` - Token refresh
+
+#### Authentication Middleware
+
+The `createAuthMiddleware()` automatically:
+
+1. Checks if route is marked as `config.public`
+2. Attempts API key authentication (`X-API-Key` header)
+3. Falls back to JWT authentication (`Authorization: Bearer` header)
+4. Sets `request.authProject` or `request.authUser` for downstream handlers
+
+```typescript
+import { createAuthMiddleware } from '@bugspotter/backend';
+
+const authMiddleware = createAuthMiddleware(db);
+fastify.addHook('onRequest', authMiddleware);
+```
+
+#### Role-Based Access Control
+
+Use the `requireRole()` middleware to restrict routes by user role:
+
+```typescript
+import { requireRole } from '@bugspotter/backend';
+
+// Admin only
+fastify.post('/api/v1/admin/action', { preHandler: requireRole('admin') }, handler);
+
+// Admin or user (viewer excluded)
+fastify.post('/api/v1/projects', { preHandler: requireRole('admin', 'user') }, handler);
+```
+
+Available roles: `admin`, `user`, `viewer`
+
 ### Repository Pattern
 
 The backend uses the **Repository Pattern** for clean separation of concerns and improved testability:
@@ -500,8 +823,9 @@ const results = await bugReportRepo.list(
 
 #### Available Repositories
 
-- **ProjectRepository** - `create`, `findById`, `findByApiKey`, `update`, `delete`
-- **BugReportRepository** - `create`, `findById`, `update`, `delete`, `list`, `createBatch`
+- **ProjectRepository** - `create`, `findById`, `findByApiKey`, `update`, `delete`, `hasAccess`, `getUserRole`
+- **ProjectMemberRepository** - `addMember`, `removeMember`, `getProjectMembers`, `getUserProjects`
+- **BugReportRepository** - `create`, `findById`, `update`, `delete`, `list`, `createBatch`, `createBatchAuto`
 - **UserRepository** - `create`, `findById`, `findByEmail`, `findByOAuth`, `update`, `delete`
 - **SessionRepository** - `createSession`, `findById`, `findByBugReport`, `delete`
 - **TicketRepository** - `createTicket`, `findById`, `findByBugReport`, `delete`
