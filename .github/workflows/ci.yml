@@ -6,7 +6,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, feature/*]
+    branches: [main, develop]  # Only on main/develop to avoid duplicate runs
   pull_request:
     branches: [main, develop]
 

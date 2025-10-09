@@ -569,7 +569,25 @@ const userProjects = await db.projectMembers.getUserProjects(userId);
 
 ### Ticket Integration
 
-````
+```typescript
+// Link bug report to external ticket system
+const ticket = await db.tickets.createTicket(
+  bugReportId,
+  'JIRA-123', // External ticket ID
+  'jira' // System: jira, linear, github, asana, etc.
+);
+
+// Get all tickets linked to a bug report
+const tickets = await db.tickets.findByBugReport(bugReportId);
+
+// Check if specific external ticket exists
+tickets.forEach((ticket) => {
+  console.log(`Linked to ${ticket.system}: ${ticket.external_id}`);
+});
+
+// Delete ticket link
+await db.tickets.delete(ticket.id);
+```
 
 ## TypeScript Support
 
