@@ -128,26 +128,17 @@ Files are organized in a standardized structure:
 
 ```typescript
 // Upload screenshot (original image)
-const result = await storage.uploadScreenshot(
-  'proj-123',
-  'bug-456',
-  imageBuffer
-);
+const result = await storage.uploadScreenshot('proj-123', 'bug-456', imageBuffer);
 console.log(result.url); // Public URL
 
 // Upload thumbnail
-const thumb = await storage.uploadThumbnail(
-  'proj-123',
-  'bug-456',
-  thumbnailBuffer
-);
+const thumb = await storage.uploadThumbnail('proj-123', 'bug-456', thumbnailBuffer);
 
 // Upload replay metadata
-const metadata = await storage.uploadReplayMetadata(
-  'proj-123',
-  'bug-456',
-  { duration: 5000, events: 100 }
-);
+const metadata = await storage.uploadReplayMetadata('proj-123', 'bug-456', {
+  duration: 5000,
+  events: 100,
+});
 
 // Upload replay chunk
 const chunk = await storage.uploadReplayChunk(
@@ -180,10 +171,9 @@ if (metadata) {
 }
 
 // Generate temporary signed URL (expires in 1 hour by default)
-const signedUrl = await storage.getSignedUrl(
-  'screenshots/proj-123/bug-456/original.png',
-  { expiresIn: 3600 }
-);
+const signedUrl = await storage.getSignedUrl('screenshots/proj-123/bug-456/original.png', {
+  expiresIn: 3600,
+});
 ```
 
 ### Delete Methods
@@ -296,16 +286,12 @@ sourceStream.pipe(progressStream).pipe(destinationStream);
 ### Multipart Upload
 
 ```typescript
-await storage.uploadStream(
-  'large-file.bin',
-  largeFileStream,
-  {
-    partSize: 5 * 1024 * 1024, // 5MB parts
-    onProgress: (uploaded, total) => {
-      console.log(`Progress: ${((uploaded / total) * 100).toFixed(2)}%`);
-    },
-  }
-);
+await storage.uploadStream('large-file.bin', largeFileStream, {
+  partSize: 5 * 1024 * 1024, // 5MB parts
+  onProgress: (uploaded, total) => {
+    console.log(`Progress: ${((uploaded / total) * 100).toFixed(2)}%`);
+  },
+});
 ```
 
 ## Error Handling
@@ -396,8 +382,8 @@ const storage = createStorage({
   backend: 's3',
   s3: {
     // ... other config
-    maxRetries: 3,        // Retry up to 3 times
-    timeout: 30000,       // 30 second timeout
+    maxRetries: 3, // Retry up to 3 times
+    timeout: 30000, // 30 second timeout
   },
 });
 ```
@@ -522,10 +508,10 @@ Ensure IAM permissions include:
 
 ```typescript
 // MinIO: http://localhost:9000/bucket/key (path-style)
-forcePathStyle: true
+forcePathStyle: true;
 
 // AWS S3: https://bucket.s3.region.amazonaws.com/key (virtual-hosted)
-forcePathStyle: false
+forcePathStyle: false;
 ```
 
 ## Migration Guide

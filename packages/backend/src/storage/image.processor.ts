@@ -85,10 +85,7 @@ export async function optimizeImage(buffer: Buffer): Promise<Buffer> {
     });
 
     // Try WebP conversion for potential size savings
-    const webpBuffer = await image
-      .clone()
-      .webp({ quality: WEBP_QUALITY, effort: 4 })
-      .toBuffer();
+    const webpBuffer = await image.clone().webp({ quality: WEBP_QUALITY, effort: 4 }).toBuffer();
 
     // Use WebP if it's smaller than original
     if (webpBuffer.length < buffer.length * 0.9) {

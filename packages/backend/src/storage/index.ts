@@ -65,10 +65,7 @@ export function createStorage(config: StorageConfig): IStorageService {
       return new LocalStorageService(config.local);
 
     default:
-      throw new StorageError(
-        `Unsupported storage backend: ${config.backend}`,
-        'INVALID_CONFIG'
-      );
+      throw new StorageError(`Unsupported storage backend: ${config.backend}`, 'INVALID_CONFIG');
   }
 }
 
@@ -106,9 +103,7 @@ export function createStorageFromEnv(): IStorageService {
     secretAccessKey: process.env.S3_SECRET_KEY,
     bucket: process.env.S3_BUCKET,
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
-    maxRetries: process.env.S3_MAX_RETRIES
-      ? parseInt(process.env.S3_MAX_RETRIES, 10)
-      : undefined,
+    maxRetries: process.env.S3_MAX_RETRIES ? parseInt(process.env.S3_MAX_RETRIES, 10) : undefined,
     timeout: process.env.S3_TIMEOUT_MS ? parseInt(process.env.S3_TIMEOUT_MS, 10) : undefined,
   };
 

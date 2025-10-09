@@ -479,11 +479,11 @@ describe('LocalStorageService', () => {
 
       const stream = await storage.getObject(result.key);
       const chunks: Buffer[] = [];
-      
+
       for await (const chunk of stream) {
         chunks.push(chunk as Buffer);
       }
-      
+
       const retrieved = Buffer.concat(chunks);
       expect(retrieved.toString()).toBe('test content');
     });
@@ -491,9 +491,7 @@ describe('LocalStorageService', () => {
     it('should throw NotFoundError for non-existent file', async () => {
       await storage.initialize();
 
-      await expect(storage.getObject('non-existent-key')).rejects.toThrow(
-        StorageNotFoundError
-      );
+      await expect(storage.getObject('non-existent-key')).rejects.toThrow(StorageNotFoundError);
     });
   });
 

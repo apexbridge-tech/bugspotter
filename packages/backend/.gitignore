@@ -11,6 +11,11 @@ dist/
 tests/**/*.js
 tests/**/*.d.ts
 
+# Test artifacts
+test-uploads-*/
+test-e2e-uploads-*/
+coverage/
+
 # Logs
 logs
 *.log

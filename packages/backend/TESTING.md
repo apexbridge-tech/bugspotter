@@ -69,19 +69,31 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-**Total: 336 tests**
+#### Storage Integration Tests (25 tests)
+
+- ✅ Local filesystem storage operations
+- ✅ Screenshot upload and retrieval
+- ✅ Thumbnail generation
+- ✅ Replay metadata and chunks
+- ✅ Attachment handling with path sanitization
+- ✅ Folder deletion (recursive)
+- ✅ Image processing (validation, optimization)
+- ✅ Performance (5MB uploads, batch operations)
+- ✅ MinIO integration (requires TEST_MINIO=true)
+
+**Total: 398 tests**
 
 ## Test Commands
 
 ### All Tests
 
 ```bash
-# Run all tests (unit + integration + load)
+# Run all tests (unit + integration + load + storage)
 pnpm test
 
 # Run specific test suites
-pnpm test:unit              # Unit tests only (database layer)
-pnpm test:integration       # Integration tests (API + DB)
+pnpm test:unit              # Unit tests only (database layer, storage mocks)
+pnpm test:integration       # Integration tests (API + DB + storage)
 pnpm test:load              # Load/performance tests
 
 # Watch modes
@@ -90,6 +102,11 @@ pnpm test:integration:watch # Watch integration tests
 
 # Coverage
 pnpm test:coverage          # Generate coverage report
+
+# Storage-specific tests
+pnpm vitest run tests/storage.test.ts                              # Storage unit tests
+pnpm vitest run tests/integration/storage.integration.test.ts     # Storage integration tests
+TEST_MINIO=true pnpm test:integration                              # Include MinIO tests
 ```
 
 ### Specific Tests
@@ -249,6 +266,7 @@ tests/
 ├── db.test.ts                     # Database unit tests
 ├── repositories.test.ts           # Repository-specific methods (access control)
 ├── query-builder.test.ts          # Query builder tests
+├── storage.test.ts                # Storage unit tests (mocked AWS SDK)
 │
 ├── api/                           # API unit tests
 │   ├── auth.test.ts
@@ -263,6 +281,7 @@ tests/
 │   ├── api.integration.test.ts    # Full API endpoint tests
 │   ├── db.integration.test.ts     # Database integration tests
 │   ├── auth.integration.test.ts   # Auth flow tests
+│   ├── storage.integration.test.ts # Storage with real backends
 │   └── load.test.ts               # Performance tests
 │
 └── utils/                         # Test utilities
@@ -303,10 +322,10 @@ The database is automatically available and migrated.
 
 - **Container Start**: ~5 seconds
 - **Migration Run**: ~1 second
-- **Test Execution**: ~350ms (repository tests), ~20s (all unit tests)
+- **Test Execution**: ~350ms (repository tests), ~27s (all tests)
 - **Container Stop**: ~1 second
 
-Total test run: **~27 seconds** for all 336 tests including container lifecycle
+Total test run: **~34 seconds** for all 398 tests including container lifecycle
 
 ## Best Practices
 

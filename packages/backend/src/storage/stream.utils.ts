@@ -16,14 +16,17 @@ import { StorageError } from './types.js';
  * @returns Buffer containing stream data
  * @throws StorageError if stream exceeds maxSize
  */
-export async function streamToBuffer(stream: Readable, maxSize: number = 10485760): Promise<Buffer> {
+export async function streamToBuffer(
+  stream: Readable,
+  maxSize: number = 10485760
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let totalSize = 0;
 
     stream.on('data', (chunk: Buffer) => {
       totalSize += chunk.length;
-      
+
       if (totalSize > maxSize) {
         stream.destroy();
         reject(
@@ -34,7 +37,7 @@ export async function streamToBuffer(stream: Readable, maxSize: number = 1048576
         );
         return;
       }
-      
+
       chunks.push(chunk);
     });
 
@@ -67,9 +70,7 @@ export function bufferToStream(buffer: Buffer): Readable {
  * @param onProgress - Callback invoked with bytes transferred
  * @returns PassThrough stream
  */
-export function createProgressStream(
-  onProgress?: (bytesTransferred: number) => void
-): PassThrough {
+export function createProgressStream(onProgress?: (bytesTransferred: number) => void): PassThrough {
   const passThrough = new PassThrough();
   let bytesTransferred = 0;
 
@@ -106,7 +107,7 @@ export async function splitStreamIntoChunks(
       while (currentSize >= chunkSize) {
         const chunk = Buffer.concat(currentChunk);
         chunks.push(chunk.slice(0, chunkSize));
-        
+
         // Keep remainder for next chunk
         const remainder = chunk.slice(chunkSize);
         currentChunk = remainder.length > 0 ? [remainder] : [];
@@ -203,7 +204,10 @@ export async function retryStreamOperation<T>(
  * @param destination - Destination stream
  * @returns Promise that resolves when piping completes
  */
-export async function safePipe(source: Readable, destination: NodeJS.WritableStream): Promise<void> {
+export async function safePipe(
+  source: Readable,
+  destination: NodeJS.WritableStream
+): Promise<void> {
   try {
     await pipeline(source, destination);
   } catch (error) {
@@ -296,12 +300,7 @@ export function getContentType(buffer: Buffer): string {
     return 'image/jpeg';
   }
 
-  if (
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47
-  ) {
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
     return 'image/png';
   }
 
