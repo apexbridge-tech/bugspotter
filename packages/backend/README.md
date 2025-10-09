@@ -604,7 +604,7 @@ import type {
   BugReportSortOptions,
   PaginatedResult,
 } from '@bugspotter/backend';
-````
+```
 
 ## Connection Pooling & Retry Logic
 
