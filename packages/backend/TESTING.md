@@ -37,7 +37,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 
 ### What Gets Tested
 
-#### Unit Tests (220 tests)
+#### Unit Tests (244 tests)
 
 - ✅ Database connection and pooling
 - ✅ CRUD operations for all entities
@@ -47,8 +47,9 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Unique constraints
 - ✅ Error handling and retry logic
 - ✅ API routes and middleware
+- ✅ Repository-specific methods (access control, project members)
 
-#### Integration Tests (71 tests)
+#### Integration Tests (79 tests)
 
 - ✅ Full API endpoints with authentication
 - ✅ Database transactions and concurrency
@@ -68,7 +69,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-**Total: 304 tests**
+**Total: 336 tests**
 
 ## Test Commands
 
@@ -246,6 +247,7 @@ tests/
 ├── setup-file-polyfill.ts         # Node compatibility polyfill
 │
 ├── db.test.ts                     # Database unit tests
+├── repositories.test.ts           # Repository-specific methods (access control)
 ├── query-builder.test.ts          # Query builder tests
 │
 ├── api/                           # API unit tests
@@ -301,10 +303,10 @@ The database is automatically available and migrated.
 
 - **Container Start**: ~5 seconds
 - **Migration Run**: ~1 second
-- **Test Execution**: ~380ms (24 tests)
+- **Test Execution**: ~350ms (repository tests), ~20s (all unit tests)
 - **Container Stop**: ~1 second
 
-Total test run: **~8 seconds** including container lifecycle
+Total test run: **~27 seconds** for all 336 tests including container lifecycle
 
 ## Best Practices
 

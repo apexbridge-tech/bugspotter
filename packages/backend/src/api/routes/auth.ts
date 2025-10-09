@@ -77,6 +77,7 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
     '/api/v1/auth/register',
     {
       schema: registerSchema,
+      config: { public: true },
     },
     async (request, reply) => {
       const { email, password, role } = request.body;
@@ -98,7 +99,7 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       });
 
       // Generate tokens
-      const tokens = await generateTokens(fastify, user.id, user.role);
+      const tokens = generateTokens(fastify, user.id, user.role);
 
       // Remove password hash from response
       const userWithoutPassword = omitFields(user, 'password_hash');
@@ -118,6 +119,7 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
     '/api/v1/auth/login',
     {
       schema: loginSchema,
+      config: { public: true },
     },
     async (request, reply) => {
       const { email, password } = request.body;
@@ -139,7 +141,7 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       }
 
       // Generate tokens
-      const tokens = await generateTokens(fastify, user.id, user.role);
+      const tokens = generateTokens(fastify, user.id, user.role);
 
       // Remove password hash from response
       const userWithoutPassword = omitFields(user, 'password_hash');
@@ -159,6 +161,7 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
     '/api/v1/auth/refresh',
     {
       schema: refreshTokenSchema,
+      config: { public: true },
     },
     async (request, reply) => {
       const { refresh_token } = request.body;

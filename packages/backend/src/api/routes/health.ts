@@ -12,7 +12,7 @@ export async function healthRoutes(fastify: FastifyInstance, db: DatabaseClient)
    * GET /health
    * Simple liveness check - returns 200 if server is running
    */
-  fastify.get('/health', async (_request, reply) => {
+  fastify.get('/health', { config: { public: true } }, async (_request, reply) => {
     return reply.code(200).send({
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -23,7 +23,7 @@ export async function healthRoutes(fastify: FastifyInstance, db: DatabaseClient)
    * GET /ready
    * Readiness check - verifies database connectivity
    */
-  fastify.get('/ready', async (request, reply) => {
+  fastify.get('/ready', { config: { public: true } }, async (request, reply) => {
     try {
       const dbHealthy = await db.testConnection();
 

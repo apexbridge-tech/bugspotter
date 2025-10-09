@@ -8,42 +8,20 @@ import type { Project, User } from '../../db/types.js';
 import '../types.js'; // Import type declarations
 
 /**
- * Routes that don't require authentication
- */
-const PUBLIC_ROUTES = new Set([
-  '/',
-  '/health',
-  '/ready',
-  '/api/v1/auth/login',
-  '/api/v1/auth/register',
-  '/api/v1/auth/refresh',
-]);
-
-/**
- * Check if a route is public (doesn't require authentication)
- */
-function isPublicRoute(url: string): boolean {
-  // Remove query string if present
-  const path = url.split('?')[0];
-  return PUBLIC_ROUTES.has(path);
-}
-
-/**
  * Authentication middleware factory
  * Validates API keys or JWT tokens and sets request context
+ *
+ * Routes can be marked as public by setting `config.public = true` in route options:
+ * @example
+ * fastify.get('/public-route', { config: { public: true } }, handler);
  */
 export function createAuthMiddleware(db: {
   projects: { findByApiKey: (apiKey: string) => Promise<Project | null> };
   users: { findById: (id: string) => Promise<User | null> };
 }) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
-    // Check if route is marked as public via config
+    // Skip authentication if route is marked as public
     if (request.routeOptions.config?.public) {
-      return;
-    }
-
-    // Skip authentication for public routes
-    if (isPublicRoute(request.url)) {
       return;
     }
 

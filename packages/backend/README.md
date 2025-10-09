@@ -537,8 +537,39 @@ const oauthUser = await db.users.create({
 const user = await db.users.findByEmail('user@example.com');
 
 // Get user by OAuth
+// Get user by OAuth
 const user = await db.users.findByOAuth('google', 'google-user-id');
 ```
+
+### Access Control & Project Members
+
+```typescript
+// Check if user has access to project (owner or member)
+const hasAccess = await db.projects.hasAccess(projectId, userId);
+if (!hasAccess) {
+  throw new Error('Access denied');
+}
+
+// Get user's role in project
+const role = await db.projects.getUserRole(projectId, userId);
+// Returns: 'owner' | 'admin' | 'member' | 'viewer' | null
+
+// Add member to project
+await db.projectMembers.addMember(projectId, userId, 'admin');
+
+// Remove member from project
+await db.projectMembers.removeMember(projectId, userId);
+
+// Get all members of a project
+const members = await db.projectMembers.getProjectMembers(projectId);
+
+// Get all projects for a user
+const userProjects = await db.projectMembers.getUserProjects(userId);
+```
+
+### Ticket Integration
+
+````
 
 ## TypeScript Support
 
@@ -555,7 +586,7 @@ import type {
   BugReportSortOptions,
   PaginatedResult,
 } from '@bugspotter/backend';
-```
+````
 
 ## Connection Pooling & Retry Logic
 
@@ -651,6 +682,73 @@ See [TESTING.md](./TESTING.md) for comprehensive testing documentation, troubles
 
 ## Architecture
 
+### Authentication & Authorization
+
+#### Overview
+
+The backend uses **dual authentication**:
+
+- **API Keys** (`X-API-Key` header) - For SDK requests, project-scoped
+- **JWT Tokens** (`Authorization: Bearer` header) - For user requests, user-scoped
+
+#### Public Routes
+
+Routes can be marked as public (no authentication required) using route configuration:
+
+```typescript
+// Mark a route as public
+fastify.get('/public-route', { config: { public: true } }, async (request, reply) => {
+  return { message: 'This route is accessible without authentication' };
+});
+
+// Protected route (default)
+fastify.get('/protected-route', async (request, reply) => {
+  // Will require X-API-Key or Authorization header
+  return { message: 'Authentication required' };
+});
+```
+
+**Public routes by default:**
+
+- `GET /` - API information
+- `GET /health` - Health check
+- `GET /ready` - Readiness check
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/refresh` - Token refresh
+
+#### Authentication Middleware
+
+The `createAuthMiddleware()` automatically:
+
+1. Checks if route is marked as `config.public`
+2. Attempts API key authentication (`X-API-Key` header)
+3. Falls back to JWT authentication (`Authorization: Bearer` header)
+4. Sets `request.authProject` or `request.authUser` for downstream handlers
+
+```typescript
+import { createAuthMiddleware } from '@bugspotter/backend';
+
+const authMiddleware = createAuthMiddleware(db);
+fastify.addHook('onRequest', authMiddleware);
+```
+
+#### Role-Based Access Control
+
+Use the `requireRole()` middleware to restrict routes by user role:
+
+```typescript
+import { requireRole } from '@bugspotter/backend';
+
+// Admin only
+fastify.post('/api/v1/admin/action', { preHandler: requireRole('admin') }, handler);
+
+// Admin or user (viewer excluded)
+fastify.post('/api/v1/projects', { preHandler: requireRole('admin', 'user') }, handler);
+```
+
+Available roles: `admin`, `user`, `viewer`
+
 ### Repository Pattern
 
 The backend uses the **Repository Pattern** for clean separation of concerns and improved testability:
@@ -707,8 +805,9 @@ const results = await bugReportRepo.list(
 
 #### Available Repositories
 
-- **ProjectRepository** - `create`, `findById`, `findByApiKey`, `update`, `delete`
-- **BugReportRepository** - `create`, `findById`, `update`, `delete`, `list`, `createBatch`
+- **ProjectRepository** - `create`, `findById`, `findByApiKey`, `update`, `delete`, `hasAccess`, `getUserRole`
+- **ProjectMemberRepository** - `addMember`, `removeMember`, `getProjectMembers`, `getUserProjects`
+- **BugReportRepository** - `create`, `findById`, `update`, `delete`, `list`, `createBatch`, `createBatchAuto`
 - **UserRepository** - `create`, `findById`, `findByEmail`, `findByOAuth`, `update`, `delete`
 - **SessionRepository** - `createSession`, `findById`, `findByBugReport`, `delete`
 - **TicketRepository** - `createTicket`, `findById`, `findByBugReport`, `delete`

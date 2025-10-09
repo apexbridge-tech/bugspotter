@@ -24,21 +24,6 @@ export async function findOrThrow<T>(
 }
 
 /**
- * Check if user has access to a resource
- * Handles both API key authentication (project-based) and JWT authentication (user-based)
- */
-export function checkAccess(
-  resourceProjectId: string,
-  authProjectId: string | undefined,
-  _resourceName: string
-): void {
-  // API key authentication - check project access
-  if (authProjectId && resourceProjectId !== authProjectId) {
-    throw new AppError('Access denied', 403, 'Forbidden');
-  }
-}
-
-/**
  * Check if user has access to a project resource
  * For JWT authenticated users, verifies project ownership or membership
  */
