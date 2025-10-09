@@ -117,8 +117,7 @@ export async function createTestServerWithDb() {
   if (!process.env.JWT_SECRET) {
     console.warn('⚠️  JWT_SECRET not set when creating test server!');
     console.warn('Setting it now...');
-    process.env.JWT_SECRET =
-      'test-jwt-secret-for-integration-tests-min-32-chars-required-here';
+    process.env.JWT_SECRET = 'test-jwt-secret-for-integration-tests-min-32-chars-required-here';
   }
 
   // Lazy import to avoid loading Fastify until needed after env vars are set

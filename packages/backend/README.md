@@ -265,6 +265,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 Query parameters:
+
 - `status` - open, in-progress, resolved, closed
 - `priority` - low, medium, high, critical
 - `page` - Page number (default: 1)

@@ -38,6 +38,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 ### What Gets Tested
 
 #### Unit Tests (220 tests)
+
 - ✅ Database connection and pooling
 - ✅ CRUD operations for all entities
 - ✅ Query filtering and pagination
@@ -48,6 +49,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ API routes and middleware
 
 #### Integration Tests (71 tests)
+
 - ✅ Full API endpoints with authentication
 - ✅ Database transactions and concurrency
 - ✅ User registration and login flows
@@ -58,6 +60,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Cross-project access prevention
 
 #### Load Tests (13 tests)
+
 - ✅ 100+ concurrent operations
 - ✅ Connection pool management
 - ✅ Memory usage monitoring
