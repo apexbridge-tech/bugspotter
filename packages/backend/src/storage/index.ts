@@ -23,6 +23,38 @@ const DEFAULT_BASE_URL = 'http://localhost:3000/uploads';
 // ============================================================================
 
 /**
+ * Validate S3 configuration and collect errors
+ * Accepts partial config for flexibility during environment parsing
+ * @param s3Config - S3 configuration to validate (may have optional fields)
+ * @returns Array of validation error messages
+ */
+function validateS3ConfigErrors(s3Config: Partial<NonNullable<StorageConfig['s3']>>): string[] {
+  const errors: string[] = [];
+
+  const requiredFields = [
+    { field: 'region', message: 'S3 region is required' },
+    { field: 'accessKeyId', message: 'S3 access key ID is required' },
+    { field: 'secretAccessKey', message: 'S3 secret access key is required' },
+    { field: 'bucket', message: 'S3 bucket name is required' },
+  ] as const;
+
+  for (const { field, message } of requiredFields) {
+    if (!s3Config[field]) {
+      errors.push(message);
+    }
+  }
+
+  if (s3Config.maxRetries !== undefined && s3Config.maxRetries < 0) {
+    errors.push('S3 max retries must be >= 0');
+  }
+  if (s3Config.timeout !== undefined && s3Config.timeout < 1000) {
+    errors.push('S3 timeout must be >= 1000ms');
+  }
+
+  return errors;
+}
+
+/**
  * Validate required S3 configuration fields
  * @throws StorageError if any required field is missing
  */
@@ -32,17 +64,23 @@ function validateRequiredS3Config(config: {
   secretAccessKey?: string;
   bucket?: string;
 }): asserts config is Required<typeof config> {
-  if (!config.region) {
-    throw new StorageError('S3_REGION environment variable is required', 'MISSING_CONFIG');
-  }
-  if (!config.accessKeyId) {
-    throw new StorageError('S3_ACCESS_KEY environment variable is required', 'MISSING_CONFIG');
-  }
-  if (!config.secretAccessKey) {
-    throw new StorageError('S3_SECRET_KEY environment variable is required', 'MISSING_CONFIG');
-  }
-  if (!config.bucket) {
-    throw new StorageError('S3_BUCKET environment variable is required', 'MISSING_CONFIG');
+  const errors = validateS3ConfigErrors(config);
+
+  const requiredErrors = errors.filter(
+    (err) =>
+      err.includes('region') ||
+      err.includes('access key') ||
+      err.includes('secret access key') ||
+      err.includes('bucket')
+  );
+
+  if (requiredErrors.length > 0) {
+    throw new StorageError(
+      requiredErrors[0]
+        .replace('S3 ', 'S3_')
+        .replace(' is required', ' environment variable is required'),
+      'MISSING_CONFIG'
+    );
   }
 }
 
@@ -70,36 +108,6 @@ function parseLocalConfigFromEnv() {
     baseDirectory: process.env.STORAGE_BASE_DIR ?? DEFAULT_BASE_DIRECTORY,
     baseUrl: process.env.STORAGE_BASE_URL ?? DEFAULT_BASE_URL,
   };
-}
-
-/**
- * Validate S3 configuration and collect errors
- * @param s3Config - S3 configuration to validate
- * @returns Array of validation error messages
- */
-function validateS3ConfigErrors(s3Config: NonNullable<StorageConfig['s3']>): string[] {
-  const errors: string[] = [];
-
-  if (!s3Config.region) {
-    errors.push('S3 region is required');
-  }
-  if (!s3Config.accessKeyId) {
-    errors.push('S3 access key ID is required');
-  }
-  if (!s3Config.secretAccessKey) {
-    errors.push('S3 secret access key is required');
-  }
-  if (!s3Config.bucket) {
-    errors.push('S3 bucket name is required');
-  }
-  if (s3Config.maxRetries !== undefined && s3Config.maxRetries < 0) {
-    errors.push('S3 max retries must be >= 0');
-  }
-  if (s3Config.timeout !== undefined && s3Config.timeout < 1000) {
-    errors.push('S3 timeout must be >= 1000ms');
-  }
-
-  return errors;
 }
 
 // ============================================================================
@@ -188,7 +196,6 @@ export function createStorageFromEnv(): IStorageService {
     });
   }
 
-  // S3-compatible backends
   const s3Config = parseS3ConfigFromEnv();
   validateRequiredS3Config(s3Config);
 
