@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { BaseStorageService } from '../src/storage/base-storage.service.js';
+import { BaseStorageService } from '../src/storage/base-storage-service.js';
 import { StorageError } from '../src/storage/types.js';
 import type {
   UploadResult,

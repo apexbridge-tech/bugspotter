@@ -9,7 +9,7 @@ import type {
   MultipartUploadOptions,
 } from './types.js';
 import { StorageError } from './types.js';
-import { getContentType } from './stream.utils.js';
+import { getContentType } from './stream-utils.js';
 import {
   sanitizeFilename,
   buildStorageKey,
@@ -17,7 +17,7 @@ import {
   validateProjectId,
   validateBugId,
   type StorageType,
-} from './path.utils.js';
+} from './path-utils.js';
 import { getLogger } from '../logger.js';
 
 const logger = getLogger();

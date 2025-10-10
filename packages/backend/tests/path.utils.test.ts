@@ -10,7 +10,7 @@ import {
   validateProjectId,
   validateBugId,
   isValidUUID,
-} from '../src/storage/path.utils.js';
+} from '../src/storage/path-utils.js';
 
 describe('Path Utils', () => {
   describe('sanitizeFilename', () => {

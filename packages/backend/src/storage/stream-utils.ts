@@ -6,7 +6,7 @@
 import { Readable, PassThrough, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { StorageError } from './types.js';
-import { STREAM_LIMITS } from './stream.constants.js';
+import { STREAM_LIMITS } from './stream-constants.js';
 import { executeWithRetry } from '../utils/retry.js';
 import { detectFormat } from './format-detection.js';
 

@@ -5,8 +5,8 @@
 
 import type { StorageConfig, IStorageService, StorageBackend } from './types.js';
 import { StorageError } from './types.js';
-import { StorageService } from './storage.service.js';
-import { LocalStorageService } from './local.storage.js';
+import { StorageService } from './storage-service.js';
+import { LocalStorageService } from './local-storage.js';
 import { getLogger } from '../logger.js';
 
 const logger = getLogger();
@@ -280,7 +280,7 @@ export {
   validateImage,
   detectImageFormat,
   isImage,
-} from './image.processor.js';
+} from './image-processor.js';
 
 export {
   streamToBuffer,
@@ -293,7 +293,7 @@ export {
   createRateLimitedStream,
   validateStream,
   getContentType,
-} from './stream.utils.js';
+} from './stream-utils.js';
 
 export { detectFormat, isFormat, isImageFormat, type FormatInfo } from './format-detection.js';
 
@@ -302,7 +302,7 @@ export {
   FILE_SIGNATURES,
   isWebPFormat,
   type FileSignature,
-} from './stream.constants.js';
+} from './stream-constants.js';
 
 export {
   sanitizeFilename,
@@ -311,7 +311,7 @@ export {
   validateProjectId,
   validateBugId,
   isValidUUID,
-} from './path.utils.js';
+} from './path-utils.js';
 
 // Export base class for custom implementations
-export { BaseStorageService } from './base-storage.service.js';
+export { BaseStorageService } from './base-storage-service.js';

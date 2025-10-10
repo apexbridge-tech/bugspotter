@@ -21,7 +21,7 @@ import type {
   StorageObject,
   MultipartUploadOptions,
 } from './types.js';
-import { BaseStorageService } from './base-storage.service.js';
+import { BaseStorageService } from './base-storage-service.js';
 import { StorageError, StorageUploadError, StorageNotFoundError } from './types.js';
 import {
   DEFAULT_EXPIRATION_SECONDS,

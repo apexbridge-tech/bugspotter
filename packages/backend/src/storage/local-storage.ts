@@ -12,7 +12,7 @@ import type {
   StorageObject,
   MultipartUploadOptions,
 } from './types.js';
-import { BaseStorageService } from './base-storage.service.js';
+import { BaseStorageService } from './base-storage-service.js';
 import {
   StorageError,
   StorageConnectionError,

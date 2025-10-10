@@ -8,7 +8,7 @@ import {
   FILE_SIGNATURES,
   isWebPFormat,
   type FileSignature,
-} from '../src/storage/stream.constants.js';
+} from '../src/storage/stream-constants.js';
 
 describe('STREAM_LIMITS', () => {
   it('should define MAX_BUFFER_SIZE as 10MB', () => {

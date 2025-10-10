@@ -15,7 +15,7 @@ import {
   createRateLimitedStream,
   validateStream,
   getContentType,
-} from '../src/storage/stream.utils.js';
+} from '../src/storage/stream-utils.js';
 import { StorageError } from '../src/storage/types.js';
 
 // Helper function to create readable stream from data

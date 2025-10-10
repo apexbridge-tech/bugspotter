@@ -4,11 +4,165 @@ You are working on **BugSpotter**, a professional bug reporting SDK with session
 
 ## Project Structure
 
-- **packages/sdk** - Core TypeScript SDK with rrweb session replay (~99KB bundle)
+- **packages/sdk** - Core TypeScript SDK with rrweb session replay (~180KB bundle)
 - **packages/backend** - Fastify 5.6.1 REST API with PostgreSQL 16 database
 - **packages/types** - Shared TypeScript type definitions
 - **packages/backend-mock** - Mock API server for SDK testing
 - **apps/demo** - Interactive demo application
+
+## TypeScript Configuration
+
+**Strict Base Configuration**: All packages extend `tsconfig.json` at project root with 13 strict compiler options enabled.
+
+### Backend (ES2023)
+
+Target: ES2023 for Node 20+ in Docker environment.
+
+```json
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  }
+}
+```
+
+**Modern features available**: Top-level await, array grouping, `findLast`, `Array.toSorted()`, `Object.hasOwn()`.
+
+### SDK (ES2017)
+
+Target: ES2017 for 95%+ browser coverage (Chrome 60+, Firefox 55+, Safari 11+, Edge 79+).
+
+```json
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2017", "DOM", "DOM.Iterable"],
+    "sourceMap": true,
+    "declaration": true
+  }
+}
+```
+
+**Modern features available**: `async`/`await`, `Object.entries()`, `Object.values()`, string padding. **Avoid**: ES2018+ features (spread in objects OK, async iterators NO).
+
+### Types (ES2022, Declaration-Only)
+
+Shared types package - generates `.d.ts` files only:
+
+```json
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "composite": true,
+    "outDir": "./dist"
+  }
+}
+```
+
+### Key TypeScript Patterns
+
+**1. Type Guards with Key Presence**
+
+Check for key existence, not value types (handles `undefined` values):
+
+```typescript
+// ✅ GOOD: Checks for key presence
+function isTransportOptions(obj: any): obj is TransportOptions {
+  return 'apiKey' in obj && 'endpoint' in obj;
+}
+
+// ❌ BAD: Fails when values are undefined
+function isTransportOptions(obj: any): obj is TransportOptions {
+  return typeof obj.apiKey === 'string'; // undefined fails!
+}
+```
+
+**2. isolatedModules Compliance**
+
+Always use `export type` for type-only re-exports:
+
+```typescript
+// ✅ GOOD: Explicitly marks type export
+export type { BugReportData, ErrorInfo } from './types';
+
+// ❌ BAD: isolatedModules error
+export { BugReportData, ErrorInfo } from './types';
+```
+
+**3. Unused Variables**
+
+Remove unused declarations immediately:
+
+```typescript
+// ❌ BAD: Unused variable
+const styleElement = document.createElement('style');
+return template; // styleElement never used
+
+// ✅ GOOD: Removed or used
+return template;
+```
+
+**4. Verify Errors After File Operations**
+
+Always check for TypeScript errors after renaming files or updating imports:
+
+```typescript
+// After renaming files or bulk import updates:
+// 1. Run get_errors on affected files
+// 2. Fix any compilation errors immediately
+// 3. Then run build and tests
+```
+
+**Critical**: File renames can introduce type errors in test files that use type casting. Test files aren't compiled by `pnpm build` but will fail during `pnpm test` when vitest compiles them.
+
+See: Root `tsconfig.json`, package-specific configs, `packages/sdk/src/core/transport.ts` (type guard example)
+
+## File Naming Conventions
+
+**Standard: kebab-case for all multi-word files**
+
+All TypeScript source files use kebab-case (dashes) for multi-word names:
+
+- ✅ `dom-element-cache.ts`, `form-validator.ts`, `screenshot-processor.ts`
+- ✅ `image-processor.ts`, `path-utils.ts`, `base-storage-service.ts`
+- ✅ `auth-schema.ts`, `common-schema.ts`, `project-schema.ts`
+
+**Reserved dot notation** only for these patterns:
+
+- Configuration: `vitest.config.ts`, `webpack.config.js`, `eslint.config.js`
+- Testing: `*.test.ts`, `setup.integration.ts`
+- Types: `types.ts`, `*.d.ts`
+- Build artifacts: `tsconfig.tsbuildinfo`
+
+**Never use**:
+
+- ❌ camelCase: `domElementCache.ts`, `formValidator.ts`
+- ❌ Mixed dots: `image.processor.ts`, `path.utils.ts`
+- ❌ PascalCase: `FormValidator.ts`, `ImageProcessor.ts`
+
+**Rationale**: Kebab-case is:
+
+1. Shell-friendly (no escaping needed in terminals)
+2. Git-friendly (case-insensitive filesystems)
+3. Consistent with web standards (URLs, HTML attributes)
+4. Visually distinct from class names (PascalCase) and variables (camelCase)
+
+See: Entire codebase follows this convention (~40 files standardized in 2025)
 
 ## Core Architectural Patterns
 
@@ -180,7 +334,7 @@ See: `packages/backend/src/api/middleware/auth.ts`, `src/api/routes/health.ts`
 
 1. Launch PostgreSQL 16 container
 2. Run migrations
-3. Execute tests (621 backend + 404 SDK = 1,025+ total)
+3. Execute tests (660 backend + 345 SDK = 1,005 total)
 4. Cleanup container
 
 ```bash
@@ -191,8 +345,8 @@ pnpm test:coverage     # Coverage report
 
 **Test Distribution:**
 
-- Backend: 621 tests (unit + integration + load)
-- SDK: 404 tests (unit + E2E + Playwright)
+- Backend: 660 tests (unit + integration + load)
+- SDK: 345 tests (unit + E2E + Playwright)
 
 See: `packages/backend/TESTING.md`, `tests/setup.ts`
 

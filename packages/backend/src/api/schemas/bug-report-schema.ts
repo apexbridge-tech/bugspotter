@@ -2,7 +2,7 @@
  * Bug Report schemas for request/response validation
  */
 
-import { paginationSchema, paginationResponseSchema, sortOrderSchema } from './common.schema.js';
+import { paginationSchema, paginationResponseSchema, sortOrderSchema } from './common-schema.js';
 
 export const bugStatusEnum = ['open', 'in-progress', 'resolved', 'closed'] as const;
 export const bugPriorityEnum = ['low', 'medium', 'high', 'critical'] as const;

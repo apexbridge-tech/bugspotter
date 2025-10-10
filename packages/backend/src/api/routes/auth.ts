@@ -6,7 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { DatabaseClient } from '../../db/client.js';
 import bcrypt from 'bcrypt';
-import { loginSchema, registerSchema, refreshTokenSchema } from '../schemas/auth.schema.js';
+import { loginSchema, registerSchema, refreshTokenSchema } from '../schemas/auth-schema.js';
 import { AppError } from '../middleware/error.js';
 import { config } from '../../config.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';

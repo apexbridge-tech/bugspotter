@@ -10,7 +10,7 @@ import {
   validateImage,
   detectImageFormat,
   isImage,
-} from '../src/storage/image.processor.js';
+} from '../src/storage/image-processor.js';
 import { StorageValidationError } from '../src/storage/types.js';
 import sharp from 'sharp';
 

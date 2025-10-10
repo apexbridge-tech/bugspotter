@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { StorageService } from '../src/storage/storage.service.js';
-import { LocalStorageService } from '../src/storage/local.storage.js';
+import { StorageService } from '../src/storage/storage-service.js';
+import { LocalStorageService } from '../src/storage/local-storage.js';
 import {
   createStorage,
   createStorageFromEnv,
@@ -87,7 +87,7 @@ describe('Storage Factory', () => {
     it('should throw error for invalid backend', () => {
       const config = {
         backend: 'invalid',
-      } as StorageConfig;
+      } as unknown as StorageConfig;
 
       expect(() => createStorage(config)).toThrow(StorageError);
     });
@@ -206,7 +206,7 @@ describe('Storage Factory', () => {
     it('should return errors for invalid backend', () => {
       const config = {
         backend: 'invalid',
-      } as StorageConfig;
+      } as unknown as StorageConfig;
 
       const errors = validateStorageConfig(config);
       expect(errors.length).toBeGreaterThan(0);
