@@ -101,16 +101,22 @@ export class LocalStorageService extends BaseStorageService {
 
   async deleteFolder(prefix: string): Promise<number> {
     const folderPath = this.keyToPath(prefix);
-    let deletedCount = 0;
 
     try {
+      // Check if folder exists
       try {
         await fs.access(folderPath);
       } catch {
-        return 0;
+        return 0; // Folder doesn't exist
       }
 
-      deletedCount = await this.deleteFolderRecursive(folderPath);
+      // Count files before deletion
+      const files: StorageObject[] = [];
+      await this.listFilesRecursive(folderPath, prefix, files, Infinity);
+      const deletedCount = files.length;
+
+      // Use Node.js built-in recursive deletion (more efficient)
+      await fs.rm(folderPath, { recursive: true, force: true });
 
       logger.info('Folder deleted', { prefix, folderPath, deletedCount });
       return deletedCount;
@@ -126,22 +132,39 @@ export class LocalStorageService extends BaseStorageService {
   async listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult> {
     const prefix = options?.prefix ?? '';
     const maxKeys = options?.maxKeys ?? 1000;
-    const folderPath = this.keyToPath(prefix);
+    const startAfter = options?.continuationToken; // Use continuationToken as startAfter key
 
     try {
       const objects: StorageObject[] = [];
 
-      try {
-        await fs.access(folderPath);
-      } catch {
-        return { objects: [], isTruncated: false };
+      // List all files from base directory and filter by prefix
+      await this.listFilesRecursive(this.baseDirectory, '', objects, Infinity);
+
+      // Filter by prefix if specified
+      let filteredObjects = prefix ? objects.filter((obj) => obj.key.startsWith(prefix)) : objects;
+
+      // Sort for consistent pagination
+      filteredObjects.sort((a, b) => a.key.localeCompare(b.key));
+
+      // Apply continuation token (skip to after this key)
+      if (startAfter) {
+        const startIndex = filteredObjects.findIndex((obj) => obj.key > startAfter);
+        if (startIndex > 0) {
+          filteredObjects = filteredObjects.slice(startIndex);
+        }
       }
 
-      await this.listFilesRecursive(folderPath, prefix, objects, maxKeys);
+      // Paginate results
+      const isTruncated = filteredObjects.length > maxKeys;
+      const paginatedObjects = filteredObjects.slice(0, maxKeys);
+      const nextContinuationToken = isTruncated
+        ? paginatedObjects[paginatedObjects.length - 1].key
+        : undefined;
 
       return {
-        objects: objects.slice(0, maxKeys),
-        isTruncated: objects.length > maxKeys,
+        objects: paginatedObjects,
+        isTruncated,
+        nextContinuationToken,
       };
     } catch (error) {
       throw new StorageError(
@@ -264,36 +287,6 @@ export class LocalStorageService extends BaseStorageService {
     return path.join(this.baseDirectory, key);
   }
 
-  private async deleteFolderRecursive(folderPath: string): Promise<number> {
-    let count = 0;
-
-    try {
-      const entries = await fs.readdir(folderPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const fullPath = path.join(folderPath, entry.name);
-
-        if (entry.isDirectory()) {
-          count += await this.deleteFolderRecursive(fullPath);
-          await fs.rmdir(fullPath);
-        } else {
-          await fs.unlink(fullPath);
-          count++;
-        }
-      }
-
-      try {
-        await fs.rmdir(folderPath);
-      } catch {
-        // Ignore
-      }
-    } catch (error) {
-      logger.warn('Error during recursive delete', { folderPath, error });
-    }
-
-    return count;
-  }
-
   private async listFilesRecursive(
     dirPath: string,
     prefix: string,
@@ -317,9 +310,11 @@ export class LocalStorageService extends BaseStorageService {
         if (entry.isDirectory()) {
           await this.listFilesRecursive(fullPath, prefix, results, maxKeys);
         } else if (entry.isFile()) {
+          // Get stats only once (more efficient than separate stat call)
           const stats = await fs.stat(fullPath);
           const relativePath = path.relative(this.baseDirectory, fullPath);
-          const key = relativePath.replace(/\\/g, '/');
+          // Normalize path separators to forward slashes for consistency
+          const key = relativePath.split(path.sep).join('/');
 
           results.push({
             key,

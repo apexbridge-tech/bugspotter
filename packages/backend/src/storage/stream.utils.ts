@@ -12,6 +12,7 @@ import {
   isWebPFormat,
   type FileSignature,
 } from './stream.constants.js';
+import { executeWithRetry } from '../utils/retry.js';
 
 /**
  * Generic stream processor with consistent event handling
@@ -209,9 +210,6 @@ export async function retryStreamOperation<T>(
   baseDelay: number = 1000,
   shouldRetry?: (error: unknown) => boolean
 ): Promise<T> {
-  // Import at function level to avoid circular dependencies
-  const { executeWithRetry } = await import('../utils/retry.js');
-
   try {
     return await executeWithRetry(
       async () => {
