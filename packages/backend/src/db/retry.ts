@@ -7,6 +7,7 @@ import {
   executeWithRetry as genericExecuteWithRetry,
   withRetry as genericWithRetry,
   RetryPredicates,
+  DEFAULT_RETRY_CONFIG as GENERIC_DEFAULT_RETRY_CONFIG,
   type RetryConfig as GenericRetryConfig,
   type RetryStrategy,
   ExponentialBackoffStrategy,
@@ -29,12 +30,9 @@ export interface RetryConfig {
 
 /**
  * Default retry configuration for database operations
+ * Re-exported from generic retry utilities (same values)
  */
-export const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
-  maxAttempts: 3,
-  baseDelay: 1000,
-  strategy: new ExponentialBackoffStrategy(),
-};
+export const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = GENERIC_DEFAULT_RETRY_CONFIG;
 
 /**
  * Check if error is retryable for database operations
