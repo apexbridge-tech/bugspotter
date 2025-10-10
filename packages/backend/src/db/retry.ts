@@ -15,7 +15,7 @@ import {
   FixedDelayStrategy,
 } from '../utils/retry.js';
 
-// Re-export types and strategies for backward compatibility
+// Re-export types and strategies
 export type { RetryStrategy };
 export { ExponentialBackoffStrategy, LinearBackoffStrategy, FixedDelayStrategy };
 
@@ -44,12 +44,10 @@ export function isRetryableError(error: unknown): boolean {
 
 /**
  * Execute function with automatic retry on database connection errors
- * Note: 'attempt' parameter maintained for backward compatibility but unused
  */
 export async function executeWithRetry<T>(
   fn: () => Promise<T>,
-  config: RetryConfig = {},
-  _attempt: number = 1
+  config: RetryConfig = {}
 ): Promise<T> {
   // Convert database retry config to generic retry config
   const genericConfig: GenericRetryConfig = {

@@ -130,14 +130,3 @@ export async function createTestServerWithDb() {
 
   return { server, db };
 }
-
-// Legacy functions - DO NOT USE
-// These were for a different approach and are no longer supported
-// Use createTestDatabase() and createTestServerWithDb() instead
-export function getTestDatabase(): never {
-  throw new Error('getTestDatabase() is deprecated. Use createTestDatabase() instead.');
-}
-
-export function getTestServer(): never {
-  throw new Error('getTestServer() is deprecated. Use createTestServerWithDb() instead.');
-}

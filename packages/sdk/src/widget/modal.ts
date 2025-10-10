@@ -133,7 +133,7 @@ export class BugReportModal {
   }
 
   /**
-   * Destroy the modal (alias for close for backward compatibility)
+   * Destroy the modal (alias for close)
    */
   destroy(): void {
     this.close();

@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, createReadStream } from 'node:fs';
 import path from 'node:path';
 import { Readable, pipeline } from 'node:stream';
 import { promisify } from 'node:util';
@@ -19,7 +19,6 @@ import {
   StorageUploadError,
   StorageNotFoundError,
 } from './types.js';
-import { bufferToStream } from './stream.utils.js';
 import { getLogger } from '../logger.js';
 
 const pipelineAsync = promisify(pipeline);
@@ -184,8 +183,8 @@ export class LocalStorageService extends BaseStorageService {
 
     try {
       await fs.access(filePath);
-      const buffer = await fs.readFile(filePath);
-      return bufferToStream(buffer);
+      // True streaming - constant memory usage regardless of file size
+      return createReadStream(filePath);
     } catch (error: unknown) {
       const err = error as { code?: string };
       if (err.code === 'ENOENT') {

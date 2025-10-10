@@ -3,13 +3,6 @@ import { getAuthHeaders, submitWithAuth, type AuthConfig } from '../../src/core/
 
 describe('Transport - Authentication', () => {
   describe('getAuthHeaders', () => {
-    it('should handle backward compatible string API key', () => {
-      const headers = getAuthHeaders('my-api-key-123');
-      expect(headers).toEqual({
-        Authorization: 'Bearer my-api-key-123',
-      });
-    });
-
     it('should return empty headers when no auth provided', () => {
       const headers = getAuthHeaders();
       expect(headers).toEqual({});
@@ -175,30 +168,6 @@ describe('Transport - Authentication', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'X-Tenant-ID': 'tenant-123',
-          }),
-        })
-      );
-    });
-
-    it('should handle backward compatible string auth', async () => {
-      const mockResponse = new Response(JSON.stringify({ success: true }), {
-        status: 200,
-      });
-
-      (global.fetch as any).mockResolvedValueOnce(mockResponse);
-
-      await submitWithAuth(
-        'https://api.example.com/bugs',
-        JSON.stringify({ test: 'data' }),
-        { 'Content-Type': 'application/json' },
-        'old-api-key'
-      );
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.example.com/bugs',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer old-api-key',
           }),
         })
       );

@@ -321,7 +321,7 @@ export class Sanitizer {
 }
 
 /**
- * Factory function - maintains backward compatibility
+ * Factory function to create a Sanitizer instance
  */
 export function createSanitizer(config: SanitizeConfig): Sanitizer {
   return new Sanitizer(config);
