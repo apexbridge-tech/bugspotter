@@ -19,6 +19,92 @@ import {
   type SupportedFormat,
 } from './constants.js';
 
+// ============================================================================
+// OPTIMIZATION CONSTANTS
+// ============================================================================
+
+/**
+ * Minimum size reduction percentage to prefer WebP over original format
+ * 0.9 = 10% savings required (WebP must be at least 10% smaller)
+ */
+const WEBP_SIZE_THRESHOLD = 0.9;
+
+// ============================================================================
+// OPTIMIZATION HELPERS (Single Responsibility Principle)
+// ============================================================================
+
+/**
+ * Resize image if dimensions exceed maximum allowed size
+ * @param image - Sharp instance
+ * @param width - Current width
+ * @param height - Current height
+ * @returns Same Sharp instance (for chaining)
+ */
+function resizeIfNeeded(
+  image: sharp.Sharp,
+  width: number | undefined,
+  height: number | undefined
+): sharp.Sharp {
+  if (width && height && (width > MAX_DIMENSION || height > MAX_DIMENSION)) {
+    image.resize(MAX_DIMENSION, MAX_DIMENSION, {
+      fit: 'inside',
+      withoutEnlargement: true,
+    });
+  }
+  return image;
+}
+
+/**
+ * Attempt WebP conversion for potential size savings
+ * @param image - Sharp instance
+ * @returns WebP buffer or null if conversion fails
+ */
+async function tryWebPConversion(image: sharp.Sharp): Promise<Buffer | null> {
+  try {
+    return await image.clone().webp({ quality: WEBP_QUALITY, effort: 4 }).toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if WebP buffer provides sufficient size savings
+ * @param webpSize - Size of WebP buffer
+ * @param originalSize - Size of original buffer
+ * @returns true if WebP is at least 10% smaller
+ */
+function isWebPBeneficial(webpSize: number, originalSize: number): boolean {
+  return webpSize < originalSize * WEBP_SIZE_THRESHOLD;
+}
+
+/**
+ * Optimize image in its original format with best compression settings
+ * @param image - Sharp instance
+ * @param format - Image format
+ * @returns Optimized buffer in original format
+ */
+async function optimizeInOriginalFormat(
+  image: sharp.Sharp,
+  format: SupportedFormat
+): Promise<Buffer> {
+  switch (format) {
+    case 'jpeg':
+    case 'jpg':
+      return await image.jpeg({ quality: JPEG_QUALITY, progressive: true }).toBuffer();
+    case 'png':
+      return await image.png({ compressionLevel: 9, progressive: true }).toBuffer();
+    case 'webp':
+      return await image.webp({ quality: WEBP_QUALITY }).toBuffer();
+    default:
+      // For other formats (GIF, SVG), convert to preserve stripped metadata
+      return await image.toBuffer();
+  }
+}
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
 /**
  * Generate a thumbnail from an image buffer
  * @param buffer - Original image buffer
@@ -50,10 +136,12 @@ export async function generateThumbnail(
 
 /**
  * Optimize an image for storage
- * - Converts to WebP if beneficial (smaller size)
+ * - Converts to WebP if beneficial (>10% size reduction)
  * - Compresses JPEG/PNG with quality settings
- * - Strips metadata for privacy
+ * - Strips metadata for privacy (automatic in Sharp)
  * - Limits dimensions to reasonable size
+ *
+ * Uses helper functions for each optimization step (SRP)
  *
  * @param buffer - Original image buffer
  * @returns Optimized image buffer
@@ -63,42 +151,18 @@ export async function optimizeImage(buffer: Buffer): Promise<Buffer> {
     const image = sharp(buffer);
     const metadata = await image.metadata();
 
-    // Validate dimensions
-    if (
-      metadata.width &&
-      metadata.height &&
-      (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION)
-    ) {
-      // Resize if too large
-      image.resize(MAX_DIMENSION, MAX_DIMENSION, {
-        fit: 'inside',
-        withoutEnlargement: true,
-      });
-    }
+    // Resize if dimensions exceed limits (delegates to helper)
+    resizeIfNeeded(image, metadata.width, metadata.height);
 
-    // Try WebP conversion for potential size savings
-    // Image format conversion automatically strips metadata in Sharp
-    const webpBuffer = await image.clone().webp({ quality: WEBP_QUALITY, effort: 4 }).toBuffer();
-
-    // Use WebP if it's significantly smaller (>10% savings)
-    if (webpBuffer.length < buffer.length * 0.9) {
+    // Attempt WebP conversion for size savings (metadata stripped automatically)
+    const webpBuffer = await tryWebPConversion(image);
+    if (webpBuffer && isWebPBeneficial(webpBuffer.length, buffer.length)) {
       return webpBuffer;
     }
 
-    // Otherwise optimize in original format
+    // Otherwise optimize in original format (delegates to helper)
     const format = metadata.format as SupportedFormat;
-    switch (format) {
-      case 'jpeg':
-      case 'jpg':
-        return await image.jpeg({ quality: JPEG_QUALITY, progressive: true }).toBuffer();
-      case 'png':
-        return await image.png({ compressionLevel: 9, progressive: true }).toBuffer();
-      case 'webp':
-        return await image.webp({ quality: WEBP_QUALITY }).toBuffer();
-      default:
-        // For other formats, convert to preserve stripped metadata
-        return await image.toBuffer();
-    }
+    return await optimizeInOriginalFormat(image, format);
   } catch (error) {
     throw new StorageValidationError(
       `Failed to optimize image: ${error instanceof Error ? error.message : String(error)}`
@@ -138,6 +202,84 @@ export async function extractMetadata(buffer: Buffer): Promise<ImageMetadata> {
   }
 }
 
+// ============================================================================
+// VALIDATION HELPERS (Single Responsibility Principle)
+// ============================================================================
+
+/**
+ * Convert bytes to megabytes for display
+ */
+function bytesToMB(bytes: number): number {
+  return bytes / (1024 * 1024);
+}
+
+/**
+ * Validate buffer is not empty and within size limits
+ * @throws StorageValidationError if buffer is invalid
+ */
+function validateBufferSize(buffer: Buffer): void {
+  if (buffer.length === 0) {
+    throw new StorageValidationError('Image buffer is empty');
+  }
+
+  if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
+    throw new StorageValidationError(
+      `Image size exceeds ${MAX_IMAGE_SIZE_MB}MB limit (${bytesToMB(buffer.length).toFixed(2)}MB)`
+    );
+  }
+}
+
+/**
+ * Validate image format is supported
+ * @throws StorageValidationError if format is unsupported
+ */
+function validateImageFormat(format: string): void {
+  if (!SUPPORTED_FORMATS.includes(format as SupportedFormat)) {
+    throw new StorageValidationError(
+      `Invalid image format: ${format}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
+    );
+  }
+}
+
+/**
+ * Validate image dimensions are within acceptable range
+ * @throws StorageValidationError if dimensions are invalid
+ */
+function validateImageDimensions(width: number, height: number): void {
+  // Check minimum dimensions
+  if (width < 1 || height < 1) {
+    throw new StorageValidationError('Image dimensions must be at least 1x1');
+  }
+
+  // Check maximum dimensions
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    throw new StorageValidationError(
+      `Image dimensions exceed ${MAX_DIMENSION}px limit (${width}x${height})`
+    );
+  }
+}
+
+/**
+ * Handle metadata extraction errors
+ * @throws StorageValidationError with appropriate message
+ */
+function handleMetadataError(error: unknown): never {
+  if (error instanceof StorageValidationError) {
+    throw error;
+  }
+
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  if (errorMsg.includes('unsupported image format')) {
+    throw new StorageValidationError('Invalid image format');
+  }
+
+  throw new StorageValidationError(`Invalid image format: ${errorMsg}`);
+}
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
+
 /**
  * Validate an image buffer
  * - Checks if it's a valid image
@@ -145,115 +287,122 @@ export async function extractMetadata(buffer: Buffer): Promise<ImageMetadata> {
  * - Ensures size is within limits
  * - Validates dimensions
  *
+ * Uses helper functions for each validation step (SRP)
+ *
  * @param buffer - Image buffer to validate
  * @throws StorageValidationError if validation fails
  */
 export async function validateImage(buffer: Buffer): Promise<void> {
-  // Check buffer size
-  if (buffer.length === 0) {
-    throw new StorageValidationError('Image buffer is empty');
-  }
+  // Validate buffer size first (fast check)
+  validateBufferSize(buffer);
 
-  if (buffer.length > MAX_IMAGE_SIZE_BYTES) {
-    throw new StorageValidationError(
-      `Image size exceeds ${MAX_IMAGE_SIZE_MB}MB limit (${(buffer.length / 1024 / 1024).toFixed(2)}MB)`
-    );
-  }
-
+  // Extract metadata and validate (delegates to helper functions)
   try {
     const metadata = await extractMetadata(buffer);
 
-    // Validate format
-    if (!SUPPORTED_FORMATS.includes(metadata.format as SupportedFormat)) {
-      throw new StorageValidationError(
-        `Invalid image format: ${metadata.format}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
-      );
-    }
-
-    // Validate dimensions
-    if (metadata.width > MAX_DIMENSION || metadata.height > MAX_DIMENSION) {
-      throw new StorageValidationError(
-        `Image dimensions exceed ${MAX_DIMENSION}px limit (${metadata.width}x${metadata.height})`
-      );
-    }
-
-    // Validate minimum size (at least 1x1)
-    if (metadata.width < 1 || metadata.height < 1) {
-      throw new StorageValidationError('Image dimensions must be at least 1x1');
-    }
+    validateImageFormat(metadata.format);
+    validateImageDimensions(metadata.width, metadata.height);
   } catch (error) {
-    if (error instanceof StorageValidationError) {
-      throw error;
-    }
-    // Extract just the important part of Sharp's error message
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    if (errorMsg.includes('unsupported image format')) {
-      throw new StorageValidationError('Invalid image format');
-    }
-    throw new StorageValidationError(`Invalid image format: ${errorMsg}`);
+    handleMetadataError(error);
   }
+}
+
+// ============================================================================
+// FORMAT DETECTION HELPERS (DRY + Named Constants)
+// ============================================================================
+
+/**
+ * Magic number signatures for image format detection
+ * Each format has: required bytes, signature pattern, format name
+ */
+const FORMAT_SIGNATURES = {
+  JPEG: {
+    minBytes: 3,
+    signature: [0xff, 0xd8, 0xff], // FF D8 FF
+    format: 'jpeg' as const,
+  },
+  PNG: {
+    minBytes: 8,
+    signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], // 89 50 4E 47 0D 0A 1A 0A
+    format: 'png' as const,
+  },
+  WEBP: {
+    minBytes: 12,
+    // RIFF....WEBP - check positions 0-3 and 8-11
+    signature: [0x52, 0x49, 0x46, 0x46, null, null, null, null, 0x57, 0x45, 0x42, 0x50],
+    format: 'webp' as const,
+  },
+  GIF: {
+    minBytes: 6,
+    // GIF87a or GIF89a - position 4 can be 0x37 or 0x39
+    signature: [0x47, 0x49, 0x46, 0x38, [0x37, 0x39], 0x61],
+    format: 'gif' as const,
+  },
+} as const;
+
+/**
+ * Check if buffer matches a signature pattern
+ * Supports null (skip position) and array (multiple valid values)
+ */
+function matchesSignature(
+  buffer: Buffer,
+  signature: ReadonlyArray<number | null | readonly number[]>
+): boolean {
+  for (let i = 0; i < signature.length; i++) {
+    const expected = signature[i];
+
+    // null means skip this position (WebP has variable bytes 4-7)
+    if (expected === null) {
+      continue;
+    }
+
+    // Array means any of these values is valid (GIF can be 87a or 89a)
+    if (Array.isArray(expected)) {
+      if (!expected.includes(buffer[i])) {
+        return false;
+      }
+      continue;
+    }
+
+    // Single value must match exactly
+    if (buffer[i] !== expected) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Detect SVG format from text content
+ * SVG is XML-based, so we check for '<svg' or '<?xml' + 'svg'
+ */
+function detectSVG(buffer: Buffer): boolean {
+  if (buffer.length < 5) {
+    return false;
+  }
+
+  const text = buffer.slice(0, 100).toString('utf8');
+  return text.includes('<svg') || (text.includes('<?xml') && text.includes('svg'));
 }
 
 /**
  * Validate image format from buffer (quick check without full parsing)
+ * Uses magic number detection for binary formats and text detection for SVG
+ *
  * @param buffer - Image buffer
  * @returns Format name or null if not recognized
  */
 export function detectImageFormat(buffer: Buffer): string | null {
-  if (buffer.length < 2) {
-    return null;
-  }
-
-  // JPEG magic number: FF D8 FF
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return 'jpeg';
-  }
-
-  // PNG magic number: 89 50 4E 47 0D 0A 1A 0A
-  if (
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47 &&
-    buffer[4] === 0x0d &&
-    buffer[5] === 0x0a &&
-    buffer[6] === 0x1a &&
-    buffer[7] === 0x0a
-  ) {
-    return 'png';
-  }
-
-  // WebP magic number: RIFF....WEBP
-  if (
-    buffer[0] === 0x52 &&
-    buffer[1] === 0x49 &&
-    buffer[2] === 0x46 &&
-    buffer[3] === 0x46 &&
-    buffer[8] === 0x57 &&
-    buffer[9] === 0x45 &&
-    buffer[10] === 0x42 &&
-    buffer[11] === 0x50
-  ) {
-    return 'webp';
-  }
-
-  // GIF magic number: GIF87a or GIF89a (need at least 6 bytes)
-  if (buffer.length >= 6) {
-    if (
-      buffer[0] === 0x47 &&
-      buffer[1] === 0x49 &&
-      buffer[2] === 0x46 &&
-      buffer[3] === 0x38 &&
-      (buffer[4] === 0x37 || buffer[4] === 0x39) &&
-      buffer[5] === 0x61
-    ) {
-      return 'gif';
+  // Check binary formats using magic numbers (JPEG, PNG, WebP, GIF)
+  for (const { minBytes, signature, format } of Object.values(FORMAT_SIGNATURES)) {
+    if (buffer.length >= minBytes && matchesSignature(buffer, signature)) {
+      return format;
     }
   }
 
-  // SVG (text-based, check for '<svg' or '<?xml')
-  const text = buffer.slice(0, 100).toString('utf8');
-  if (text.includes('<svg') || (text.includes('<?xml') && text.includes('svg'))) {
+  // Check text-based format (SVG)
+  if (detectSVG(buffer)) {
     return 'svg';
   }
 
