@@ -3,13 +3,78 @@
  * Provides unified interface for creating storage services
  */
 
-import type { StorageConfig, IStorageService } from './types.js';
+import type { StorageConfig, IStorageService, StorageBackend } from './types.js';
 import { StorageError } from './types.js';
 import { StorageService } from './storage.service.js';
 import { LocalStorageService } from './local.storage.js';
 import { getLogger } from '../logger.js';
 
 const logger = getLogger();
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+const DEFAULT_STORAGE_BACKEND: StorageBackend = 'local';
+const DEFAULT_BASE_DIRECTORY = './data/uploads';
+const DEFAULT_BASE_URL = 'http://localhost:3000/uploads';
+
+// ============================================================================
+// PRIVATE HELPERS
+// ============================================================================
+
+/**
+ * Validate required S3 configuration fields
+ * @throws StorageError if any required field is missing
+ */
+function validateRequiredS3Config(config: {
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  bucket?: string;
+}): asserts config is Required<typeof config> {
+  if (!config.region) {
+    throw new StorageError('S3_REGION environment variable is required', 'MISSING_CONFIG');
+  }
+  if (!config.accessKeyId) {
+    throw new StorageError('S3_ACCESS_KEY environment variable is required', 'MISSING_CONFIG');
+  }
+  if (!config.secretAccessKey) {
+    throw new StorageError('S3_SECRET_KEY environment variable is required', 'MISSING_CONFIG');
+  }
+  if (!config.bucket) {
+    throw new StorageError('S3_BUCKET environment variable is required', 'MISSING_CONFIG');
+  }
+}
+
+/**
+ * Parse S3 configuration from environment variables
+ */
+function parseS3ConfigFromEnv() {
+  return {
+    endpoint: process.env.S3_ENDPOINT,
+    region: process.env.S3_REGION,
+    accessKeyId: process.env.S3_ACCESS_KEY,
+    secretAccessKey: process.env.S3_SECRET_KEY,
+    bucket: process.env.S3_BUCKET,
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+    maxRetries: process.env.S3_MAX_RETRIES ? parseInt(process.env.S3_MAX_RETRIES, 10) : undefined,
+    timeout: process.env.S3_TIMEOUT_MS ? parseInt(process.env.S3_TIMEOUT_MS, 10) : undefined,
+  };
+}
+
+/**
+ * Parse local storage configuration from environment variables
+ */
+function parseLocalConfigFromEnv() {
+  return {
+    baseDirectory: process.env.STORAGE_BASE_DIR ?? DEFAULT_BASE_DIRECTORY,
+    baseUrl: process.env.STORAGE_BASE_URL ?? DEFAULT_BASE_URL,
+  };
+}
+
+// ============================================================================
+// PUBLIC API
+// ============================================================================
 
 /**
  * Create a storage service based on configuration
@@ -81,58 +146,25 @@ export function createStorage(config: StorageConfig): IStorageService {
  * @throws StorageError if required env vars are missing
  */
 export function createStorageFromEnv(): IStorageService {
-  const backend = (process.env.STORAGE_BACKEND ?? 'local') as StorageConfig['backend'];
+  const backend = (process.env.STORAGE_BACKEND ??
+    DEFAULT_STORAGE_BACKEND) as StorageConfig['backend'];
 
   logger.info('Creating storage from environment', { backend });
 
   if (backend === 'local') {
-    const baseDirectory = process.env.STORAGE_BASE_DIR ?? './data/uploads';
-    const baseUrl = process.env.STORAGE_BASE_URL ?? 'http://localhost:3000/uploads';
-
     return createStorage({
       backend: 'local',
-      local: { baseDirectory, baseUrl },
+      local: parseLocalConfigFromEnv(),
     });
   }
 
   // S3-compatible backends
-  const s3Config = {
-    endpoint: process.env.S3_ENDPOINT,
-    region: process.env.S3_REGION,
-    accessKeyId: process.env.S3_ACCESS_KEY,
-    secretAccessKey: process.env.S3_SECRET_KEY,
-    bucket: process.env.S3_BUCKET,
-    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
-    maxRetries: process.env.S3_MAX_RETRIES ? parseInt(process.env.S3_MAX_RETRIES, 10) : undefined,
-    timeout: process.env.S3_TIMEOUT_MS ? parseInt(process.env.S3_TIMEOUT_MS, 10) : undefined,
-  };
-
-  // Validate required S3 config
-  if (!s3Config.region) {
-    throw new StorageError('S3_REGION environment variable is required', 'MISSING_CONFIG');
-  }
-  if (!s3Config.accessKeyId) {
-    throw new StorageError('S3_ACCESS_KEY environment variable is required', 'MISSING_CONFIG');
-  }
-  if (!s3Config.secretAccessKey) {
-    throw new StorageError('S3_SECRET_KEY environment variable is required', 'MISSING_CONFIG');
-  }
-  if (!s3Config.bucket) {
-    throw new StorageError('S3_BUCKET environment variable is required', 'MISSING_CONFIG');
-  }
+  const s3Config = parseS3ConfigFromEnv();
+  validateRequiredS3Config(s3Config);
 
   return createStorage({
     backend,
-    s3: {
-      endpoint: s3Config.endpoint,
-      region: s3Config.region!, // Already validated above
-      accessKeyId: s3Config.accessKeyId!,
-      secretAccessKey: s3Config.secretAccessKey!,
-      bucket: s3Config.bucket!,
-      forcePathStyle: s3Config.forcePathStyle,
-      maxRetries: s3Config.maxRetries,
-      timeout: s3Config.timeout,
-    },
+    s3: s3Config,
   });
 }
 
