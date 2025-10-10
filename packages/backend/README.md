@@ -5,8 +5,8 @@ Production-ready backend for BugSpotter with PostgreSQL database, REST API, and 
 ## Features
 
 - 🗄️ **PostgreSQL Database** - Schema with migrations, connection pooling, ACID transactions
-- � **Dual Authentication** - API keys (SDK) + JWT tokens (users)
-- � **S3 Storage** - Screenshots, attachments, replay chunks (S3/MinIO/LocalStack)
+- 🔐 **Dual Authentication** - API keys (SDK) + JWT tokens (users)
+- 💾 **S3 Storage** - Screenshots, attachments, replay chunks (S3/MinIO/LocalStack)
 - 🛡️ **Security** - CORS, Helmet, rate limiting, input validation, SQL injection protection
 - 🔍 **Query & Filter** - Pagination, sorting, role-based access control
 - 🏥 **Health Checks** - Liveness and readiness endpoints

@@ -16,6 +16,7 @@ import {
   sanitizeS3Key,
   validateProjectId,
   validateBugId,
+  type StorageType,
 } from './path.utils.js';
 import { getLogger } from '../logger.js';
 
@@ -23,7 +24,7 @@ const logger = getLogger();
 
 export abstract class BaseStorageService implements IStorageService {
   protected async uploadWithKey(
-    resourceType: 'screenshots' | 'replays' | 'attachments',
+    resourceType: StorageType,
     projectId: string,
     bugId: string,
     filename: string,
@@ -35,14 +36,15 @@ export abstract class BaseStorageService implements IStorageService {
     const validatedBugId = validateBugId(bugId);
 
     // Build and sanitize storage key
-    const key = buildStorageKey(resourceType, validatedProjectId, validatedBugId, filename);
-    const sanitizedKey = sanitizeS3Key(key);
+    const key = sanitizeS3Key(
+      buildStorageKey(resourceType, validatedProjectId, validatedBugId, filename)
+    );
 
     // Determine content type
     const resolvedContentType = contentType ?? getContentType(buffer);
 
     // Delegate to concrete implementation
-    return await this.uploadBuffer(sanitizedKey, buffer, resolvedContentType);
+    return await this.uploadBuffer(key, buffer, resolvedContentType);
   }
 
   /**

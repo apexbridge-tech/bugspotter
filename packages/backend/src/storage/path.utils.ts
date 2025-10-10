@@ -45,7 +45,8 @@ const TRAILING_SPACES_DOTS = /[\s.]+$/;
 const LEADING_TRAILING_DASHES_UNDERSCORES = /^[_-]+|[_-]+$/g;
 
 // Valid storage types (whitelist)
-const DEFAULT_STORAGE_TYPES = ['screenshots', 'replays', 'attachments'] as const;
+export const DEFAULT_STORAGE_TYPES = ['screenshots', 'replays', 'attachments'] as const;
+export type StorageType = (typeof DEFAULT_STORAGE_TYPES)[number];
 
 // ============================================================================
 // PRIVATE HELPER FUNCTIONS (Single Responsibility Principle)

@@ -6,13 +6,9 @@
 import { Readable, PassThrough, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { StorageError } from './types.js';
-import {
-  STREAM_LIMITS,
-  FILE_SIGNATURES,
-  isWebPFormat,
-  type FileSignature,
-} from './stream.constants.js';
+import { STREAM_LIMITS } from './stream.constants.js';
 import { executeWithRetry } from '../utils/retry.js';
+import { detectFormat } from './format-detection.js';
 
 /**
  * Generic stream processor with consistent event handling
@@ -324,61 +320,23 @@ export function validateStream(stream: Readable): void {
 }
 
 /**
- * Check if buffer matches a file signature
- * Helper function for MIME type detection
- *
- * @param buffer - Buffer to check
- * @param signature - File signature definition
- * @returns True if buffer matches signature
- */
-function matchesSignature(buffer: Buffer, signature: FileSignature): boolean {
-  const offset = signature.offset || 0;
-  // Always convert to regular array to ensure proper iteration
-  const sigBytes = Array.from(signature.signature);
-
-  if (buffer.length < offset + sigBytes.length) {
-    return false;
-  }
-
-  return sigBytes.every((byte, index) => buffer[offset + index] === byte);
-}
-
-/**
  * Get content type from buffer by checking magic numbers
- * Refactored to use signature lookup table for maintainability
+ * Uses shared format detection logic for consistency
  *
  * @param buffer - Buffer to check
  * @returns MIME type or 'application/octet-stream' if unknown
+ *
+ * @example
+ * ```typescript
+ * const contentType = getContentType(buffer);
+ * console.log(contentType); // 'image/jpeg' or 'application/octet-stream'
+ * ```
  */
 export function getContentType(buffer: Buffer): string {
   if (buffer.length < STREAM_LIMITS.MIN_BUFFER_CHECK) {
     return 'application/octet-stream';
   }
 
-  // Special case: WEBP requires checking two locations
-  if (isWebPFormat(buffer)) {
-    return 'image/webp';
-  }
-
-  // Check binary signatures using lookup table
-  for (const sig of FILE_SIGNATURES) {
-    if (matchesSignature(buffer, sig)) {
-      return sig.mimeType;
-    }
-  }
-
-  // Check text-based formats (JSON, XML, SVG)
-  if (buffer.length >= 10) {
-    const text = buffer.slice(0, STREAM_LIMITS.TEXT_PREVIEW_SIZE).toString('utf8').trim();
-
-    if (text.startsWith('{') || text.startsWith('[')) {
-      return 'application/json';
-    }
-
-    if (text.startsWith('<?xml') || text.startsWith('<svg')) {
-      return 'image/svg+xml';
-    }
-  }
-
-  return 'application/octet-stream';
+  const format = detectFormat(buffer);
+  return format?.mimeType ?? 'application/octet-stream';
 }

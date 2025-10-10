@@ -6,6 +6,7 @@
 import sharp from 'sharp';
 import type { ImageMetadata } from './types.js';
 import { StorageValidationError } from './types.js';
+import { detectFormat } from './format-detection.js';
 import {
   MAX_IMAGE_SIZE_MB,
   MAX_IMAGE_SIZE_BYTES,
@@ -308,111 +309,42 @@ export async function validateImage(buffer: Buffer): Promise<void> {
 }
 
 // ============================================================================
-// FORMAT DETECTION HELPERS (DRY + Named Constants)
+// FORMAT DETECTION
 // ============================================================================
 
 /**
- * Magic number signatures for image format detection
- * Each format has: required bytes, signature pattern, format name
- */
-const FORMAT_SIGNATURES = {
-  JPEG: {
-    minBytes: 3,
-    signature: [0xff, 0xd8, 0xff], // FF D8 FF
-    format: 'jpeg' as const,
-  },
-  PNG: {
-    minBytes: 8,
-    signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], // 89 50 4E 47 0D 0A 1A 0A
-    format: 'png' as const,
-  },
-  WEBP: {
-    minBytes: 12,
-    // RIFF....WEBP - check positions 0-3 and 8-11
-    signature: [0x52, 0x49, 0x46, 0x46, null, null, null, null, 0x57, 0x45, 0x42, 0x50],
-    format: 'webp' as const,
-  },
-  GIF: {
-    minBytes: 6,
-    // GIF87a or GIF89a - position 4 can be 0x37 or 0x39
-    signature: [0x47, 0x49, 0x46, 0x38, [0x37, 0x39], 0x61],
-    format: 'gif' as const,
-  },
-} as const;
-
-/**
- * Check if buffer matches a signature pattern
- * Supports null (skip position) and array (multiple valid values)
- */
-function matchesSignature(
-  buffer: Buffer,
-  signature: ReadonlyArray<number | null | readonly number[]>
-): boolean {
-  for (let i = 0; i < signature.length; i++) {
-    const expected = signature[i];
-
-    // null means skip this position (WebP has variable bytes 4-7)
-    if (expected === null) {
-      continue;
-    }
-
-    // Array means any of these values is valid (GIF can be 87a or 89a)
-    if (Array.isArray(expected)) {
-      if (!expected.includes(buffer[i])) {
-        return false;
-      }
-      continue;
-    }
-
-    // Single value must match exactly
-    if (buffer[i] !== expected) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/**
- * Detect SVG format from text content
- * SVG is XML-based, so we check for '<svg' or '<?xml' + 'svg'
- */
-function detectSVG(buffer: Buffer): boolean {
-  if (buffer.length < 5) {
-    return false;
-  }
-
-  const text = buffer.slice(0, 100).toString('utf8');
-  return text.includes('<svg') || (text.includes('<?xml') && text.includes('svg'));
-}
-
-/**
  * Validate image format from buffer (quick check without full parsing)
- * Uses magic number detection for binary formats and text detection for SVG
+ * Uses shared format detection logic for consistency with stream.utils
  *
  * @param buffer - Image buffer
  * @returns Format name or null if not recognized
+ *
+ * @example
+ * ```typescript
+ * const format = detectImageFormat(buffer);
+ * if (format === 'jpeg') {
+ *   // Process JPEG
+ * }
+ * ```
  */
 export function detectImageFormat(buffer: Buffer): string | null {
-  // Check binary formats using magic numbers (JPEG, PNG, WebP, GIF)
-  for (const { minBytes, signature, format } of Object.values(FORMAT_SIGNATURES)) {
-    if (buffer.length >= minBytes && matchesSignature(buffer, signature)) {
-      return format;
-    }
-  }
-
-  // Check text-based format (SVG)
-  if (detectSVG(buffer)) {
-    return 'svg';
-  }
-
-  return null;
+  const format = detectFormat(buffer);
+  return format?.category === 'image' ? format.format : null;
 }
 
 /**
  * Check if buffer is a valid image by detecting format
+ * Convenience wrapper around detectImageFormat
+ *
  * @param buffer - Buffer to check
  * @returns true if buffer appears to be an image
+ *
+ * @example
+ * ```typescript
+ * if (isImage(buffer)) {
+ *   await processImage(buffer);
+ * }
+ * ```
  */
 export function isImage(buffer: Buffer): boolean {
   return detectImageFormat(buffer) !== null;

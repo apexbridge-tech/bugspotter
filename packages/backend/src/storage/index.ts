@@ -243,6 +243,8 @@ export {
   getContentType,
 } from './stream.utils.js';
 
+export { detectFormat, isFormat, isImageFormat, type FormatInfo } from './format-detection.js';
+
 export {
   STREAM_LIMITS,
   FILE_SIGNATURES,
