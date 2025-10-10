@@ -119,6 +119,42 @@ Benefits: Eliminates ~200 lines of duplicated validation/sanitization code acros
 
 See: `packages/backend/src/storage/base-storage.service.ts`, `storage.service.ts`, `local.storage.ts`
 
+### 6. **Memory-Efficient Streaming** (Storage)
+
+**Critical for large file uploads** - never buffer entire streams into memory:
+
+```typescript
+// ✅ GOOD: S3 true streaming with Upload class
+async uploadStream(key: string, stream: Readable): Promise<UploadResult> {
+  const upload = new Upload({
+    client: this.client,
+    params: { Bucket: this.bucket, Key: key, Body: stream },
+    partSize: 5 * 1024 * 1024, // 5MB parts
+    queueSize: 4, // Concurrent uploads
+  });
+  return await upload.done();
+}
+
+// ✅ GOOD: Local storage with Node.js pipeline
+async uploadStream(key: string, stream: Readable): Promise<UploadResult> {
+  const writeStream = createWriteStream(filePath);
+  await pipeline(stream, writeStream); // Direct streaming
+  return { key, size: (await fs.stat(filePath)).size };
+}
+
+// ❌ BAD: Buffering entire file in memory (OOM risk!)
+async uploadStream(key: string, stream: Readable): Promise<UploadResult> {
+  const buffer = await streamToBuffer(stream); // Loads entire file!
+  return await this.uploadBuffer(key, buffer);
+}
+```
+
+**Benefits**: Constant ~5MB memory usage vs linear growth, prevents OOM on large files, better performance.
+
+**Rule**: Use `Upload` (@aws-sdk/lib-storage) for S3, `pipeline` for local filesystem - never `streamToBuffer`.
+
+See: `packages/backend/src/storage/storage.service.ts` (uploadStream), `local.storage.ts` (uploadStream)
+
 ## Authentication & Authorization
 
 ### Dual Authentication System
