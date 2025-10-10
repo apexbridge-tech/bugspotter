@@ -219,9 +219,8 @@ export interface IStorageService {
   /**
    * Delete all objects with a given prefix (folder)
    * @param prefix - Key prefix (e.g., 'screenshots/proj-1/bug-123/')
-   * @returns Number of objects deleted
    */
-  deleteFolder(prefix: string): Promise<number>;
+  deleteFolder(prefix: string): Promise<void>;
 
   /**
    * List objects with a given prefix
@@ -268,6 +267,13 @@ export interface IStorageService {
    * @returns true if storage is accessible
    */
   healthCheck(): Promise<boolean>;
+
+  /**
+   * Delete all storage contents. Use with extreme caution!
+   * Typically only used in tests or administrative cleanup.
+   * @returns Promise that resolves when all contents are cleared
+   */
+  clearAllStorage(): Promise<void>;
 }
 
 /**

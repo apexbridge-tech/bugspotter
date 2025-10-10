@@ -396,9 +396,8 @@ describe('StorageService (S3)', () => {
 
       (storage as any).client.send = mockSend;
 
-      const deletedCount = await storage.deleteFolder('folder/');
+      await storage.deleteFolder('folder/');
 
-      expect(deletedCount).toBe(2);
       expect(mockSend).toHaveBeenCalledTimes(2); // List + Delete
     });
   });
@@ -461,7 +460,7 @@ describe('LocalStorageService', () => {
   afterEach(async () => {
     // Cleanup test directory
     try {
-      await storage.deleteFolder('');
+      await storage.clearAllStorage();
       // Also remove the base directory itself
       const fs = await import('node:fs/promises');
       await fs.rm(testDir, { recursive: true, force: true });
@@ -550,9 +549,7 @@ describe('LocalStorageService', () => {
       await storage.uploadScreenshot('proj-1', 'bug-1', Buffer.from('test1'));
       await storage.uploadThumbnail('proj-1', 'bug-1', Buffer.from('test2'));
 
-      const deletedCount = await storage.deleteFolder('screenshots/proj-1');
-
-      expect(deletedCount).toBeGreaterThan(0);
+      await storage.deleteFolder('screenshots/proj-1');
 
       // Verify files are deleted
       const list = await storage.listObjects({ prefix: 'screenshots/proj-1' });

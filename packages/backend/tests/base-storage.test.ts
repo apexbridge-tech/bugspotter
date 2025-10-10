@@ -58,9 +58,7 @@ class MockStorageService extends BaseStorageService {
 
   async deleteObject(key: string): Promise<void> {}
 
-  async deleteFolder(prefix: string): Promise<number> {
-    return 0;
-  }
+  async deleteFolder(prefix: string): Promise<void> {}
 
   async listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult> {
     return { objects: [], isTruncated: false };
@@ -85,6 +83,8 @@ class MockStorageService extends BaseStorageService {
   async healthCheck(): Promise<boolean> {
     return true;
   }
+
+  async clearAllStorage(): Promise<void> {}
 }
 
 describe('BaseStorageService', () => {

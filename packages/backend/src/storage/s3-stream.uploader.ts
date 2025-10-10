@@ -1,6 +1,7 @@
 /**
  * S3 Stream Uploader
- * Single Responsibility: Handle multipart stream uploads with retry logic
+ * Single Responsibility: Handle multipart stream uploads
+ * Note: Retry logic is handled by S3Client's built-in maxAttempts configuration
  */
 
 import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3';
@@ -10,8 +11,6 @@ import type { S3Config, UploadResult, MultipartUploadOptions } from './types.js'
 import { StorageUploadError } from './types.js';
 import { S3UrlBuilder } from './s3-url.builder.js';
 import { S3ParamsBuilder } from './s3-params.builder.js';
-import { DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS } from './constants.js';
-import { RetryPredicates } from '../utils/retry.js';
 import { getLogger } from '../logger.js';
 
 const logger = getLogger();
@@ -38,45 +37,23 @@ export class S3StreamUploader {
   }
 
   /**
-   * Upload stream with retry logic
+   * Upload stream using multipart upload
+   * S3Client handles retries automatically via maxAttempts configuration
    */
   async upload(
     key: string,
     stream: Readable,
     options?: MultipartUploadOptions
   ): Promise<UploadResult> {
-    const maxAttempts = (this.config.maxRetries ?? DEFAULT_MAX_RETRIES) + 1;
-    let attempt = 0;
-
-    const uploadWithRetry = async (): Promise<UploadResult> => {
-      attempt++;
-      return await this.attemptUpload(key, stream, options, attempt, maxAttempts);
-    };
-
-    return uploadWithRetry();
-  }
-
-  /**
-   * Single upload attempt
-   */
-  private async attemptUpload(
-    key: string,
-    stream: Readable,
-    options: MultipartUploadOptions | undefined,
-    attempt: number,
-    maxAttempts: number
-  ): Promise<UploadResult> {
     const contentType = options?.contentType ?? 'application/octet-stream';
     let uploadedBytes = 0;
-    let streamErrorOccurred = false;
 
     try {
-      // Handle stream errors to prevent memory leaks
-      const errorHandler = (error: Error) => {
-        streamErrorOccurred = true;
+      // Handle stream errors
+      const streamErrorHandler = (error: Error) => {
         logger.error('Stream error during upload', { key, error: error.message });
       };
-      stream.once('error', errorHandler);
+      stream.once('error', streamErrorHandler);
 
       // Use S3 Upload for true streaming (no buffering entire file in memory)
       const upload = new Upload({
@@ -105,12 +82,12 @@ export class S3StreamUploader {
       const result = await upload.done();
 
       // Clean up error handler
-      stream.removeListener('error', errorHandler);
+      stream.removeListener('error', streamErrorHandler);
 
       // Get actual size from S3 response or tracked bytes
       const size = await this.getUploadedSize(key, uploadedBytes);
 
-      logger.debug('Stream uploaded', { key, size, attempt });
+      logger.debug('Stream uploaded successfully', { key, size });
 
       return {
         key,
@@ -120,19 +97,16 @@ export class S3StreamUploader {
         contentType,
       };
     } catch (error) {
-      return await this.handleUploadError(
-        error,
-        streamErrorOccurred,
-        key,
-        attempt,
-        maxAttempts,
-        () => this.attemptUpload(key, stream, options, attempt + 1, maxAttempts)
+      throw new StorageUploadError(
+        `Stream upload failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined
       );
     }
   }
 
   /**
    * Get actual uploaded file size
+   * Falls back to HeadObject for small files where progress events don't fire
    */
   private async getUploadedSize(key: string, uploadedBytes: number): Promise<number> {
     if (uploadedBytes > 0) {
@@ -148,57 +122,12 @@ export class S3StreamUploader {
         })
       );
       return headResult.ContentLength ?? 0;
-    } catch {
-      logger.warn('Could not retrieve uploaded file size', { key });
-      return 0;
-    }
-  }
-
-  /**
-   * Handle upload errors with retry logic
-   */
-  private async handleUploadError(
-    error: unknown,
-    streamErrorOccurred: boolean,
-    key: string,
-    attempt: number,
-    maxAttempts: number,
-    retryFn: () => Promise<UploadResult>
-  ): Promise<UploadResult> {
-    // Attempt to clean up failed multipart upload
-    if (error instanceof Error && error.message.includes('multipart')) {
-      try {
-        logger.debug('Attempting to abort failed multipart upload', { key });
-        // Note: Upload class should handle this, but adding defensive cleanup
-      } catch {
-        logger.warn('Failed to cleanup multipart upload', { key });
-      }
-    }
-
-    if (streamErrorOccurred) {
-      throw new StorageUploadError(
-        'Stream error occurred during upload',
-        error instanceof Error ? error : undefined
-      );
-    }
-
-    // Check if we should retry
-    if (attempt < maxAttempts && RetryPredicates.isStorageError(error)) {
-      const delay = DEFAULT_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-      logger.warn('Stream upload failed, retrying', {
+    } catch (error) {
+      logger.warn('Could not retrieve uploaded file size', {
         key,
-        attempt,
-        maxAttempts,
-        delay,
         error: error instanceof Error ? error.message : String(error),
       });
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return retryFn();
+      return 0;
     }
-
-    throw new StorageUploadError(
-      `Stream upload failed after ${attempt} attempts: ${error instanceof Error ? error.message : String(error)}`,
-      error instanceof Error ? error : undefined
-    );
   }
 }

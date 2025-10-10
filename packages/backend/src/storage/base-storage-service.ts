@@ -167,7 +167,7 @@ export abstract class BaseStorageService implements IStorageService {
   abstract initialize(): Promise<void>;
   abstract getSignedUrl(key: string, options?: SignedUrlOptions): Promise<string>;
   abstract deleteObject(key: string): Promise<void>;
-  abstract deleteFolder(prefix: string): Promise<number>;
+  abstract deleteFolder(prefix: string): Promise<void>;
   abstract listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult>;
   abstract getObject(key: string): Promise<Readable>;
   abstract headObject(key: string): Promise<StorageObject | null>;
@@ -177,4 +177,5 @@ export abstract class BaseStorageService implements IStorageService {
     options?: MultipartUploadOptions
   ): Promise<UploadResult>;
   abstract healthCheck(): Promise<boolean>;
+  abstract clearAllStorage(): Promise<void>;
 }

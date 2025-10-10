@@ -136,7 +136,15 @@ export class StorageService extends BaseStorageService {
     }
   }
 
-  async deleteFolder(prefix: string): Promise<number> {
+  async deleteFolder(prefix: string): Promise<void> {
+    // Critical safety check: prevent accidental deletion of entire bucket
+    if (!prefix || prefix.trim() === '') {
+      throw new StorageError(
+        'deleteFolder requires a non-empty prefix. Use clearAllStorage() to delete everything.',
+        'INVALID_PREFIX'
+      );
+    }
+
     try {
       let deletedCount = 0;
       let continuationToken: string | undefined;
@@ -190,7 +198,6 @@ export class StorageService extends BaseStorageService {
       } while (continuationToken);
 
       logger.info('Folder deleted', { prefix, deletedCount });
-      return deletedCount;
     } catch (error) {
       throw new StorageError(
         `Failed to delete folder: ${error instanceof Error ? error.message : String(error)}`,
@@ -304,6 +311,73 @@ export class StorageService extends BaseStorageService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Delete all objects in the bucket. Use with extreme caution!
+   * This is typically only used in tests or administrative cleanup.
+   * Note: For S3, this deletes all objects but not the bucket itself.
+   */
+  async clearAllStorage(): Promise<void> {
+    logger.warn('Clearing all S3 storage', { bucket: this.bucket });
+
+    try {
+      let deletedTotal = 0;
+      let continuationToken: string | undefined;
+      let iterations = 0;
+      const maxIterations = 1000; // Safety limit
+
+      do {
+        iterations++;
+        if (iterations > maxIterations) {
+          logger.warn('Clear all storage reached max iterations limit', {
+            deletedTotal,
+            maxIterations,
+          });
+          break;
+        }
+
+        const listResult = await this.client.send(
+          new ListObjectsV2Command({
+            Bucket: this.bucket,
+            MaxKeys: MAX_KEYS_PER_REQUEST,
+            ContinuationToken: continuationToken,
+          })
+        );
+
+        const objects = listResult.Contents ?? [];
+
+        if (objects.length > 0) {
+          const deleteResult = await this.client.send(
+            new DeleteObjectsCommand({
+              Bucket: this.bucket,
+              Delete: {
+                Objects: objects.map((obj) => ({ Key: obj.Key! })),
+                Quiet: true,
+              },
+            })
+          );
+
+          deletedTotal += objects.length - (deleteResult.Errors?.length ?? 0);
+
+          if (deleteResult.Errors && deleteResult.Errors.length > 0) {
+            logger.error('Some objects failed to delete during clear all', {
+              errors: deleteResult.Errors,
+            });
+          }
+        }
+
+        continuationToken = listResult.NextContinuationToken;
+      } while (continuationToken);
+
+      logger.info('All S3 storage cleared', { deletedTotal });
+    } catch (error) {
+      throw new StorageError(
+        `Failed to clear storage: ${error instanceof Error ? error.message : String(error)}`,
+        'CLEAR_STORAGE_ERROR',
+        error instanceof Error ? error : undefined
+      );
     }
   }
 

@@ -148,7 +148,7 @@ describe('E2E: Local Storage', () => {
   afterAll(async () => {
     // Cleanup test directory - use recursive force removal
     try {
-      await storage.deleteFolder('');
+      await storage.clearAllStorage();
       await fs.rm(baseDir, { recursive: true, force: true });
     } catch (error) {
       console.warn(`Failed to cleanup test directory ${baseDir}:`, error);
@@ -381,8 +381,7 @@ describe('E2E: Local Storage', () => {
       expect(beforeList.objects.length).toBeGreaterThan(0);
 
       // Delete folder
-      const deletedCount = await storage.deleteFolder(`screenshots/${TEST_PROJECT_ID}/${bugId}/`);
-      expect(deletedCount).toBeGreaterThan(0);
+      await storage.deleteFolder(`screenshots/${TEST_PROJECT_ID}/${bugId}/`);
 
       // List after delete
       const afterList = await storage.listObjects({
@@ -605,7 +604,7 @@ describe('E2E: Performance', () => {
 
   afterAll(async () => {
     try {
-      await storage.deleteFolder('');
+      await storage.clearAllStorage();
       // Remove base directory
       const baseDir = (localConfig.local as any).baseDirectory;
       await fs.rm(baseDir, { recursive: true, force: true });
