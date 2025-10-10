@@ -32,8 +32,11 @@ const SAFE_FILENAME_CHARS = /[^a-zA-Z0-9._-]/g;
 const WINDOWS_RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
 
 // Security patterns
+// eslint-disable-next-line no-control-regex -- Intentional: detect null bytes and control chars for security
 const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
+// eslint-disable-next-line no-control-regex -- Intentional: detect path traversal with control chars
 const PATH_TRAVERSAL_PATTERN = /\.\.|\/\.|\\|[\x00-\x1F]/;
+// eslint-disable-next-line no-control-regex -- Intentional: detect path traversal without slashes
 const PATH_TRAVERSAL_NO_SLASH = /\.\.|\\|[\x00-\x1F]/;
 const WINDOWS_DRIVE_PATTERN = /^[a-zA-Z]:[/\\]/;
 const WHITESPACE_DOTS_ONLY = /^[\s.]+$/;
@@ -425,6 +428,7 @@ export function buildStorageKey(
   }
 
   // Validate type - only allow specific resource types (whitelist approach)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Type widening needed for array includes check
   if (!DEFAULT_STORAGE_TYPES.includes(type as any)) {
     logger.warn('Invalid storage type provided', { type });
     throw new Error(`Invalid storage type: ${type}`);
