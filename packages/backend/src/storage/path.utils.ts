@@ -197,17 +197,6 @@ function validateId(
 }
 
 /**
- * Remove path traversal sequences from S3 keys
- * Handles patterns like ../, /.., /./
- */
-function removePathTraversalSequences(input: string): string {
-  return input
-    .replace(/\.\.\//g, '')
-    .replace(/\/\.\.\//, '/')
-    .replace(/\/\.\//, '/');
-}
-
-/**
  * Validate a storage key path component for security issues
  * DRY helper for buildStorageKey validation
  */
@@ -337,8 +326,11 @@ export function sanitizeS3Key(key: string): string {
   // Normalize multiple slashes to single slash
   sanitized = sanitized.replace(/\/+/g, '/');
 
-  // Remove path traversal sequences (DRY - use extracted helper)
-  sanitized = removePathTraversalSequences(sanitized);
+  // Validate no path traversal sequences (consistent with buildStorageKey validation)
+  if (PATH_TRAVERSAL_PATTERN.test(sanitized)) {
+    logger.warn('Path traversal detected in S3 key', { key, sanitized });
+    throw new Error('S3 key contains path traversal sequences');
+  }
 
   // Check length
   if (sanitized.length > MAX_S3_KEY_LENGTH) {

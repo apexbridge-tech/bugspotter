@@ -215,22 +215,34 @@ interface ParsedTransportParams {
 
 /**
  * Type guard to check if parameter is TransportOptions
+ *
+ * Strategy: Check for properties that ONLY exist in TransportOptions, not in AuthConfig.
+ * AuthConfig has: type, apiKey?, token?, onTokenExpired?, customHeader?
+ * TransportOptions has: auth?, logger?, enableRetry?, retry?, offline?
+ *
+ * Key distinction: AuthConfig always has 'type' property, TransportOptions never does.
  */
 function isTransportOptions(obj: unknown): obj is TransportOptions {
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
 
-  const has = (prop: string, ...types: string[]) => {
-    return prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop]);
-  };
+  const record = obj as Record<string, unknown>;
 
+  // If it has 'type' property, it's an AuthConfig, not TransportOptions
+  if ('type' in record) {
+    return false;
+  }
+
+  // Check for at least one TransportOptions-specific property
   return (
-    has('auth', 'object') ||
-    has('retry', 'object') ||
-    has('offline', 'object') ||
-    has('logger', 'object') ||
-    has('enableRetry', 'boolean')
+    'retry' in record ||
+    'offline' in record ||
+    'logger' in record ||
+    'enableRetry' in record ||
+    // 'auth' alone is ambiguous, but if present with other properties, it's TransportOptions
+    ('auth' in record &&
+      ('retry' in record || 'offline' in record || 'logger' in record || 'enableRetry' in record))
   );
 }
 

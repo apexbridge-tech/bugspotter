@@ -23,14 +23,38 @@ export interface StorageConfig {
  * S3-compatible storage configuration
  */
 export interface S3Config {
+  // Connection settings
   endpoint?: string; // For MinIO/R2 - omit for AWS S3
   region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
   bucket: string;
   forcePathStyle?: boolean; // Required for MinIO
+
+  // Authentication (all optional to support IAM roles)
+  // If all omitted, uses default AWS credential chain (IAM roles, env vars, etc.)
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  sessionToken?: string; // For temporary credentials (STS/assumed roles)
+
+  // Performance settings
   maxRetries?: number;
   timeout?: number;
+
+  // Security settings
+  serverSideEncryption?: 'AES256' | 'aws:kms'; // Encryption at rest
+  sseKmsKeyId?: string; // KMS key ID when using aws:kms
+  storageClass?:
+    | 'STANDARD'
+    | 'REDUCED_REDUNDANCY'
+    | 'STANDARD_IA'
+    | 'ONEZONE_IA'
+    | 'INTELLIGENT_TIERING'
+    | 'GLACIER'
+    | 'DEEP_ARCHIVE'
+    | 'GLACIER_IR';
+
+  // Advanced features
+  enableVersioning?: boolean; // Enable S3 versioning
+  enableObjectLock?: boolean; // Enable compliance mode
 }
 
 /**

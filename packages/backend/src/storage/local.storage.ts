@@ -106,17 +106,18 @@ export class LocalStorageService extends BaseStorageService {
     const folderPath = this.keyToPath(prefix);
 
     try {
-      // Check if folder exists
-      try {
-        await fs.access(folderPath);
-      } catch {
-        return 0; // Folder doesn't exist
-      }
+      // Count files efficiently using a lightweight approach
+      let deletedCount = 0;
 
-      // Count files before deletion
-      const files: StorageObject[] = [];
-      await this.listFilesRecursive(folderPath, prefix, files, Infinity);
-      const deletedCount = files.length;
+      try {
+        deletedCount = await this.countFilesRecursive(folderPath);
+      } catch (error: unknown) {
+        const err = error as { code?: string };
+        if (err.code === 'ENOENT') {
+          return 0; // Folder doesn't exist
+        }
+        throw error;
+      }
 
       // Use Node.js built-in recursive deletion (more efficient)
       await fs.rm(folderPath, { recursive: true, force: true });
@@ -318,6 +319,28 @@ export class LocalStorageService extends BaseStorageService {
 
   private keyToPath(key: string): string {
     return path.join(this.baseDirectory, key);
+  }
+
+  /**
+   * Count files in directory recursively (lightweight, no stat calls)
+   * Only counts regular files, not directories
+   */
+  private async countFilesRecursive(dirPath: string): Promise<number> {
+    let count = 0;
+
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+
+      if (entry.isDirectory()) {
+        count += await this.countFilesRecursive(fullPath);
+      } else if (entry.isFile()) {
+        count++;
+      }
+    }
+
+    return count;
   }
 
   private async listFilesRecursive(

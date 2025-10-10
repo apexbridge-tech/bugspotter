@@ -526,6 +526,167 @@ Ensure IAM permissions include:
 - `s3:DeleteObject`
 - `s3:ListBucket`
 
+## IAM Configuration (AWS S3)
+
+### Minimum Required Permissions
+
+Create an IAM policy with least-privilege access:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BugSpotterStorageAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:HeadObject",
+        "s3:HeadBucket"
+      ],
+      "Resource": ["arn:aws:s3:::your-bucket-name", "arn:aws:s3:::your-bucket-name/*"]
+    },
+    {
+      "Sid": "BucketCreation",
+      "Effect": "Allow",
+      "Action": ["s3:CreateBucket", "s3:PutBucketVersioning"],
+      "Resource": "arn:aws:s3:::your-bucket-name",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
+    }
+  ]
+}
+```
+
+### Using IAM Roles (Recommended for Production)
+
+**For EC2/ECS/Lambda:**
+
+The AWS SDK automatically uses IAM roles attached to the instance/container. Remove `S3_ACCESS_KEY` and `S3_SECRET_KEY` from environment:
+
+```typescript
+// SDK automatically uses instance IAM role
+const client = new S3Client({
+  region: process.env.S3_REGION,
+  // No credentials needed - uses IAM role
+});
+```
+
+**Instance Role Policy:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+Attach the BugSpotterStorageAccess policy to this role.
+
+### Bucket Policy (Defense in Depth)
+
+Add bucket-level restrictions for additional security:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EnforceTLSOnly",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": ["arn:aws:s3:::your-bucket-name", "arn:aws:s3:::your-bucket-name/*"],
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    },
+    {
+      "Sid": "RestrictToSpecificIAMRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::YOUR-ACCOUNT-ID:role/BugSpotterAppRole"
+      },
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::your-bucket-name/*"
+    }
+  ]
+}
+```
+
+### Security Best Practices
+
+1. **Never Use Root Credentials**: Create dedicated IAM users/roles
+2. **Enable MFA Delete**: Protect against accidental deletions
+3. **Enable Versioning**: Protect against data loss
+4. **Use VPC Endpoints**: Keep traffic within AWS network
+5. **Enable CloudTrail**: Audit all S3 API calls
+6. **Rotate Credentials**: Use temporary credentials or rotate every 90 days
+7. **Encrypt at Rest**: Enable S3-SSE or KMS encryption
+8. **Block Public Access**: Enable S3 Block Public Access settings
+
+### Credential Rotation
+
+**For Access Keys:**
+
+```bash
+# 1. Create new access key
+aws iam create-access-key --user-name bugspotter-user
+
+# 2. Update application with new credentials
+S3_ACCESS_KEY=NEW_KEY
+S3_SECRET_KEY=NEW_SECRET
+
+# 3. Test application
+# 4. Delete old access key
+aws iam delete-access-key --user-name bugspotter-user --access-key-id OLD_KEY
+```
+
+**For IAM Roles:**
+
+Credentials automatically rotate - no action needed!
+
+### Cross-Account Access
+
+For multi-account architectures:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::TRUSTED-ACCOUNT-ID:role/BugSpotterRole"
+      },
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::your-bucket-name/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-server-side-encryption": "AES256"
+        }
+      }
+    }
+  ]
+}
+```
+
 ### Path Style vs Virtual Hosted
 
 - **MinIO/R2**: Use `forcePathStyle: true`

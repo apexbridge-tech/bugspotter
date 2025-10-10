@@ -186,10 +186,11 @@ describe('Path Utils', () => {
       expect(sanitizeS3Key('path///to///file.txt')).toBe('path/to/file.txt');
     });
 
-    it('should remove path traversal sequences', () => {
-      const result = sanitizeS3Key('path/../to/./file.txt');
-      expect(result).not.toContain('..');
-      expect(result).not.toContain('./');
+    it('should reject path traversal sequences', () => {
+      // Changed from "remove" to "reject" for consistent security validation
+      expect(() => sanitizeS3Key('path/../to/./file.txt')).toThrow('path traversal');
+      expect(() => sanitizeS3Key('screenshots/../secrets/file.txt')).toThrow('path traversal');
+      expect(() => sanitizeS3Key('valid/path/./file.txt')).toThrow('path traversal');
     });
 
     it('should throw on keys that are too long', () => {

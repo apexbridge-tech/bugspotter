@@ -11,6 +11,9 @@ import {
   type PutObjectCommandInput,
   type ListObjectsV2CommandOutput,
   type BucketLocationConstraint,
+  type ServerSideEncryption,
+  type StorageClass,
+  type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -57,25 +60,38 @@ export class StorageService extends BaseStorageService {
     this.config = config;
     this.bucket = config.bucket;
 
-    this.client = new S3Client({
+    // Build S3 client config
+    const clientConfig: S3ClientConfig = {
       endpoint: config.endpoint,
       region: config.region,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
       forcePathStyle: config.forcePathStyle ?? false,
       maxAttempts: config.maxRetries ?? DEFAULT_MAX_RETRIES,
       requestHandler: {
         requestTimeout: config.timeout ?? DEFAULT_TIMEOUT_MS,
       },
-    });
+    };
+
+    // Only set credentials if provided (allows IAM role usage)
+    if (config.accessKeyId && config.secretAccessKey) {
+      clientConfig.credentials = {
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+        sessionToken: config.sessionToken, // Optional: for STS/assumed roles
+      };
+    }
+    // If no credentials, SDK will use default credential chain:
+    // 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    // 2. Shared credentials file (~/.aws/credentials)
+    // 3. IAM role for EC2/ECS/Lambda
+
+    this.client = new S3Client(clientConfig);
 
     logger.info('S3 storage service created', {
       bucket: this.bucket,
       region: config.region,
       endpoint: config.endpoint ?? 'AWS S3',
       forcePathStyle: config.forcePathStyle,
+      authMethod: config.accessKeyId ? 'access-key' : 'iam-role/default-chain',
     });
   }
 
@@ -348,6 +364,7 @@ export class StorageService extends BaseStorageService {
           Key: key,
           Body: stream,
           ContentType: contentType,
+          ...this.buildS3ObjectParams(), // Apply encryption and storage class
         },
         queueSize: 4, // Number of concurrent part uploads
         partSize: options?.partSize ?? 5 * 1024 * 1024, // Default 5MB parts (S3 minimum)
@@ -392,6 +409,35 @@ export class StorageService extends BaseStorageService {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Build common S3 object parameters from config
+   * Applies encryption and storage class settings
+   */
+  private buildS3ObjectParams(): {
+    ServerSideEncryption?: ServerSideEncryption;
+    SSEKMSKeyId?: string;
+    StorageClass?: StorageClass;
+  } {
+    const params: {
+      ServerSideEncryption?: ServerSideEncryption;
+      SSEKMSKeyId?: string;
+      StorageClass?: StorageClass;
+    } = {};
+
+    if (this.config.serverSideEncryption) {
+      params.ServerSideEncryption = this.config.serverSideEncryption as ServerSideEncryption;
+      if (this.config.serverSideEncryption === 'aws:kms' && this.config.sseKmsKeyId) {
+        params.SSEKMSKeyId = this.config.sseKmsKeyId;
+      }
+    }
+
+    if (this.config.storageClass) {
+      params.StorageClass = this.config.storageClass as StorageClass;
+    }
+
+    return params;
   }
 
   /**
@@ -443,6 +489,7 @@ export class StorageService extends BaseStorageService {
             Body: buffer,
             ContentType: contentType,
             ContentLength: buffer.length,
+            ...this.buildS3ObjectParams(), // Apply encryption and storage class
           };
 
           const result = await this.client.send(new PutObjectCommand(params));
