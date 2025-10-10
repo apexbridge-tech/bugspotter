@@ -1,7 +1,7 @@
 /**
  * Path and filename utilities for storage layer
  * Handles sanitization and key building with comprehensive security
- * 
+ *
  * Refactored following SOLID, DRY, and KISS principles:
  * - Single Responsibility: Each function has one clear purpose
  * - DRY: Extracted common patterns into reusable helpers
@@ -129,15 +129,15 @@ function truncateWithExtension(
 ): string {
   const ext = extensions.length > 0 ? '.' + extensions.join('.') : '';
   const fullName = name + ext;
-  
+
   if (fullName.length <= maxLength) {
     return fullName;
   }
-  
+
   if (!preserveExtension || !ext) {
     return fullName.substring(0, maxLength);
   }
-  
+
   const availableSpace = maxLength - ext.length;
   return availableSpace > MIN_FILENAME_LENGTH
     ? name.substring(0, availableSpace) + ext
@@ -148,7 +148,9 @@ function truncateWithExtension(
  * Generate a safe default filename with timestamp and random suffix
  */
 function generateSafeName(): string {
-  const random = Math.random().toString(36).substring(2, 2 + RANDOM_SUFFIX_LENGTH);
+  const random = Math.random()
+    .toString(36)
+    .substring(2, 2 + RANDOM_SUFFIX_LENGTH);
   return `unnamed_${Date.now()}_${random}`;
 }
 
@@ -162,20 +164,20 @@ function validateId(
 ): string {
   const { strict = false } = options;
   const typeName = idType.charAt(0).toUpperCase() + idType.slice(1);
-  
+
   if (!id || typeof id !== 'string') {
     throw new Error(`${typeName} ID is required`);
   }
 
   const trimmed = id.trim();
-  
+
   // Remove any path traversal or dangerous characters
   const sanitized = trimmed.replace(/[./\\]/g, '-');
 
   if (sanitized !== trimmed) {
-    logger.warn(`${typeName} ID contained dangerous characters`, { 
-      [`${idType}Id`]: id, 
-      sanitized 
+    logger.warn(`${typeName} ID contained dangerous characters`, {
+      [`${idType}Id`]: id,
+      sanitized,
     });
   }
 
@@ -205,11 +207,7 @@ function removePathTraversalSequences(input: string): string {
  * Validate a storage key path component for security issues
  * DRY helper for buildStorageKey validation
  */
-function validatePathComponent(
-  value: string,
-  componentName: string,
-  pattern: RegExp
-): void {
+function validatePathComponent(value: string, componentName: string, pattern: RegExp): void {
   if (pattern.test(value)) {
     logger.warn(`Path traversal detected in ${componentName}`, { [componentName]: value });
     throw new Error(`Invalid characters in ${componentName}`);
@@ -222,7 +220,7 @@ function validatePathComponent(
 
 /**
  * Sanitize a filename to prevent security issues and ensure compatibility
- * 
+ *
  * Security features:
  * - Prevents path traversal (../, ./, URL encoded variants)
  * - Blocks null bytes and control characters
@@ -254,61 +252,63 @@ export function sanitizeFilename(
   }
 
   const originalFilename = filename;
-  
+
   // Step 1: Decode and clean
   let sanitized = decodeUrlSafely(filename, originalFilename);
   sanitized = removeControlCharacters(sanitized);
-  
-    // Step 2: Handle absolute paths
+
+  // Step 2: Handle absolute paths
   if (path.isAbsolute(sanitized) || WINDOWS_DRIVE_PATTERN.test(sanitized)) {
     logger.warn('Absolute path detected in filename', { original: originalFilename });
     sanitized = path.basename(sanitized);
   }
-  
+
   // Step 3: Extract basename (defeats path traversal)
   sanitized = extractBasename(sanitized);
-  
+
   // Step 4: Early exit for invalid names
   if (!sanitized || WHITESPACE_DOTS_ONLY.test(sanitized)) {
     return generateSafeName();
   }
-  
+
   // Step 5: Remove leading dots and trailing spaces/dots
   sanitized = sanitized.replace(LEADING_DOTS, '').replace(TRAILING_SPACES_DOTS, '');
-  
+
   if (!sanitized) {
     return generateSafeName();
   }
-  
+
   // Step 6: Separate and clean name/extensions
   const { name, extensions } = separateNameAndExtensions(sanitized);
-  let cleanName = name.replace(SAFE_FILENAME_CHARS, '_').replace(LEADING_TRAILING_DASHES_UNDERSCORES, '');
-  
+  let cleanName = name
+    .replace(SAFE_FILENAME_CHARS, '_')
+    .replace(LEADING_TRAILING_DASHES_UNDERSCORES, '');
+
   if (!cleanName) {
     return generateSafeName();
   }
-  
+
   // Step 7: Handle Windows reserved names
   cleanName = handleWindowsReservedName(cleanName, originalFilename);
-  
+
   // Step 8: Sanitize extensions
   const safeExtensions = preserveExtension ? sanitizeExtensions(extensions) : [];
-  
+
   // Step 9: Enforce length limit
   let result = truncateWithExtension(cleanName, safeExtensions, maxLength, preserveExtension);
-  
+
   // Step 10: Final cleanup
   result = result.replace(TRAILING_SPACES_DOTS, '');
-  
+
   if (!result) {
     return generateSafeName();
   }
-  
+
   // Log if significant sanitization occurred
   if (result !== originalFilename) {
     logger.debug('Filename sanitized', { original: originalFilename, sanitized: result });
   }
-  
+
   return result;
 }
 
@@ -366,8 +366,7 @@ export function isValidUUID(id: string): boolean {
     return false;
   }
 
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(id);
 }
 
@@ -380,10 +379,7 @@ export function isValidUUID(id: string): boolean {
  * @returns Validated project ID
  * @throws Error if invalid
  */
-export function validateProjectId(
-  projectId: string,
-  options: { strict?: boolean } = {}
-): string {
+export function validateProjectId(projectId: string, options: { strict?: boolean } = {}): string {
   return validateId(projectId, 'project', options);
 }
 
@@ -399,8 +395,6 @@ export function validateProjectId(
 export function validateBugId(bugId: string, options: { strict?: boolean } = {}): string {
   return validateId(bugId, 'bug', options);
 }
-
-
 
 /**
  * Build a standardized storage key path
@@ -440,14 +434,14 @@ export function buildStorageKey(
   validatePathComponent(type, 'storage type', PATH_TRAVERSAL_PATTERN);
   validatePathComponent(projectId, 'project ID', PATH_TRAVERSAL_PATTERN);
   validatePathComponent(bugId, 'bug ID', PATH_TRAVERSAL_PATTERN);
-  
+
   // Filename can contain slashes for subdirectories (e.g., chunks/0.json.gz)
   // So use pattern without slash checking
   validatePathComponent(filename, 'filename', PATH_TRAVERSAL_NO_SLASH);
 
   // Build and validate the complete key
   const key = `${type}/${projectId}/${bugId}/${filename}`;
-  
+
   // Final validation with sanitizeS3Key
   return sanitizeS3Key(key);
 }

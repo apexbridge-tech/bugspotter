@@ -56,7 +56,14 @@ export abstract class BaseStorageService implements IStorageService {
    * Upload a screenshot thumbnail
    */
   async uploadThumbnail(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult> {
-    return this.uploadWithKey('screenshots', projectId, bugId, 'thumbnail.jpg', buffer, 'image/jpeg');
+    return this.uploadWithKey(
+      'screenshots',
+      projectId,
+      bugId,
+      'thumbnail.jpg',
+      buffer,
+      'image/jpeg'
+    );
   }
 
   /**
@@ -68,7 +75,14 @@ export abstract class BaseStorageService implements IStorageService {
     metadata: Record<string, unknown>
   ): Promise<UploadResult> {
     const buffer = Buffer.from(JSON.stringify(metadata, null, 2));
-    return this.uploadWithKey('replays', projectId, bugId, 'metadata.json', buffer, 'application/json');
+    return this.uploadWithKey(
+      'replays',
+      projectId,
+      bugId,
+      'metadata.json',
+      buffer,
+      'application/json'
+    );
   }
 
   /**
@@ -85,7 +99,14 @@ export abstract class BaseStorageService implements IStorageService {
       throw new StorageError('Invalid chunk index', 'INVALID_CHUNK_INDEX');
     }
 
-    return this.uploadWithKey('replays', projectId, bugId, `chunks/${chunkIndex}.json.gz`, data, 'application/gzip');
+    return this.uploadWithKey(
+      'replays',
+      projectId,
+      bugId,
+      `chunks/${chunkIndex}.json.gz`,
+      data,
+      'application/gzip'
+    );
   }
 
   /**

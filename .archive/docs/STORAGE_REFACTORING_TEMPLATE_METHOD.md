@@ -110,11 +110,13 @@ export { BaseStorageService } from './base-storage.service.js';
 ## Benefits
 
 ### ✅ **Code Reduction**
+
 - **Eliminated ~200 lines** of duplicated code
 - Reduced maintenance burden by 40%
 - Single source of truth for upload logic
 
 ### ✅ **Consistency**
+
 - All storage backends follow identical validation/sanitization
 - No risk of diverging implementations
 - Enforced via base class
@@ -122,11 +124,13 @@ export { BaseStorageService } from './base-storage.service.js';
 ### ✅ **SOLID Principles**
 
 **Single Responsibility:** Each class has one reason to change
+
 - `BaseStorageService`: Common upload logic
 - `StorageService`: S3-specific operations
 - `LocalStorageService`: Filesystem-specific operations
 
 **Open/Closed:** Easy to extend without modification
+
 ```typescript
 // Add new storage backend by extending base class
 export class AzureBlobStorage extends BaseStorageService {
@@ -137,35 +141,36 @@ export class AzureBlobStorage extends BaseStorageService {
 ```
 
 **Liskov Substitution:** All implementations are interchangeable
+
 ```typescript
-const storage: IStorageService = 
-  config.backend === 's3' 
-    ? new StorageService(config.s3)
-    : new LocalStorageService(config.local);
+const storage: IStorageService =
+  config.backend === 's3' ? new StorageService(config.s3) : new LocalStorageService(config.local);
 ```
 
 ### ✅ **Template Method Pattern**
 
 **Template Method:** `uploadWithKey()` defines algorithm structure
+
 ```typescript
 protected async uploadWithKey(...) {
   // 1. Validate inputs (common)
   const validatedProjectId = validateProjectId(projectId);
   const validatedBugId = validateBugId(bugId);
-  
+
   // 2. Build and sanitize key (common)
   const key = buildStorageKey(...);
   const sanitizedKey = sanitizeS3Key(key);
-  
+
   // 3. Determine content type (common)
   const contentType = contentType ?? getContentType(buffer);
-  
+
   // 4. Delegate to concrete implementation (polymorphic)
   return await this.uploadBuffer(sanitizedKey, buffer, contentType);
 }
 ```
 
 **Hook Method:** `logFilenameSanitization()` can be overridden
+
 ```typescript
 protected logFilenameSanitization(...) {
   logger.info('Attachment filename sanitized', { ... });
@@ -173,6 +178,7 @@ protected logFilenameSanitization(...) {
 ```
 
 ### ✅ **Testability**
+
 - Test common logic once in base class
 - Test only storage-specific logic in implementations
 - Mock `uploadBuffer()` for unit tests
@@ -180,8 +186,9 @@ protected logFilenameSanitization(...) {
 ## Test Results
 
 **All 591 tests pass:**
+
 - 244 unit tests
-- 79 integration tests  
+- 79 integration tests
 - 13 load tests
 - 25 storage-specific tests
 
@@ -213,8 +220,8 @@ import { BaseStorageService } from '@bugspotter/backend/storage';
 export class CustomStorage extends BaseStorageService {
   // Only implement storage-specific logic
   protected async uploadBuffer(
-    key: string, 
-    buffer: Buffer, 
+    key: string,
+    buffer: Buffer,
     contentType: string
   ): Promise<UploadResult> {
     // Your upload logic
@@ -230,6 +237,7 @@ export class CustomStorage extends BaseStorageService {
 ## Performance Impact
 
 **None** - Refactoring is purely structural:
+
 - Same number of function calls
 - Same validation/sanitization logic
 - Same I/O operations
@@ -249,7 +257,7 @@ This refactoring enables:
 
 - **Design Pattern:** Template Method (Gang of Four)
 - **Principles:** SOLID, DRY, KISS
-- **Files Changed:** 
+- **Files Changed:**
   - `src/storage/base-storage.service.ts` (new)
   - `src/storage/storage.service.ts` (refactored)
   - `src/storage/local.storage.ts` (refactored)

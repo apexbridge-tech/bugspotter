@@ -1,13 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BaseStorageService } from '../src/storage/base-storage.service.js';
 import { StorageError } from '../src/storage/types.js';
-import type { UploadResult, SignedUrlOptions, ListObjectsOptions, ListObjectsResult, StorageObject, MultipartUploadOptions } from '../src/storage/types.js';
+import type {
+  UploadResult,
+  SignedUrlOptions,
+  ListObjectsOptions,
+  ListObjectsResult,
+  StorageObject,
+  MultipartUploadOptions,
+} from '../src/storage/types.js';
 import type { Readable } from 'node:stream';
 
 class MockStorageService extends BaseStorageService {
   public uploadBufferCalls: Array<{ key: string; buffer: Buffer; contentType: string }> = [];
   public shouldFail = false;
-  public filenameLog: Array<{ projectId: string; bugId: string; original: string; sanitized: string }> = [];
+  public filenameLog: Array<{
+    projectId: string;
+    bugId: string;
+    original: string;
+    sanitized: string;
+  }> = [];
 
   protected async uploadBuffer(
     key: string,
@@ -39,7 +51,7 @@ class MockStorageService extends BaseStorageService {
   }
 
   async initialize(): Promise<void> {}
-  
+
   async getSignedUrl(key: string, options?: SignedUrlOptions): Promise<string> {
     return `http://mock-storage.example.com/${key}?signed=true`;
   }
@@ -133,9 +145,7 @@ describe('BaseStorageService', () => {
       });
 
       it('should validate inputs', async () => {
-        await expect(
-          storage.uploadThumbnail('', 'bug-123', Buffer.from('test'))
-        ).rejects.toThrow();
+        await expect(storage.uploadThumbnail('', 'bug-123', Buffer.from('test'))).rejects.toThrow();
       });
     });
 
@@ -191,7 +201,12 @@ describe('BaseStorageService', () => {
       });
 
       it('should accept chunk index 0', async () => {
-        const result = await storage.uploadReplayChunk('proj-123', 'bug-456', 0, Buffer.from('test'));
+        const result = await storage.uploadReplayChunk(
+          'proj-123',
+          'bug-456',
+          0,
+          Buffer.from('test')
+        );
 
         expect(result.key).toBe('replays/proj-123/bug-456/chunks/0.json.gz');
       });
@@ -202,7 +217,12 @@ describe('BaseStorageService', () => {
         const maliciousFilename = '../../../etc/passwd';
         const buffer = Buffer.from('test');
 
-        const result = await storage.uploadAttachment('proj-123', 'bug-456', maliciousFilename, buffer);
+        const result = await storage.uploadAttachment(
+          'proj-123',
+          'bug-456',
+          maliciousFilename,
+          buffer
+        );
 
         expect(result.key).not.toContain('..');
         expect(result.key).toMatch(/^attachments\/proj-123\/bug-456\//);
@@ -263,7 +283,12 @@ describe('BaseStorageService', () => {
       const thumbnail = await storage.uploadThumbnail(maliciousProjectId, validBugId, buffer);
       const metadata = await storage.uploadReplayMetadata(maliciousProjectId, validBugId, {});
       const chunk = await storage.uploadReplayChunk(maliciousProjectId, validBugId, 0, buffer);
-      const attachment = await storage.uploadAttachment(maliciousProjectId, validBugId, 'file.txt', buffer);
+      const attachment = await storage.uploadAttachment(
+        maliciousProjectId,
+        validBugId,
+        'file.txt',
+        buffer
+      );
 
       expect(screenshot.key).not.toContain('..');
       expect(thumbnail.key).not.toContain('..');
@@ -282,7 +307,7 @@ describe('BaseStorageService', () => {
       await storage.uploadReplayMetadata(projectId, bugId, {});
       await storage.uploadReplayChunk(projectId, bugId, 0, buffer);
 
-      const keys = storage.uploadBufferCalls.map(call => call.key);
+      const keys = storage.uploadBufferCalls.map((call) => call.key);
       expect(keys).toEqual([
         'screenshots/proj-123/bug-456/original.png',
         'screenshots/proj-123/bug-456/thumbnail.jpg',
@@ -349,7 +374,12 @@ describe('BaseStorageService', () => {
       }
 
       const customStorage = new CustomStorage();
-      await customStorage.uploadAttachment('proj-1', 'bug-1', '../malicious.txt', Buffer.from('test'));
+      await customStorage.uploadAttachment(
+        'proj-1',
+        'bug-1',
+        '../malicious.txt',
+        Buffer.from('test')
+      );
 
       expect(customStorage.customLogCalls).toBe(1);
       expect(customStorage.filenameLog).toHaveLength(0);
@@ -398,7 +428,7 @@ describe('BaseStorageService', () => {
   describe('Integration with Concrete Implementations', () => {
     it('should provide consistent interface for S3 and Local storage', async () => {
       const calls: Array<{ method: string; key: string }> = [];
-      
+
       class TrackingStorage extends MockStorageService {
         protected async uploadBuffer(
           key: string,
@@ -411,13 +441,13 @@ describe('BaseStorageService', () => {
       }
 
       const tracker = new TrackingStorage();
-      
+
       await tracker.uploadScreenshot('proj-1', 'bug-1', Buffer.from('test'));
       await tracker.uploadThumbnail('proj-1', 'bug-1', Buffer.from('test'));
       await tracker.uploadAttachment('proj-1', 'bug-1', 'file.txt', Buffer.from('test'));
 
       expect(calls).toHaveLength(3);
-      expect(calls.every(call => call.method === 'uploadBuffer')).toBe(true);
+      expect(calls.every((call) => call.method === 'uploadBuffer')).toBe(true);
     });
   });
 });

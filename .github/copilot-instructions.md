@@ -154,6 +154,7 @@ pnpm test:coverage     # Coverage report
 ```
 
 **Test Distribution:**
+
 - Backend: 621 tests (unit + integration + load)
 - SDK: 404 tests (unit + E2E + Playwright)
 
@@ -170,14 +171,14 @@ See: `packages/backend/TESTING.md`, `tests/setup.ts`
 function buildStorageKey(type, projectId, bugId, filename) {
   // Layer 1: Whitelist validation
   if (!VALID_STORAGE_TYPES.includes(type)) throw new Error('Invalid type');
-  
+
   // Layer 2: ID validation (UUID format + path traversal check)
   validateProjectId(projectId);
   validateBugId(bugId);
-  
+
   // Layer 3: Filename sanitization
   const sanitized = sanitizeFilename(filename);
-  
+
   // Layer 4: Final key sanitization
   return sanitizeS3Key(`${type}/${projectId}/${bugId}/${sanitized}`);
 }
@@ -239,9 +240,9 @@ See: `packages/backend/src/api/server.ts`
 ```typescript
 // ✅ GOOD: Multiple defenses
 function sanitizeFilename(filename: string): string {
-  filename = decodeUrlSafely(filename);      // Decode URL encoding attacks
+  filename = decodeUrlSafely(filename); // Decode URL encoding attacks
   filename = removeControlCharacters(filename); // Strip null bytes
-  filename = extractBasename(filename);       // path.basename() defeats ../
+  filename = extractBasename(filename); // path.basename() defeats ../
   // ... additional validation
 }
 
@@ -278,11 +279,17 @@ Extract duplicated structures into utility functions:
 
 ```typescript
 // ❌ BAD: 70 lines of duplication
-function validateProjectId(id) { /* 35 lines */ }
-function validateBugId(id) { /* 35 identical lines */ }
+function validateProjectId(id) {
+  /* 35 lines */
+}
+function validateBugId(id) {
+  /* 35 identical lines */
+}
 
 // ✅ GOOD: 34 lines total (51% reduction)
-function validateId(id, type, options) { /* 28 lines */ }
+function validateId(id, type, options) {
+  /* 28 lines */
+}
 const validateProjectId = (id, opts) => validateId(id, 'project', opts);
 const validateBugId = (id, opts) => validateId(id, 'bug', opts);
 ```
@@ -292,6 +299,7 @@ const validateBugId = (id, opts) => validateId(id, 'bug', opts);
 ### KISS - Keep It Simple, Stupid
 
 **Complexity indicators**:
+
 - 3+ levels of nesting → Extract to early returns or separate functions
 - Magic numbers (10, 255, 7) → Use named constants
 - Inline regex patterns → Extract to named constants with comments
@@ -333,6 +341,7 @@ Private helpers use verb-noun structure describing single action:
 ### Common Helper Types
 
 **1. Validators** (return boolean or throw):
+
 ```typescript
 function validatePathComponent(value: string, name: string, pattern: RegExp): void {
   if (pattern.test(value)) throw new Error(`Invalid ${name}`);
@@ -340,6 +349,7 @@ function validatePathComponent(value: string, name: string, pattern: RegExp): vo
 ```
 
 **2. Transformers** (return transformed value):
+
 ```typescript
 function removeControlCharacters(str: string): string {
   return str.replace(CONTROL_CHARS, '');
@@ -347,6 +357,7 @@ function removeControlCharacters(str: string): string {
 ```
 
 **3. Extractors** (parse and return structured data):
+
 ```typescript
 function separateNameAndExtensions(input: string): { name: string; extensions: string[] } {
   const parts = input.split('.');
@@ -355,6 +366,7 @@ function separateNameAndExtensions(input: string): { name: string; extensions: s
 ```
 
 **4. Handlers** (encapsulate specific logic):
+
 ```typescript
 function handleWindowsReservedName(name: string, original: string): string {
   if (WINDOWS_RESERVED_NAMES.test(name)) {
@@ -368,6 +380,7 @@ function handleWindowsReservedName(name: string, original: string): string {
 ### Helper Organization
 
 Place helpers in this order:
+
 1. **Constants** - At top of file
 2. **Private Helpers** - Below constants, grouped by purpose
 3. **Public API** - At bottom, using helpers
@@ -382,8 +395,12 @@ const PATTERN = /[^a-z0-9]/g;
 // ============================================================================
 // PRIVATE HELPERS (Single Responsibility)
 // ============================================================================
-function helperA() { /* ... */ }
-function helperB() { /* ... */ }
+function helperA() {
+  /* ... */
+}
+function helperB() {
+  /* ... */
+}
 
 // ============================================================================
 // PUBLIC API
