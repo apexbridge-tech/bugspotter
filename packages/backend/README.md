@@ -234,15 +234,25 @@ import { createStorage } from '@bugspotter/backend';
 // Local filesystem
 const storage = createStorage({
   backend: 'local',
-  baseDir: './uploads',
+  local: {
+    baseDirectory: './data/uploads',
+    baseUrl: 'http://localhost:3000/uploads',
+  },
 });
 
 // S3-compatible
 const storage = createStorage({
   backend: 's3',
-  bucket: 'bugspotter',
-  region: 'us-east-1',
+  s3: {
+    region: 'us-east-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    bucket: 'bugspotter',
+  },
 });
+
+// Or use environment variables
+const storage = createStorageFromEnv();
 ```
 
 ### Operations

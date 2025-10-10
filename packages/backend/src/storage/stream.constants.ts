@@ -4,7 +4,40 @@
  */
 
 /**
- * Stream size and buffer limits
+ * Stream size and buffer limits configuration
+ *
+ * Controls memory usage and processing behavior for stream operations across
+ * the storage layer. These limits prevent memory exhaustion and ensure
+ * consistent behavior for file uploads, downloads, and transformations.
+ *
+ * @example
+ * ```typescript
+ * import { STREAM_LIMITS } from './stream.constants.js';
+ *
+ * // Check if buffer exceeds max size
+ * if (buffer.length > STREAM_LIMITS.MAX_BUFFER_SIZE) {
+ *   throw new Error('Buffer too large');
+ * }
+ *
+ * // Use for multipart uploads
+ * const chunks = splitIntoChunks(data, STREAM_LIMITS.DEFAULT_CHUNK_SIZE);
+ * ```
+ *
+ * @property MAX_BUFFER_SIZE - Maximum buffer size (10MB) for streamToBuffer operations.
+ *   Prevents OOM when loading entire streams into memory. Used by image processing
+ *   and upload operations.
+ *
+ * @property DEFAULT_CHUNK_SIZE - Default chunk size (5MB) for multipart uploads.
+ *   Matches S3 minimum multipart size. Used by uploadStream for large file handling.
+ *
+ * @property MIN_BUFFER_CHECK - Minimum bytes (2) required for content type detection.
+ *   Smallest signature is gzip (2 bytes). Used by getContentType for early validation.
+ *
+ * @property TEXT_PREVIEW_SIZE - Bytes (100) to read for text format detection.
+ *   Sufficient to detect JSON/text/binary formats. Used by content type detection.
+ *
+ * @readonly
+ * @constant
  */
 export const STREAM_LIMITS = Object.freeze({
   /** Maximum buffer size for streamToBuffer - 10MB */

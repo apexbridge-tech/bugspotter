@@ -34,6 +34,7 @@ import { streamToBuffer, getContentType } from './stream.utils.js';
 import {
   DEFAULT_EXPIRATION_SECONDS,
   DEFAULT_MAX_RETRIES,
+  DEFAULT_RETRY_DELAY_MS,
   DEFAULT_TIMEOUT_MS,
   MULTIPART_THRESHOLD,
   MAX_KEYS_PER_REQUEST,
@@ -361,6 +362,39 @@ export class StorageService extends BaseStorageService {
     }
   }
 
+  /**
+   * Build public URL for an S3 object
+   * Handles both custom endpoints and standard S3 URLs
+   */
+  private buildObjectUrl(key: string): string {
+    if (this.config.endpoint) {
+      // Custom endpoint (MinIO, R2, etc.)
+      return `${this.config.endpoint}/${this.bucket}/${key}`;
+    }
+    // Standard AWS S3 URL
+    return `https://${this.bucket}.s3.${this.config.region}.amazonaws.com/${key}`;
+  }
+
+  /**
+   * Build retry configuration for upload operations
+   */
+  private buildRetryConfig(key: string, maxAttempts: number) {
+    return {
+      maxAttempts,
+      baseDelay: DEFAULT_RETRY_DELAY_MS,
+      shouldRetry: RetryPredicates.isStorageError,
+      onRetry: (error: unknown, attempt: number, delay: number) => {
+        logger.warn('Upload attempt failed, retrying', {
+          key,
+          attempt,
+          maxAttempts,
+          delay: Math.round(delay),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    };
+  }
+
   protected async uploadBuffer(
     key: string,
     buffer: Buffer,
@@ -383,32 +417,15 @@ export class StorageService extends BaseStorageService {
 
           logger.debug('Object uploaded', { key, size: buffer.length });
 
-          const url = this.config.endpoint
-            ? `${this.config.endpoint}/${this.bucket}/${key}`
-            : `https://${this.bucket}.s3.${this.config.region}.amazonaws.com/${key}`;
-
           return {
             key,
-            url,
+            url: this.buildObjectUrl(key),
             size: buffer.length,
             etag: result.ETag,
             contentType,
           };
         },
-        {
-          maxAttempts,
-          baseDelay: 1000,
-          shouldRetry: RetryPredicates.isStorageError,
-          onRetry: (error, attempt, delay) => {
-            logger.warn('Upload attempt failed, retrying', {
-              key,
-              attempt,
-              maxAttempts,
-              delay: Math.round(delay),
-              error: error instanceof Error ? error.message : String(error),
-            });
-          },
-        }
+        this.buildRetryConfig(key, maxAttempts)
       );
     } catch (error) {
       throw new StorageUploadError(

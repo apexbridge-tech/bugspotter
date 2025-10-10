@@ -6,6 +6,7 @@
 // S3 Configuration
 export const DEFAULT_EXPIRATION_SECONDS = 3600; // 1 hour
 export const DEFAULT_MAX_RETRIES = 3;
+export const DEFAULT_RETRY_DELAY_MS = 1000; // 1 second base delay for exponential backoff
 export const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
 export const MULTIPART_THRESHOLD = 5 * 1024 * 1024; // 5MB
 export const MAX_KEYS_PER_REQUEST = 1000;
