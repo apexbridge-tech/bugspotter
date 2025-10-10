@@ -72,6 +72,36 @@ function parseLocalConfigFromEnv() {
   };
 }
 
+/**
+ * Validate S3 configuration and collect errors
+ * @param s3Config - S3 configuration to validate
+ * @returns Array of validation error messages
+ */
+function validateS3ConfigErrors(s3Config: NonNullable<StorageConfig['s3']>): string[] {
+  const errors: string[] = [];
+
+  if (!s3Config.region) {
+    errors.push('S3 region is required');
+  }
+  if (!s3Config.accessKeyId) {
+    errors.push('S3 access key ID is required');
+  }
+  if (!s3Config.secretAccessKey) {
+    errors.push('S3 secret access key is required');
+  }
+  if (!s3Config.bucket) {
+    errors.push('S3 bucket name is required');
+  }
+  if (s3Config.maxRetries !== undefined && s3Config.maxRetries < 0) {
+    errors.push('S3 max retries must be >= 0');
+  }
+  if (s3Config.timeout !== undefined && s3Config.timeout < 1000) {
+    errors.push('S3 timeout must be >= 1000ms');
+  }
+
+  return errors;
+}
+
 // ============================================================================
 // PUBLIC API
 // ============================================================================
@@ -188,24 +218,7 @@ export function validateStorageConfig(config: StorageConfig): string[] {
       if (!config.s3) {
         errors.push('S3 configuration is required for S3-compatible backends');
       } else {
-        if (!config.s3.region) {
-          errors.push('S3 region is required');
-        }
-        if (!config.s3.accessKeyId) {
-          errors.push('S3 access key ID is required');
-        }
-        if (!config.s3.secretAccessKey) {
-          errors.push('S3 secret access key is required');
-        }
-        if (!config.s3.bucket) {
-          errors.push('S3 bucket name is required');
-        }
-        if (config.s3.maxRetries !== undefined && config.s3.maxRetries < 0) {
-          errors.push('S3 max retries must be >= 0');
-        }
-        if (config.s3.timeout !== undefined && config.s3.timeout < 1000) {
-          errors.push('S3 timeout must be >= 1000ms');
-        }
+        errors.push(...validateS3ConfigErrors(config.s3));
       }
       break;
 
