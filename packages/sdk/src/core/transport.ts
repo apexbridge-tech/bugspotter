@@ -234,16 +234,13 @@ function isTransportOptions(obj: unknown): obj is TransportOptions {
     return false;
   }
 
-  // Check for at least one TransportOptions-specific property
-  return (
-    'retry' in record ||
-    'offline' in record ||
-    'logger' in record ||
-    'enableRetry' in record ||
-    // 'auth' alone is ambiguous, but if present with other properties, it's TransportOptions
-    ('auth' in record &&
-      ('retry' in record || 'offline' in record || 'logger' in record || 'enableRetry' in record))
-  );
+  // Key insight: If object has TransportOptions-specific keys (even if undefined),
+  // it's likely TransportOptions since AuthConfig never has these keys
+  const hasTransportOptionsKeys =
+    'auth' in record || 'retry' in record || 'offline' in record || 'logger' in record || 'enableRetry' in record;
+
+  // Return true if it has any TransportOptions-specific keys
+  return hasTransportOptionsKeys;
 }
 
 /**

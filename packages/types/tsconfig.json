@@ -1,23 +1,21 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "lib": ["ES2020"],
-    "moduleResolution": "node",
+    // Declaration-only output (no runtime code)
     "declaration": true,
     "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "composite": true,
+
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "NodeNext",
+
     "outDir": "dist",
     "rootDir": "src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "isolatedModules": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

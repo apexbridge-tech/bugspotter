@@ -47,7 +47,6 @@ export class BugReportModal {
 
   // State
   private originalScreenshot: string = '';
-  private styleElement: HTMLStyleElement | null = null;
   private piiDetections: PIIDetection[] = [];
 
   // Event handler (bound to this for proper removal)

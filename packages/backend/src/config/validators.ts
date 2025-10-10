@@ -1,9 +1,9 @@
 /**
- * Configuration validators
- * Each validator is focused on a single concern and returns errors as strings
+ * Configuration validation utilities
+ * Extracted for better Single Responsibility Principle compliance
  */
 
-import type { StorageBackend } from './types';
+import type { StorageBackend } from './types.js';
 
 // ============================================================================
 // CONSTANTS
