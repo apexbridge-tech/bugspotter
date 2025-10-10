@@ -145,8 +145,8 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
   private interceptXHR() {
     const originalOpen = this.originalXHR.open;
     const originalSend = this.originalXHR.send;
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const captureInstance = this;
+    const createRequest = this.createNetworkRequest.bind(this);
+    const addRequest = this.addRequest.bind(this);
 
     XMLHttpRequest.prototype.open = function (
       this: TrackedXMLHttpRequest,
@@ -163,24 +163,24 @@ export class NetworkCapture extends BaseCapture<NetworkRequest[], NetworkCapture
 
     XMLHttpRequest.prototype.send = function (this: TrackedXMLHttpRequest, ...args: unknown[]) {
       const onLoad = () => {
-        const request = captureInstance.createNetworkRequest(
+        const request = createRequest(
           this._url || '',
           (this._method as HttpMethod) || 'GET',
           this.status,
           this._startTime || Date.now()
         );
-        captureInstance.addRequest(request);
+        addRequest(request);
       };
 
       const onError = () => {
-        const request = captureInstance.createNetworkRequest(
+        const request = createRequest(
           this._url || '',
           (this._method as HttpMethod) || 'GET',
           0,
           this._startTime || Date.now(),
           'XMLHttpRequest failed'
         );
-        captureInstance.addRequest(request);
+        addRequest(request);
       };
 
       this.addEventListener('load', onLoad);
