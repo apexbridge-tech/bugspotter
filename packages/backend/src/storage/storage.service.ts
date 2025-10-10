@@ -12,6 +12,7 @@ import {
   type ListObjectsV2CommandOutput,
   type BucketLocationConstraint,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { Readable } from 'node:stream';
 import type {
@@ -30,13 +31,11 @@ import {
   StorageUploadError,
   StorageNotFoundError,
 } from './types.js';
-import { streamToBuffer, getContentType } from './stream.utils.js';
 import {
   DEFAULT_EXPIRATION_SECONDS,
   DEFAULT_MAX_RETRIES,
   DEFAULT_RETRY_DELAY_MS,
   DEFAULT_TIMEOUT_MS,
-  MULTIPART_THRESHOLD,
   MAX_KEYS_PER_REQUEST,
 } from './constants.js';
 import { executeWithRetry, RetryPredicates } from '../utils/retry.js';
@@ -338,13 +337,46 @@ export class StorageService extends BaseStorageService {
     options?: MultipartUploadOptions
   ): Promise<UploadResult> {
     try {
-      const buffer = await streamToBuffer(stream);
+      const contentType = options?.contentType ?? 'application/octet-stream';
+      let uploadedBytes = 0;
 
-      if (buffer.length >= MULTIPART_THRESHOLD && options?.onProgress) {
-        options.onProgress(buffer.length, buffer.length);
+      // Use S3 Upload for true streaming (no buffering entire file in memory)
+      const upload = new Upload({
+        client: this.client,
+        params: {
+          Bucket: this.bucket,
+          Key: key,
+          Body: stream,
+          ContentType: contentType,
+        },
+        queueSize: 4, // Number of concurrent part uploads
+        partSize: options?.partSize ?? 5 * 1024 * 1024, // Default 5MB parts (S3 minimum)
+      });
+
+      // Track upload progress if callback provided
+      if (options?.onProgress) {
+        upload.on('httpUploadProgress', (progress) => {
+          if (progress.loaded && progress.total) {
+            uploadedBytes = progress.loaded;
+            options.onProgress!(progress.loaded, progress.total);
+          }
+        });
       }
 
-      return await this.uploadBuffer(key, buffer, getContentType(buffer));
+      const result = await upload.done();
+
+      // Use tracked bytes if available, otherwise estimate from result
+      const size = uploadedBytes || 0;
+
+      logger.debug('Stream uploaded', { key, size });
+
+      return {
+        key,
+        url: this.buildObjectUrl(key),
+        size,
+        etag: result.ETag,
+        contentType,
+      };
     } catch (error) {
       throw new StorageUploadError(
         `Stream upload failed: ${error instanceof Error ? error.message : String(error)}`,

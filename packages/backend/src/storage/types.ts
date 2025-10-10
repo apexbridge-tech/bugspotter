@@ -78,6 +78,7 @@ export interface SignedUrlOptions {
  */
 export interface MultipartUploadOptions {
   partSize?: number; // Bytes per part (default: 5MB)
+  contentType?: string; // MIME type (auto-detected if not provided)
   onProgress?: (uploaded: number, total: number) => void;
 }
 

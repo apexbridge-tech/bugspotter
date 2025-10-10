@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
+import { createWriteStream } from 'node:fs';
 import path from 'node:path';
-import { Readable } from 'node:stream';
+import { Readable, pipeline } from 'node:stream';
+import { promisify } from 'node:util';
 import type {
   LocalConfig,
   UploadResult,
@@ -17,8 +19,10 @@ import {
   StorageUploadError,
   StorageNotFoundError,
 } from './types.js';
-import { streamToBuffer, bufferToStream, getContentType } from './stream.utils.js';
+import { bufferToStream } from './stream.utils.js';
 import { getLogger } from '../logger.js';
+
+const pipelineAsync = promisify(pipeline);
 
 const logger = getLogger();
 
@@ -228,14 +232,44 @@ export class LocalStorageService extends BaseStorageService {
     stream: Readable,
     options?: MultipartUploadOptions
   ): Promise<UploadResult> {
-    try {
-      const buffer = await streamToBuffer(stream);
+    const filePath = this.keyToPath(key);
+    const contentType = options?.contentType ?? 'application/octet-stream';
 
+    try {
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      await fs.mkdir(dir, { recursive: true });
+
+      // Use Node.js pipeline for true streaming (constant memory usage)
+      let uploadedBytes = 0;
+      const writeStream = createWriteStream(filePath);
+
+      // Track progress if callback provided
       if (options?.onProgress) {
-        options.onProgress(buffer.length, buffer.length);
+        stream.on('data', (chunk: Buffer) => {
+          uploadedBytes += chunk.length;
+          // Note: We don't know total size for streams, so pass uploadedBytes for both
+          options.onProgress!(uploadedBytes, uploadedBytes);
+        });
       }
 
-      return await this.uploadBuffer(key, buffer, getContentType(buffer));
+      // Stream directly to file without buffering in memory
+      await pipelineAsync(stream, writeStream);
+
+      // Get final file size
+      const stats = await fs.stat(filePath);
+      const size = stats.size;
+
+      logger.debug('Stream uploaded', { key, filePath, size });
+
+      const url = `${this.baseUrl}/${key}`;
+
+      return {
+        key,
+        url,
+        size,
+        contentType,
+      };
     } catch (error) {
       throw new StorageUploadError(
         `Stream upload failed: ${error instanceof Error ? error.message : String(error)}`,
