@@ -24,11 +24,12 @@ import path from 'node:path';
 const TEST_PROJECT_ID = 'test-proj-' + Date.now();
 const TEST_BUG_ID = 'test-bug-' + Date.now();
 
-// Local storage config
+// Local storage config - generate unique directory per test suite run
 const localConfig: StorageConfig = {
   backend: 'local',
   local: {
-    baseDirectory: './test-e2e-uploads-' + Date.now(),
+    baseDirectory:
+      './test-e2e-uploads-' + Date.now() + '-' + Math.random().toString(36).substring(7),
     baseUrl: 'http://localhost:3000/uploads',
   },
 };
@@ -145,12 +146,12 @@ describe('E2E: Local Storage', () => {
   });
 
   afterAll(async () => {
-    // Cleanup test directory
+    // Cleanup test directory - use recursive force removal
     try {
       await storage.deleteFolder('');
-      await fs.rmdir(baseDir);
+      await fs.rm(baseDir, { recursive: true, force: true });
     } catch (error) {
-      console.warn('Cleanup failed:', error);
+      console.warn(`Failed to cleanup test directory ${baseDir}:`, error);
     }
   });
 
@@ -605,8 +606,11 @@ describe('E2E: Performance', () => {
   afterAll(async () => {
     try {
       await storage.deleteFolder('');
+      // Remove base directory
+      const baseDir = (localConfig.local as any).baseDirectory;
+      await fs.rm(baseDir, { recursive: true, force: true });
     } catch (error) {
-      // Ignore cleanup errors
+      console.warn('Performance test cleanup failed:', error);
     }
   });
 

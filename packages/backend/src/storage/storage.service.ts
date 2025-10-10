@@ -1,8 +1,3 @@
-/**
- * S3-compatible storage service
- * Supports AWS S3, MinIO, Cloudflare R2, and other S3-compatible backends
- */
-
 import {
   S3Client,
   PutObjectCommand,
@@ -20,7 +15,6 @@ import {
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { Readable } from 'node:stream';
 import type {
-  IStorageService,
   S3Config,
   UploadResult,
   SignedUrlOptions,
@@ -29,6 +23,7 @@ import type {
   StorageObject,
   MultipartUploadOptions,
 } from './types.js';
+import { BaseStorageService } from './base-storage.service.js';
 import {
   StorageError,
   StorageConnectionError,
@@ -36,31 +31,32 @@ import {
   StorageNotFoundError,
 } from './types.js';
 import { streamToBuffer, getContentType } from './stream.utils.js';
+import {
+  DEFAULT_EXPIRATION_SECONDS,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_TIMEOUT_MS,
+  MULTIPART_THRESHOLD,
+  MAX_KEYS_PER_REQUEST,
+} from './constants.js';
+import { executeWithRetry, RetryPredicates } from '../utils/retry.js';
 import { getLogger } from '../logger.js';
 
 const logger = getLogger();
 
-// Constants
-const DEFAULT_EXPIRATION_SECONDS = 3600; // 1 hour
-const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
-const MULTIPART_THRESHOLD = 5 * 1024 * 1024; // 5MB
-const MAX_KEYS_PER_REQUEST = 1000;
-
 /**
  * S3-compatible storage service implementation
  */
-export class StorageService implements IStorageService {
+export class StorageService extends BaseStorageService {
   private readonly client: S3Client;
   private readonly bucket: string;
   private readonly config: S3Config;
   private initialized = false;
 
   constructor(config: S3Config) {
+    super();
     this.config = config;
     this.bucket = config.bucket;
 
-    // Initialize S3 client with configuration
     this.client = new S3Client({
       endpoint: config.endpoint,
       region: config.region,
@@ -68,7 +64,7 @@ export class StorageService implements IStorageService {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
-      forcePathStyle: config.forcePathStyle ?? false, // MinIO requires true
+      forcePathStyle: config.forcePathStyle ?? false,
       maxAttempts: config.maxRetries ?? DEFAULT_MAX_RETRIES,
       requestHandler: {
         requestTimeout: config.timeout ?? DEFAULT_TIMEOUT_MS,
@@ -83,10 +79,6 @@ export class StorageService implements IStorageService {
     });
   }
 
-  /**
-   * Initialize storage backend
-   * Verifies bucket exists and creates it if needed
-   */
   async initialize(): Promise<void> {
     if (this.initialized) {
       logger.debug('Storage already initialized');
@@ -94,17 +86,14 @@ export class StorageService implements IStorageService {
     }
 
     try {
-      // Check if bucket exists
       await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
       logger.info('Bucket exists and is accessible', { bucket: this.bucket });
     } catch (error: unknown) {
       const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
 
-      // If bucket doesn't exist (404), try to create it
       if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
         logger.info('Bucket not found, attempting to create', { bucket: this.bucket });
         try {
-          // Create bucket (LocationConstraint only for non-us-east-1)
           await this.client.send(
             new CreateBucketCommand({
               Bucket: this.bucket,
@@ -129,7 +118,6 @@ export class StorageService implements IStorageService {
       }
     }
 
-    // Test write permissions with a small test file
     try {
       const testKey = '.health-check';
       await this.client.send(
@@ -161,78 +149,6 @@ export class StorageService implements IStorageService {
     logger.info('Storage service initialized successfully');
   }
 
-  /**
-   * Upload a screenshot (original)
-   */
-  async uploadScreenshot(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult> {
-    const key = this.buildKey('screenshots', projectId, bugId, 'original.png');
-    const contentType = getContentType(buffer);
-    return await this.uploadBuffer(key, buffer, contentType);
-  }
-
-  /**
-   * Upload a screenshot thumbnail
-   */
-  async uploadThumbnail(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult> {
-    const key = this.buildKey('screenshots', projectId, bugId, 'thumbnail.jpg');
-    return await this.uploadBuffer(key, buffer, 'image/jpeg');
-  }
-
-  /**
-   * Upload session replay metadata
-   */
-  async uploadReplayMetadata(
-    projectId: string,
-    bugId: string,
-    metadata: Record<string, unknown>
-  ): Promise<UploadResult> {
-    const key = this.buildKey('replays', projectId, bugId, 'metadata.json');
-    const buffer = Buffer.from(JSON.stringify(metadata, null, 2));
-    return await this.uploadBuffer(key, buffer, 'application/json');
-  }
-
-  /**
-   * Upload a session replay chunk
-   */
-  async uploadReplayChunk(
-    projectId: string,
-    bugId: string,
-    chunkIndex: number,
-    data: Buffer
-  ): Promise<UploadResult> {
-    const key = this.buildKey('replays', projectId, bugId, `chunks/${chunkIndex}.json.gz`);
-    return await this.uploadBuffer(key, data, 'application/gzip');
-  }
-
-  /**
-   * Upload an attachment file
-   */
-  async uploadAttachment(
-    projectId: string,
-    bugId: string,
-    filename: string,
-    buffer: Buffer
-  ): Promise<UploadResult> {
-    // Sanitize filename to prevent path traversal
-    // First remove any path separators and ".." sequences
-    let sanitizedFilename = filename
-      .replace(/\.\./g, '') // Remove all ".." sequences
-      .replace(/[/\\]/g, '') // Remove path separators
-      .replace(/[^a-zA-Z0-9._-]/g, '_'); // Replace other invalid chars
-
-    // Ensure filename is not empty after sanitization
-    if (!sanitizedFilename || sanitizedFilename === '.') {
-      sanitizedFilename = 'attachment';
-    }
-
-    const key = this.buildKey('attachments', projectId, bugId, sanitizedFilename);
-    const contentType = getContentType(buffer);
-    return await this.uploadBuffer(key, buffer, contentType);
-  }
-
-  /**
-   * Generate a temporary signed URL
-   */
   async getSignedUrl(key: string, options?: SignedUrlOptions): Promise<string> {
     const expiresIn = options?.expiresIn ?? DEFAULT_EXPIRATION_SECONDS;
 
@@ -256,9 +172,6 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Delete a single object
-   */
   async deleteObject(key: string): Promise<void> {
     try {
       await this.client.send(
@@ -277,16 +190,12 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Delete all objects with a given prefix
-   */
   async deleteFolder(prefix: string): Promise<number> {
     try {
       let deletedCount = 0;
       let continuationToken: string | undefined;
 
       do {
-        // List objects with prefix
         const listResult = await this.client.send(
           new ListObjectsV2Command({
             Bucket: this.bucket,
@@ -299,7 +208,6 @@ export class StorageService implements IStorageService {
         const objects = listResult.Contents ?? [];
 
         if (objects.length > 0) {
-          // Delete batch of objects
           const deleteResult = await this.client.send(
             new DeleteObjectsCommand({
               Bucket: this.bucket,
@@ -334,9 +242,6 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * List objects with a given prefix
-   */
   async listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult> {
     try {
       const result: ListObjectsV2CommandOutput = await this.client.send(
@@ -370,9 +275,6 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Retrieve an object as a stream
-   */
   async getObject(key: string): Promise<Readable> {
     try {
       const result = await this.client.send(
@@ -400,9 +302,6 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Check if an object exists and get its metadata
-   */
   async headObject(key: string): Promise<StorageObject | null> {
     try {
       const result = await this.client.send(
@@ -432,21 +331,15 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Upload a stream (supports multipart for large files)
-   */
   async uploadStream(
     key: string,
     stream: Readable,
     options?: MultipartUploadOptions
   ): Promise<UploadResult> {
     try {
-      // Convert stream to buffer for simplicity
-      // In production, you might want to implement actual multipart upload
       const buffer = await streamToBuffer(stream);
 
       if (buffer.length >= MULTIPART_THRESHOLD && options?.onProgress) {
-        // Report progress for large files
         options.onProgress(buffer.length, buffer.length);
       }
 
@@ -459,9 +352,6 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Health check
-   */
   async healthCheck(): Promise<boolean> {
     try {
       await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
@@ -471,78 +361,63 @@ export class StorageService implements IStorageService {
     }
   }
 
-  /**
-   * Upload a buffer with retry logic
-   * @private
-   */
-  private async uploadBuffer(
+  protected async uploadBuffer(
     key: string,
     buffer: Buffer,
     contentType: string
   ): Promise<UploadResult> {
-    const maxRetries = this.config.maxRetries ?? DEFAULT_MAX_RETRIES;
-    let lastError: Error | undefined;
+    const maxAttempts = (this.config.maxRetries ?? DEFAULT_MAX_RETRIES) + 1;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const params: PutObjectCommandInput = {
-          Bucket: this.bucket,
-          Key: key,
-          Body: buffer,
-          ContentType: contentType,
-          ContentLength: buffer.length,
-        };
+    try {
+      return await executeWithRetry(
+        async () => {
+          const params: PutObjectCommandInput = {
+            Bucket: this.bucket,
+            Key: key,
+            Body: buffer,
+            ContentType: contentType,
+            ContentLength: buffer.length,
+          };
 
-        const result = await this.client.send(new PutObjectCommand(params));
+          const result = await this.client.send(new PutObjectCommand(params));
 
-        logger.debug('Object uploaded', { key, size: buffer.length, attempt });
+          logger.debug('Object uploaded', { key, size: buffer.length });
 
-        // Generate URL (signed or public based on config)
-        const url = this.config.endpoint
-          ? `${this.config.endpoint}/${this.bucket}/${key}`
-          : `https://${this.bucket}.s3.${this.config.region}.amazonaws.com/${key}`;
+          const url = this.config.endpoint
+            ? `${this.config.endpoint}/${this.bucket}/${key}`
+            : `https://${this.bucket}.s3.${this.config.region}.amazonaws.com/${key}`;
 
-        return {
-          key,
-          url,
-          size: buffer.length,
-          etag: result.ETag,
-          contentType,
-        };
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-
-        if (attempt < maxRetries) {
-          const delay = 1000 * Math.pow(2, attempt);
-          logger.warn('Upload attempt failed, retrying', {
+          return {
             key,
-            attempt: attempt + 1,
-            maxRetries: maxRetries + 1,
-            delay,
-            error: lastError.message,
-          });
-          await new Promise((resolve) => setTimeout(resolve, delay));
+            url,
+            size: buffer.length,
+            etag: result.ETag,
+            contentType,
+          };
+        },
+        {
+          maxAttempts,
+          baseDelay: 1000,
+          shouldRetry: RetryPredicates.isStorageError,
+          onRetry: (error, attempt, delay) => {
+            logger.warn('Upload attempt failed, retrying', {
+              key,
+              attempt,
+              maxAttempts,
+              delay: Math.round(delay),
+              error: error instanceof Error ? error.message : String(error),
+            });
+          },
         }
-      }
+      );
+    } catch (error) {
+      throw new StorageUploadError(
+        `Upload failed after ${maxAttempts} attempts: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined
+      );
     }
-
-    throw new StorageUploadError(
-      `Upload failed after ${maxRetries + 1} attempts: ${lastError?.message}`,
-      lastError
-    );
   }
 
-  /**
-   * Build a standardized storage key path
-   * @private
-   */
-  private buildKey(type: string, projectId: string, bugId: string, filename: string): string {
-    return `${type}/${projectId}/${bugId}/${filename}`;
-  }
-
-  /**
-   * Cleanup and close client connections
-   */
   async destroy(): Promise<void> {
     try {
       this.client.destroy();

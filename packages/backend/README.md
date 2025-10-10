@@ -1,26 +1,16 @@
 # @bugspotter/backend
 
-Production-ready backend for BugSpotter with PostgreSQL database and REST API.
+Production-ready backend for BugSpotter with PostgreSQL database, REST API, and S3-compatible storage.
 
 ## Features
 
-### Database Layer
-
-- 🗄️ **PostgreSQL Database** - Full-featured schema with migrations
-- ♻️ **Connection Pooling** - Efficient connection management with retry logic
-- 🔄 **Transactions** - ACID-compliant operations with automatic rollback
-- 📊 **Repository Pattern** - Clean architecture with dependency injection support
-- 🚀 **Migration System** - Version-controlled schema evolution
-
-### REST API
-
-- 🔐 **Dual Authentication** - API keys (SDK) + JWT tokens (users)
-- 🛡️ **Security** - CORS, Helmet, rate limiting, input validation
-- 📝 **Session Replay** - Store and retrieve user session recordings
-- 🎯 **Role-Based Access** - Admin, user, and viewer permissions
-- 🔗 **Ticket Integration** - Track external tickets (Jira, Linear, etc.)
-- 🔍 **Filtering & Pagination** - Efficient data querying
+- 🗄️ **PostgreSQL Database** - Schema with migrations, connection pooling, ACID transactions
+- � **Dual Authentication** - API keys (SDK) + JWT tokens (users)
+- � **S3 Storage** - Screenshots, attachments, replay chunks (S3/MinIO/LocalStack)
+- 🛡️ **Security** - CORS, Helmet, rate limiting, input validation, SQL injection protection
+- 🔍 **Query & Filter** - Pagination, sorting, role-based access control
 - 🏥 **Health Checks** - Liveness and readiness endpoints
+- 🧪 **Testing** - 457 tests with Testcontainers (no manual setup required)
 
 ## Quick Start
 
@@ -36,59 +26,44 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` with your settings:
+Required variables:
 
 ```bash
-# Required
+# Database
 DATABASE_URL=postgresql://user:password@localhost:5432/bugspotter
+
+# Security
 JWT_SECRET=your-secret-key-min-32-characters-long  # Generate: openssl rand -base64 32
 
-# Optional - Server
-PORT=3000
-NODE_ENV=development
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-
-# Optional - Database Connection Pool
-DB_POOL_MIN=2
-DB_POOL_MAX=10
-DB_CONNECTION_TIMEOUT_MS=30000
-DB_IDLE_TIMEOUT_MS=30000
-DB_RETRY_ATTEMPTS=3
-DB_RETRY_DELAY_MS=1000
-
-# Optional - JWT
-JWT_EXPIRES_IN=1h
-JWT_REFRESH_EXPIRES_IN=7d
-
-# Optional - Rate Limiting
-RATE_LIMIT_MAX_REQUESTS=100
-RATE_LIMIT_WINDOW_MS=60000
-
-# Optional - File Uploads
-MAX_FILE_SIZE=10485760
+# Storage (choose one)
+STORAGE_BACKEND=local  # or 's3'
+# For S3:
+# S3_BUCKET=bugspotter
+# S3_REGION=us-east-1
+# AWS_ACCESS_KEY_ID=your-key
+# AWS_SECRET_ACCESS_KEY=your-secret
 ```
+
+See `.env.example` for all options.
 
 ### 3. Set Up Database
 
 ```bash
-# Create database
 createdb bugspotter
-
-# Run migrations
 pnpm migrate
 ```
 
-### 4. Start the Server
+### 4. Start Server
 
 ```bash
-# Development mode with hot reload
+# Development
 pnpm dev
 
-# Production mode
+# Production
 pnpm build && pnpm start
 ```
 
-The API will be available at `http://localhost:3000`
+Server runs at `http://localhost:3000`
 
 ### 5. Test the API
 
@@ -96,69 +71,16 @@ The API will be available at `http://localhost:3000`
 # Health check
 curl http://localhost:3000/health
 
-# Register a user
+# Register user
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"password123"}'
 
-# Create a project (returns API key)
+# Create project (returns API key)
 curl -X POST http://localhost:3000/api/v1/projects \
-  -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{"name":"My App"}'
 ```
-
-## Database Setup
-
-### Prerequisites
-
-- PostgreSQL 12 or higher
-- Database created and accessible
-
-### Running Migrations
-
-Apply all pending migrations:
-
-```bash
-pnpm migrate
-```
-
-This will:
-
-1. Create the `migrations_history` table if it doesn't exist
-2. Apply all pending SQL migrations in order
-3. Track applied migrations to prevent re-application
-
-### Database Schema
-
-The schema includes the following tables:
-
-#### Core Tables
-
-- **projects** - Project configurations and API keys
-- **users** - User accounts with password and OAuth support
-- **bug_reports** - Main bug report data with metadata
-- **sessions** - Session replay event data
-- **tickets** - External ticket system integrations
-
-#### Enterprise Tables (Optional)
-
-- **audit_logs** - Audit trail for all actions
-- **permissions** - Role-based access control
-
-#### System Tables
-
-- **migrations_history** - Tracks applied database migrations
-
-### Indexes
-
-Optimized indexes for common queries:
-
-- `bug_reports(project_id, created_at)` - List reports by project
-- `bug_reports(status)` - Filter by status
-- `bug_reports(priority)` - Filter by priority
-- `projects(api_key)` - API key authentication
-- `tickets(external_id)` - External ticket lookups
 
 ## API Reference
 
@@ -166,7 +88,7 @@ Optimized indexes for common queries:
 
 #### Register User
 
-```bash
+```http
 POST /api/v1/auth/register
 Content-Type: application/json
 
@@ -180,58 +102,39 @@ Returns JWT tokens (access + refresh)
 
 #### Login
 
-```bash
+```http
 POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
 ```
 
 #### Refresh Token
 
-```bash
+```http
 POST /api/v1/auth/refresh
-Content-Type: application/json
-
-{
-  "refresh_token": "your-refresh-token"
-}
 ```
 
 ### Projects
 
 #### Create Project
 
-```bash
+```http
 POST /api/v1/projects
 Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
 
-{
-  "name": "My App",
-  "settings": {
-    "allowedOrigins": ["https://myapp.com"]
-  }
-}
+{"name": "My App"}
 ```
 
-Returns project with generated API key (`bgs_...`)
+Returns project with API key (`bgs_...`)
 
 #### Get Project
 
-```bash
+```http
 GET /api/v1/projects/:id
-Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 #### Regenerate API Key
 
-```bash
+```http
 POST /api/v1/projects/:id/regenerate-key
-Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 Admin only
@@ -240,7 +143,7 @@ Admin only
 
 #### Create Report (SDK)
 
-```bash
+```http
 POST /api/v1/reports
 X-API-Key: bgs_your_api_key
 Content-Type: application/json
@@ -259,604 +162,215 @@ Content-Type: application/json
 
 #### List Reports
 
-```bash
+```http
 GET /api/v1/reports?status=open&priority=high&page=1&limit=20
-Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
-Query parameters:
+Query params: `status`, `priority`, `page`, `limit`, `sort_by`, `order`
 
-- `status` - open, in-progress, resolved, closed
-- `priority` - low, medium, high, critical
-- `page` - Page number (default: 1)
-- `limit` - Results per page (default: 20)
-- `sort_by` - created_at, updated_at, priority
-- `order` - asc, desc
+#### Get/Update Report
 
-#### Get Single Report
-
-```bash
+```http
 GET /api/v1/reports/:id
-Authorization: Bearer YOUR_JWT_TOKEN
-```
-
-#### Update Report
-
-```bash
 PATCH /api/v1/reports/:id
-Authorization: Bearer YOUR_JWT_TOKEN
-Content-Type: application/json
-
-{
-  "status": "in-progress",
-  "priority": "critical"
-}
 ```
 
 ### Health Checks
 
-```bash
-GET /health           # Liveness check
-GET /ready            # Readiness check (includes DB)
+```http
+GET /health   # Liveness
+GET /ready    # Readiness (includes DB)
 ```
 
 ## Database Usage
 
-### Initialize Database Client
-
-```typescript
-import { createDatabaseClient, validateConfig } from '@bugspotter/backend';
-
-// Validate configuration
-validateConfig();
-
-// Create client instance
-const db = createDatabaseClient();
-
-// Test connection
-const isConnected = await db.testConnection();
-console.log('Database connected:', isConnected);
-```
-
-### Custom Logger (Optional)
-
-The backend uses a simple console-based logger by default. You can replace it with your own logger (pino, winston, etc.):
-
-```typescript
-import { setLogger } from '@bugspotter/backend';
-import pino from 'pino';
-
-// Use pino for structured logging
-setLogger(pino());
-
-// Or winston
-import winston from 'winston';
-setLogger(
-  winston.createLogger({
-    level: 'info',
-    format: winston.format.json(),
-    transports: [new winston.transports.Console()],
-  })
-);
-
-// Or your custom logger (must implement Logger interface)
-setLogger({
-  debug: (msg, meta) => {
-    /* your implementation */
-  },
-  info: (msg, meta) => {
-    /* your implementation */
-  },
-  warn: (msg, meta) => {
-    /* your implementation */
-  },
-  error: (msg, meta) => {
-    /* your implementation */
-  },
-});
-```
-
-The logger is used for:
-
-- Database connection errors and retries
-- Pool errors and warnings
-- Migration status (if you implement it)
-- Any operational events
-
-### Create a Bug Report
-
-```typescript
-// Recommended: Direct repository access
-const bugReport = await db.bugReports.create({
-  project_id: 'project-uuid',
-  title: 'Button click not working',
-  description: 'The submit button does not respond to clicks',
-  priority: 'high',
-  status: 'open',
-  metadata: {
-    browser: 'Chrome 120',
-    os: 'macOS 14',
-    url: 'https://example.com/form',
-  },
-});
-
-console.log('Created bug report:', bugReport.id);
-```
-
-### Query Bug Reports
-
-```typescript
-// List bug reports with filters and pagination
-const result = await db.bugReports.list(
-  {
-    project_id: 'project-uuid',
-    status: 'open',
-    priority: 'high',
-  },
-  {
-    sort_by: 'created_at',
-    order: 'desc',
-  },
-  {
-    page: 1,
-    limit: 20,
-  }
-);
-
-console.log(`Found ${result.pagination.total} bug reports`);
-result.data.forEach((bug) => {
-  console.log(`- ${bug.title} (${bug.status})`);
-});
-```
-
-### Transactions
-
-Execute multiple operations atomically with automatic rollback on error:
-
-```typescript
-// Create bug report with session in a single transaction
-const result = await db.transaction(async (tx) => {
-  const bug = await tx.bugReports.create({
-    project_id: 'project-uuid',
-    title: 'Critical issue',
-    priority: 'critical',
-  });
-
-  const session = await tx.sessions.createSession(bug.id, {
-    events: [...rrwebEvents],
-  });
-
-  const ticket = await tx.tickets.createTicket(bug.id, 'JIRA-123', 'jira');
-
-  return { bug, session, ticket };
-});
-
-// All operations committed, or all rolled back on error
-console.log('Bug report created:', result.bug.id);
-```
-
-### Batch Operations
-
-Create multiple records efficiently:
-
-```typescript
-// Create up to 1000 bug reports in a single query (fastest)
-const bugs = await db.bugReports.createBatch([
-  {
-    project_id: 'project-uuid',
-    title: 'Bug 1',
-    priority: 'high',
-  },
-  {
-    project_id: 'project-uuid',
-    title: 'Bug 2',
-    priority: 'medium',
-  },
-  {
-    project_id: 'project-uuid',
-    title: 'Bug 3',
-    priority: 'low',
-  },
-]);
-
-console.log(`Created ${bugs.length} bug reports`);
-
-// For larger arrays, use createBatchAuto (automatically splits into chunks)
-const hugeArray = [...]; // 5000+ items
-const allBugs = await db.bugReports.createBatchAuto(hugeArray, 500); // 500 per batch
-console.log(`Created ${allBugs.length} bug reports in batches`);
-```
-
-### Update a Bug Report
-
-```typescript
-const updated = await db.bugReports.update(bugReportId, {
-  status: 'in-progress',
-  priority: 'critical',
-});
-```
-
-### Project Management
-
-```typescript
-// Create project
-const project = await db.projects.create({
-  name: 'My App',
-  api_key: 'bs_live_abc123',
-  settings: {
-    allowedOrigins: ['https://myapp.com'],
-    notificationEmail: 'bugs@myapp.com',
-  },
-});
-
-// Get project by API key (for authentication)
-const project = await db.projects.findByApiKey('bs_live_abc123');
-
-// Update project settings
-await db.projects.update(project.id, {
-  settings: {
-    ...project.settings,
-    maxReportsPerDay: 1000,
-  },
-});
-```
-
-### Session Replay
-
-```typescript
-// Store session replay data
-const session = await db.sessions.createSession(
-  bugReportId,
-  { events: [...rrwebEvents] },
-  120000 // duration in ms
-);
-
-// Retrieve sessions for a bug report
-const sessions = await db.sessions.findByBugReport(bugReportId);
-```
-
-### User Management
-
-```typescript
-// Create user with password
-const user = await db.users.create({
-  email: 'user@example.com',
-  password_hash: await bcrypt.hash('password', 10),
-  role: 'user',
-});
-
-// Create OAuth user
-const oauthUser = await db.users.create({
-  email: 'user@gmail.com',
-  oauth_provider: 'google',
-  oauth_id: 'google-user-id',
-  role: 'user',
-});
-
-// Get user by email
-const user = await db.users.findByEmail('user@example.com');
-
-// Get user by OAuth
-// Get user by OAuth
-const user = await db.users.findByOAuth('google', 'google-user-id');
-```
-
-### Access Control & Project Members
-
-```typescript
-// Check if user has access to project (owner or member)
-const hasAccess = await db.projects.hasAccess(projectId, userId);
-if (!hasAccess) {
-  throw new Error('Access denied');
-}
-
-// Get user's role in project
-const role = await db.projects.getUserRole(projectId, userId);
-// Returns: 'owner' | 'admin' | 'member' | 'viewer' | null
-
-// Add member to project
-await db.projectMembers.addMember(projectId, userId, 'admin');
-
-// Remove member from project
-await db.projectMembers.removeMember(projectId, userId);
-
-// Get all members of a project
-const members = await db.projectMembers.getProjectMembers(projectId);
-
-// Get all projects for a user
-const userProjects = await db.projectMembers.getUserProjects(userId);
-```
-
-### Ticket Integration
-
-```typescript
-// Link bug report to external ticket system
-const ticket = await db.tickets.createTicket(
-  bugReportId,
-  'JIRA-123', // External ticket ID
-  'jira' // System: jira, linear, github, asana, etc.
-);
-
-// Get all tickets linked to a bug report
-const tickets = await db.tickets.findByBugReport(bugReportId);
-
-// Check if specific external ticket exists
-tickets.forEach((ticket) => {
-  console.log(`Linked to ${ticket.system}: ${ticket.external_id}`);
-});
-
-// Delete ticket link
-await db.tickets.delete(ticket.id);
-```
-
-## TypeScript Support
-
-Full TypeScript support with exported types:
-
-```typescript
-import type {
-  BugReport,
-  Project,
-  User,
-  Session,
-  Ticket,
-  BugReportFilters,
-  BugReportSortOptions,
-  PaginatedResult,
-} from '@bugspotter/backend';
-```
-
-## Connection Pooling & Retry Logic
-
-The database client uses connection pooling for optimal performance:
-
-- Automatic connection retry on transient failures
-- Configurable pool size (min/max connections)
-- Connection timeout and idle timeout settings
-- Graceful connection cleanup
-
-### Automatic Retry for Read Operations
-
-**Read operations** are automatically retried on connection failures (exponential backoff):
-
-```typescript
-// ✅ Automatically retried on connection failure
-await db.bugReports.findById(id);
-await db.bugReports.list(filters);
-await db.projects.findByApiKey(apiKey);
-```
-
-**Write operations** are NOT automatically retried to prevent data corruption:
-
-```typescript
-// ❌ NOT automatically retried (could cause duplicates)
-await db.bugReports.create(data);
-await db.bugReports.update(id, data);
-await db.bugReports.delete(id);
-await db.bugReports.createBatch(dataArray);
-
-// If you need retry for writes, implement with idempotency:
-import { executeWithRetry } from '@bugspotter/backend';
-
-// Manual retry with idempotency key
-await executeWithRetry(async () => {
-  return await db.bugReports.create({
-    ...data,
-    idempotency_key: uniqueKey, // Prevent duplicates
-  });
-});
-```
-
-```typescript
-// Close all connections when shutting down
-await db.close();
-```
-
-## Error Handling
-
-The client includes automatic retry logic for connection failures:
-
-```typescript
-try {
-  const bugReport = await db.bugReports.findById(id);
-  if (!bugReport) {
-    console.log('Bug report not found');
-  }
-} catch (error) {
-  console.error('Database error:', error);
-}
-```
-
-## Development
-
-```bash
-# Run in development mode with auto-reload
-pnpm dev
-
-# Build TypeScript
-pnpm build
-
-# Run tests (uses Testcontainers - Docker required)
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Run tests with coverage
-pnpm test:coverage
-```
-
-## Testing
-
-Tests use [Testcontainers](https://testcontainers.com/) for automatic PostgreSQL container management. Docker must be installed and running.
-
-```bash
-pnpm test              # Run all tests
-pnpm test:watch        # Watch mode
-pnpm test:coverage     # With coverage
-```
-
-See [TESTING.md](./TESTING.md) for comprehensive testing documentation, troubleshooting, and CI/CD integration.
-
-## Architecture
-
-### Authentication & Authorization
-
-#### Overview
-
-The backend uses **dual authentication**:
-
-- **API Keys** (`X-API-Key` header) - For SDK requests, project-scoped
-- **JWT Tokens** (`Authorization: Bearer` header) - For user requests, user-scoped
-
-#### Public Routes
-
-Routes can be marked as public (no authentication required) using route configuration:
-
-```typescript
-// Mark a route as public
-fastify.get('/public-route', { config: { public: true } }, async (request, reply) => {
-  return { message: 'This route is accessible without authentication' };
-});
-
-// Protected route (default)
-fastify.get('/protected-route', async (request, reply) => {
-  // Will require X-API-Key or Authorization header
-  return { message: 'Authentication required' };
-});
-```
-
-**Public routes by default:**
-
-- `GET /` - API information
-- `GET /health` - Health check
-- `GET /ready` - Readiness check
-- `POST /api/v1/auth/register` - User registration
-- `POST /api/v1/auth/login` - User login
-- `POST /api/v1/auth/refresh` - Token refresh
-
-#### Authentication Middleware
-
-The `createAuthMiddleware()` automatically:
-
-1. Checks if route is marked as `config.public`
-2. Attempts API key authentication (`X-API-Key` header)
-3. Falls back to JWT authentication (`Authorization: Bearer` header)
-4. Sets `request.authProject` or `request.authUser` for downstream handlers
-
-```typescript
-import { createAuthMiddleware } from '@bugspotter/backend';
-
-const authMiddleware = createAuthMiddleware(db);
-fastify.addHook('onRequest', authMiddleware);
-```
-
-#### Role-Based Access Control
-
-Use the `requireRole()` middleware to restrict routes by user role:
-
-```typescript
-import { requireRole } from '@bugspotter/backend';
-
-// Admin only
-fastify.post('/api/v1/admin/action', { preHandler: requireRole('admin') }, handler);
-
-// Admin or user (viewer excluded)
-fastify.post('/api/v1/projects', { preHandler: requireRole('admin', 'user') }, handler);
-```
-
-Available roles: `admin`, `user`, `viewer`
-
-### Repository Pattern
-
-The backend uses the **Repository Pattern** for clean separation of concerns and improved testability:
-
-#### Architecture Overview
-
-```
-DatabaseClient (Facade)
-    ├── ProjectRepository
-    ├── BugReportRepository
-    ├── UserRepository
-    ├── SessionRepository
-    └── TicketRepository
-         └── BaseRepository (abstract)
-```
-
-#### Using DatabaseClient
-
-The `DatabaseClient` provides convenient access to all repositories:
+### Basic Operations
 
 ```typescript
 import { createDatabaseClient } from '@bugspotter/backend';
 
 const db = createDatabaseClient();
 
-// Access repositories through the client
-const project = await db.projects.create({ name: 'My App', api_key: 'key' });
-const bug = await db.bugReports.create({ project_id: project.id, title: 'Bug' });
-```
+// Create bug report
+const bug = await db.bugReports.create({
+  project_id: 'project-uuid',
+  title: 'Critical issue',
+  priority: 'high',
+});
 
-#### Using Repositories Directly
-
-For dependency injection or testing, use repositories directly:
-
-```typescript
-import { ProjectRepository, BugReportRepository } from '@bugspotter/backend';
-import { Pool } from 'pg';
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const projectRepo = new ProjectRepository(pool);
-const bugReportRepo = new BugReportRepository(pool);
-
-// Direct repository access
-const project = await projectRepo.create({ name: 'My App', api_key: 'key' });
-const project = await projectRepo.findByApiKey('key');
-
-// Advanced repository methods
-const results = await bugReportRepo.list(
+// Query with filters
+const result = await db.bugReports.list(
   { status: 'open', priority: 'high' },
   { sort_by: 'created_at', order: 'desc' },
   { page: 1, limit: 20 }
 );
+
+// Transactions
+await db.transaction(async (tx) => {
+  const bug = await tx.bugReports.create({...});
+  const session = await tx.sessions.createSession(bug.id, {...});
+  return { bug, session };
+});
 ```
 
-#### Available Repositories
+### Repository Pattern
 
-- **ProjectRepository** - `create`, `findById`, `findByApiKey`, `update`, `delete`, `hasAccess`, `getUserRole`
-- **ProjectMemberRepository** - `addMember`, `removeMember`, `getProjectMembers`, `getUserProjects`
-- **BugReportRepository** - `create`, `findById`, `update`, `delete`, `list`, `createBatch`, `createBatchAuto`
-- **UserRepository** - `create`, `findById`, `findByEmail`, `findByOAuth`, `update`, `delete`
-- **SessionRepository** - `createSession`, `findById`, `findByBugReport`, `delete`
-- **TicketRepository** - `createTicket`, `findById`, `findByBugReport`, `delete`
+```typescript
+import { ProjectRepository } from '@bugspotter/backend';
 
-#### Benefits
+const projectRepo = new ProjectRepository(pool);
+const project = await projectRepo.findByApiKey('bgs_...');
+```
 
-- ✅ **Single Responsibility** - Each repository handles one entity type
-- ✅ **Testability** - Easy to mock repositories in unit tests
-- ✅ **Dependency Injection** - Inject repositories into services
-- ✅ **Reusability** - Share common CRUD logic in `BaseRepository`
-- ✅ **Clean API** - Direct repository access with automatic retry logic
+Available repositories: `ProjectRepository`, `BugReportRepository`, `UserRepository`, `SessionRepository`, `TicketRepository`, `ProjectMemberRepository`
 
-See [examples/repository-usage.ts](./examples/repository-usage.ts) for a complete example.
+## Storage Layer
 
-### Connection Management
+### Configuration
 
-- Uses `pg` package with connection pooling
-- Automatic retry on connection failures (3 attempts with exponential backoff)
-- Pool error handling to prevent crashes
+```typescript
+import { createStorage } from '@bugspotter/backend';
 
-### JSON Serialization
+// Local filesystem
+const storage = createStorage({
+  backend: 'local',
+  baseDir: './uploads',
+});
 
-- Automatic serialization/deserialization of JSONB fields
-- Type-safe metadata and settings objects
-- Preserves nested object structures
+// S3-compatible
+const storage = createStorage({
+  backend: 's3',
+  bucket: 'bugspotter',
+  region: 'us-east-1',
+});
+```
 
-### Query Building
+### Operations
 
-- Dynamic query building for flexible filtering
-- Parameterized queries to prevent SQL injection
-- Efficient pagination with total count
+```typescript
+// Upload screenshot
+const result = await storage.uploadScreenshot(projectId, bugId, buffer, 'image/png');
+
+// Upload attachment
+const result = await storage.uploadAttachment(projectId, bugId, buffer, 'report.pdf');
+
+// Upload replay chunks
+await storage.uploadReplayMetadata(projectId, bugId, metadata);
+await storage.uploadReplayChunks(projectId, bugId, chunks);
+```
+
+## Architecture
+
+### Authentication Flow
+
+- **API Keys** (`X-API-Key`) - SDK requests, project-scoped, never expire
+- **JWT Tokens** (`Authorization: Bearer`) - User requests, 1h access + 7d refresh
+
+Mark routes as public:
+
+```typescript
+fastify.get('/public', { config: { public: true } }, handler);
+```
+
+### Error Handling
+
+Uses **Strategy Pattern** for error types:
+
+```typescript
+const errorHandlers = [
+  { matcher: isValidationError, processor: processValidationError },
+  { matcher: isDatabaseError, processor: processDatabaseError },
+  // Add new handlers without modifying existing code
+];
+```
+
+### Repository Pattern
+
+```
+DatabaseClient (Facade)
+    ├── ProjectRepository
+    ├── BugReportRepository
+    └── ... (6 repositories)
+         └── BaseRepository (shared logic)
+```
+
+Benefits: Testability, dependency injection, single responsibility
+
+### Retry Logic
+
+Automatic retry for read operations only:
+
+```typescript
+// ✅ Auto-retried on connection failure
+await db.bugReports.findById(id);
+
+// ❌ Not retried (prevents duplicates)
+await db.bugReports.create(data);
+```
+
+## Testing
+
+```bash
+# Run all tests (Docker required)
+pnpm test
+
+# Watch mode
+pnpm test:watch
+
+# Coverage
+pnpm test:coverage
+```
+
+**457 tests** total:
+
+- 340 unit tests (database, API, storage, utilities)
+- 104 integration tests (API + DB + storage)
+- 13 load tests (performance)
+
+Uses [Testcontainers](https://testcontainers.com/) - **no manual database setup required!**
+
+See [TESTING.md](./TESTING.md) for comprehensive guide.
+
+## Security
+
+### SQL Injection Protection
+
+- ✅ Parameterized queries (`$1`, `$2` placeholders)
+- ✅ Identifier validation (`^[a-zA-Z0-9_]+$`)
+- ✅ Pagination limits (1-1000)
+- ✅ Batch size limits (max 1000)
+
+### Content Security Policy
+
+Helmet with strict CSP:
+
+```typescript
+contentSecurityPolicy: {
+  directives: {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'"],  // NO 'unsafe-inline'
+    imgSrc: ["'self'", 'data:'],  // NO 'https:'
+  }
+}
+```
+
+See [SECURITY.md](./SECURITY.md) for details.
+
+## Development
+
+```bash
+# Watch mode
+pnpm dev
+
+# Build
+pnpm build
+
+# Lint
+pnpm lint
+
+# Format
+pnpm format
+```
 
 ## License
 

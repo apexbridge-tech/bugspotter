@@ -1,13 +1,7 @@
-/**
- * Local filesystem storage implementation
- * For development/testing without S3/MinIO
- */
-
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import type {
-  IStorageService,
   LocalConfig,
   UploadResult,
   SignedUrlOptions,
@@ -16,6 +10,7 @@ import type {
   StorageObject,
   MultipartUploadOptions,
 } from './types.js';
+import { BaseStorageService } from './base-storage.service.js';
 import {
   StorageError,
   StorageConnectionError,
@@ -27,16 +22,13 @@ import { getLogger } from '../logger.js';
 
 const logger = getLogger();
 
-/**
- * Local filesystem storage service
- * Implements same interface as S3 storage for development
- */
-export class LocalStorageService implements IStorageService {
+export class LocalStorageService extends BaseStorageService {
   private readonly baseDirectory: string;
   private readonly baseUrl: string;
   private initialized = false;
 
   constructor(config: LocalConfig) {
+    super();
     this.baseDirectory = path.resolve(config.baseDirectory);
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
 
@@ -46,9 +38,6 @@ export class LocalStorageService implements IStorageService {
     });
   }
 
-  /**
-   * Initialize local storage (create base directory)
-   */
   async initialize(): Promise<void> {
     if (this.initialized) {
       logger.debug('Storage already initialized');
@@ -56,11 +45,9 @@ export class LocalStorageService implements IStorageService {
     }
 
     try {
-      // Create base directory if it doesn't exist
       await fs.mkdir(this.baseDirectory, { recursive: true });
       logger.info('Base directory created/verified', { baseDirectory: this.baseDirectory });
 
-      // Test write permissions
       const testFile = path.join(this.baseDirectory, '.health-check');
       await fs.writeFile(testFile, 'OK');
       await fs.unlink(testFile);
@@ -76,81 +63,7 @@ export class LocalStorageService implements IStorageService {
     this.initialized = true;
   }
 
-  /**
-   * Upload a screenshot (original)
-   */
-  async uploadScreenshot(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult> {
-    const key = this.buildKey('screenshots', projectId, bugId, 'original.png');
-    const contentType = getContentType(buffer);
-    return await this.uploadBuffer(key, buffer, contentType);
-  }
-
-  /**
-   * Upload a screenshot thumbnail
-   */
-  async uploadThumbnail(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult> {
-    const key = this.buildKey('screenshots', projectId, bugId, 'thumbnail.jpg');
-    return await this.uploadBuffer(key, buffer, 'image/jpeg');
-  }
-
-  /**
-   * Upload session replay metadata
-   */
-  async uploadReplayMetadata(
-    projectId: string,
-    bugId: string,
-    metadata: Record<string, unknown>
-  ): Promise<UploadResult> {
-    const key = this.buildKey('replays', projectId, bugId, 'metadata.json');
-    const buffer = Buffer.from(JSON.stringify(metadata, null, 2));
-    return await this.uploadBuffer(key, buffer, 'application/json');
-  }
-
-  /**
-   * Upload a session replay chunk
-   */
-  async uploadReplayChunk(
-    projectId: string,
-    bugId: string,
-    chunkIndex: number,
-    data: Buffer
-  ): Promise<UploadResult> {
-    const key = this.buildKey('replays', projectId, bugId, `chunks/${chunkIndex}.json.gz`);
-    return await this.uploadBuffer(key, data, 'application/gzip');
-  }
-
-  /**
-   * Upload an attachment file
-   */
-  async uploadAttachment(
-    projectId: string,
-    bugId: string,
-    filename: string,
-    buffer: Buffer
-  ): Promise<UploadResult> {
-    // Sanitize filename to prevent path traversal
-    // First remove any path separators and ".." sequences
-    let sanitizedFilename = filename
-      .replace(/\.\./g, '') // Remove all ".." sequences
-      .replace(/[/\\]/g, '') // Remove path separators
-      .replace(/[^a-zA-Z0-9._-]/g, '_'); // Replace other invalid chars
-
-    // Ensure filename is not empty after sanitization
-    if (!sanitizedFilename || sanitizedFilename === '.') {
-      sanitizedFilename = 'attachment';
-    }
-
-    const key = this.buildKey('attachments', projectId, bugId, sanitizedFilename);
-    const contentType = getContentType(buffer);
-    return await this.uploadBuffer(key, buffer, contentType);
-  }
-
-  /**
-   * Generate a "signed" URL (in local mode, just returns public URL)
-   */
   async getSignedUrl(key: string, options?: SignedUrlOptions): Promise<string> {
-    // For local storage, we can't really sign URLs
-    // Just return the public URL with optional query params
     const url = `${this.baseUrl}/${key}`;
 
     if (options?.responseContentType || options?.responseContentDisposition) {
@@ -167,9 +80,6 @@ export class LocalStorageService implements IStorageService {
     return url;
   }
 
-  /**
-   * Delete a single file
-   */
   async deleteObject(key: string): Promise<void> {
     const filePath = this.keyToPath(key);
 
@@ -179,7 +89,6 @@ export class LocalStorageService implements IStorageService {
     } catch (error: unknown) {
       const err = error as { code?: string };
       if (err.code === 'ENOENT') {
-        // File doesn't exist, that's okay
         return;
       }
       throw new StorageError(
@@ -190,23 +99,17 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Delete all files with a given prefix (folder)
-   */
   async deleteFolder(prefix: string): Promise<number> {
     const folderPath = this.keyToPath(prefix);
     let deletedCount = 0;
 
     try {
-      // Check if folder exists
       try {
         await fs.access(folderPath);
       } catch {
-        // Folder doesn't exist, nothing to delete
         return 0;
       }
 
-      // Recursively delete folder contents
       deletedCount = await this.deleteFolderRecursive(folderPath);
 
       logger.info('Folder deleted', { prefix, folderPath, deletedCount });
@@ -220,9 +123,6 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * List files with a given prefix
-   */
   async listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult> {
     const prefix = options?.prefix ?? '';
     const maxKeys = options?.maxKeys ?? 1000;
@@ -231,15 +131,12 @@ export class LocalStorageService implements IStorageService {
     try {
       const objects: StorageObject[] = [];
 
-      // Check if folder exists
       try {
         await fs.access(folderPath);
       } catch {
-        // Folder doesn't exist, return empty list
         return { objects: [], isTruncated: false };
       }
 
-      // Recursively list files
       await this.listFilesRecursive(folderPath, prefix, objects, maxKeys);
 
       return {
@@ -255,17 +152,11 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Retrieve a file as a stream
-   */
   async getObject(key: string): Promise<Readable> {
     const filePath = this.keyToPath(key);
 
     try {
-      // Check if file exists
       await fs.access(filePath);
-
-      // Read file and create stream
       const buffer = await fs.readFile(filePath);
       return bufferToStream(buffer);
     } catch (error: unknown) {
@@ -281,9 +172,6 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Check if a file exists and get its metadata
-   */
   async headObject(key: string): Promise<StorageObject | null> {
     const filePath = this.keyToPath(key);
 
@@ -312,9 +200,6 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Upload a stream
-   */
   async uploadStream(
     key: string,
     stream: Readable,
@@ -336,9 +221,6 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Health check
-   */
   async healthCheck(): Promise<boolean> {
     try {
       await fs.access(this.baseDirectory);
@@ -348,11 +230,7 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Upload a buffer to local filesystem
-   * @private
-   */
-  private async uploadBuffer(
+  protected async uploadBuffer(
     key: string,
     buffer: Buffer,
     contentType: string
@@ -360,11 +238,8 @@ export class LocalStorageService implements IStorageService {
     const filePath = this.keyToPath(key);
 
     try {
-      // Create directory structure
       const dir = path.dirname(filePath);
       await fs.mkdir(dir, { recursive: true });
-
-      // Write file
       await fs.writeFile(filePath, buffer);
 
       logger.debug('File uploaded', { key, filePath, size: buffer.length });
@@ -385,26 +260,10 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  /**
-   * Build a standardized storage key path
-   * @private
-   */
-  private buildKey(type: string, projectId: string, bugId: string, filename: string): string {
-    return `${type}/${projectId}/${bugId}/${filename}`;
-  }
-
-  /**
-   * Convert storage key to filesystem path
-   * @private
-   */
   private keyToPath(key: string): string {
     return path.join(this.baseDirectory, key);
   }
 
-  /**
-   * Recursively delete folder contents
-   * @private
-   */
   private async deleteFolderRecursive(folderPath: string): Promise<number> {
     let count = 0;
 
@@ -423,11 +282,10 @@ export class LocalStorageService implements IStorageService {
         }
       }
 
-      // Try to remove the folder itself (may fail if not empty)
       try {
         await fs.rmdir(folderPath);
       } catch {
-        // Ignore errors removing the folder itself
+        // Ignore
       }
     } catch (error) {
       logger.warn('Error during recursive delete', { folderPath, error });
@@ -436,10 +294,6 @@ export class LocalStorageService implements IStorageService {
     return count;
   }
 
-  /**
-   * Recursively list files
-   * @private
-   */
   private async listFilesRecursive(
     dirPath: string,
     prefix: string,
@@ -465,7 +319,7 @@ export class LocalStorageService implements IStorageService {
         } else if (entry.isFile()) {
           const stats = await fs.stat(fullPath);
           const relativePath = path.relative(this.baseDirectory, fullPath);
-          const key = relativePath.replace(/\\/g, '/'); // Normalize to forward slashes
+          const key = relativePath.replace(/\\/g, '/');
 
           results.push({
             key,

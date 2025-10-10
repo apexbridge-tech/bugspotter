@@ -342,10 +342,13 @@ describe('StorageService (S3)', () => {
     });
 
     it('should retry on failure', async () => {
+      const networkError = new Error('Network error') as Error & { code?: string };
+      networkError.code = 'ECONNRESET'; // Matches RetryPredicates.isStorageError
+
       const mockSend = vi
         .fn()
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockRejectedValueOnce(new Error('Network error'))
+        .mockRejectedValueOnce(networkError)
+        .mockRejectedValueOnce(networkError)
         .mockResolvedValueOnce({ ETag: '"success"' });
 
       (storage as any).client.send = mockSend;
@@ -358,7 +361,10 @@ describe('StorageService (S3)', () => {
     });
 
     it('should throw error after max retries', async () => {
-      const mockSend = vi.fn().mockRejectedValue(new Error('Persistent error'));
+      const networkError = new Error('Persistent error') as Error & { code?: string };
+      networkError.code = 'ETIMEDOUT'; // Matches RetryPredicates.isStorageError
+
+      const mockSend = vi.fn().mockRejectedValue(networkError);
       (storage as any).client.send = mockSend;
       (storage as any).config.maxRetries = 2;
 
@@ -440,9 +446,11 @@ describe('StorageService (S3)', () => {
 describe('LocalStorageService', () => {
   let storage: LocalStorageService;
   let localConfig: LocalConfig;
-  const testDir = './test-uploads-' + Date.now();
+  let testDir: string;
 
   beforeEach(() => {
+    // Generate unique directory per test for proper isolation
+    testDir = './test-uploads-' + Date.now() + '-' + Math.random().toString(36).substring(7);
     localConfig = {
       baseDirectory: testDir,
       baseUrl: 'http://localhost:3000/uploads',
@@ -454,8 +462,12 @@ describe('LocalStorageService', () => {
     // Cleanup test directory
     try {
       await storage.deleteFolder('');
-    } catch {
-      // Ignore cleanup errors
+      // Also remove the base directory itself
+      const fs = await import('node:fs/promises');
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch (error) {
+      // Log cleanup errors for debugging but don't fail tests
+      console.warn(`Failed to cleanup test directory ${testDir}:`, error);
     }
   });
 

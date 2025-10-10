@@ -410,17 +410,42 @@ const storage = createStorageFromEnv();
 const storage = createStorage(config);
 ```
 
-### Interface-Based Design
+### Template Method Pattern
 
-Both S3 and local storage implement `IStorageService`:
+Storage implementations use `BaseStorageService` to eliminate code duplication:
 
 ```typescript
-interface IStorageService {
-  initialize(): Promise<void>;
-  uploadScreenshot(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult>;
-  uploadThumbnail(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult>;
-  // ... more methods
-  healthCheck(): Promise<boolean>;
+// Base class handles common upload logic
+abstract class BaseStorageService implements IStorageService {
+  // Template method with validation/sanitization
+  protected async uploadWithKey(...) {
+    // 1. Validate project ID and bug ID
+    // 2. Build and sanitize storage key
+    // 3. Determine content type
+    // 4. Delegate to implementation
+    return await this.uploadBuffer(key, buffer, contentType);
+  }
+
+  // Subclasses implement storage-specific logic
+  protected abstract uploadBuffer(
+    key: string,
+    buffer: Buffer,
+    contentType: string
+  ): Promise<UploadResult>;
+}
+
+// S3 implementation
+class StorageService extends BaseStorageService {
+  protected async uploadBuffer(key, buffer, contentType) {
+    // S3-specific upload with retry logic
+  }
+}
+
+// Local implementation
+class LocalStorageService extends BaseStorageService {
+  protected async uploadBuffer(key, buffer, contentType) {
+    // Filesystem-specific upload
+  }
 }
 ```
 

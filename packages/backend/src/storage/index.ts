@@ -242,3 +242,22 @@ export {
   validateStream,
   getContentType,
 } from './stream.utils.js';
+
+export {
+  STREAM_LIMITS,
+  FILE_SIGNATURES,
+  isWebPFormat,
+  type FileSignature,
+} from './stream.constants.js';
+
+export {
+  sanitizeFilename,
+  buildStorageKey,
+  sanitizeS3Key,
+  validateProjectId,
+  validateBugId,
+  isValidUUID,
+} from './path.utils.js';
+
+// Export base class for custom implementations
+export { BaseStorageService } from './base-storage.service.js';

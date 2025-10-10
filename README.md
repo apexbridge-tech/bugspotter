@@ -102,111 +102,38 @@ customPatterns: [
 
 ## 📦 Project Structure
 
-This is a **pnpm workspace monorepo** with the following structure:
+**pnpm workspace monorepo:**
 
-\`\`\`
-bugspotter/
-├── .github/
-│ └── workflows/
-│ └── ci.yml # CI/CD pipeline
-├── packages/
-│ ├── sdk/ # @bugspotter/sdk - Core SDK + Session Replay
-│ ├── types/ # @bugspotter/types - Shared TypeScript types
-│ └── backend-mock/ # @bugspotter/backend-mock - Mock API server
-├── apps/
-│ └── demo/ # Interactive demo application
-├── docs/ # Documentation
-├── pnpm-workspace.yaml # Workspace configuration
-└── package.json # Root package.json
-\`\`\`
-
-### Workspace Commands
-
-\`\`\`bash
-
-# Install all dependencies
-
-pnpm install
-
-# Run commands across all packages
-
-pnpm run build # Build all packages
-pnpm run test # Test all packages
-pnpm run lint # Lint all packages
-
-# Run commands for specific package
-
-pnpm --filter @bugspotter/sdk run build
-pnpm --filter @bugspotter/sdk run test
-
-# Run commands for all packages in a directory
-
-pnpm --recursive --filter "./packages/\*\*" run test
-\`\`\`
-
-## 📖 API Reference
-
-### Initialize
-
-\`\`\`javascript
-const bugSpotter = BugSpotter.init(config);
-\`\`\`
-
-### Capture
-
-\`\`\`javascript
-const report = await bugSpotter.capture();
-// { screenshot, console, network, metadata, replay }
-\`\`\`
-
-### Custom Widget
-
-\`\`\`javascript
-const button = new BugSpotter.FloatingButton({
-position: 'bottom-right',
-icon: '⚡',
-backgroundColor: '#1a365d'
-});
-
-button.onClick(async () => {
-const report = await bugSpotter.capture();
-// Handle submission
-});
-\`\`\`
-
-[Full API docs →](./packages/sdk/README.md)
+- `packages/sdk` - Core TypeScript SDK (~99KB)
+- `packages/backend` - Fastify REST API with PostgreSQL
+- `packages/types` - Shared TypeScript definitions
+- `packages/backend-mock` - Mock API server
+- `apps/demo` - Interactive demo
 
 ## 🧪 Testing
 
-\`\`\`bash
+**SDK:** 404 tests (unit + E2E + Playwright)  
+**Backend:** 621 tests (unit + integration + load)  
+**Total:** 1,025+ tests - all passing ✅
 
-# Run all tests
-
-cd packages/sdk
-pnpm test # Unit tests (348 tests)
-pnpm run test:e2e # E2E tests (55 tests)
-pnpm run test:browser # Playwright tests (13 tests)
-
-# Development
-
-pnpm test --watch # Watch mode
-pnpm test --ui # Visual UI
-\`\`\`
+```bash
+pnpm test              # All tests
+pnpm test --watch      # Watch mode
+```
 
 ## 🏗️ Tech Stack
 
-**SDK:** TypeScript, Webpack, rrweb, html-to-image  
-**Testing:** Vitest (404 tests total: 348 unit + 55 E2E + 13 Playwright)  
-**Backend:** Node.js, Express, Supabase  
+**SDK:** TypeScript, Webpack, rrweb  
+**Backend:** Fastify 5.6.1, PostgreSQL 16, S3-compatible storage  
+**Testing:** Vitest, Testcontainers  
 **Dev:** pnpm, ESLint, Prettier
 
 ## 📊 Performance
 
 - **Bundle:** ~99 KB minified
 - **Load:** <100ms
-- **Screenshot:** ~500ms
-- **PII:** <10ms overhead
 - **Memory:** <15 MB (30s buffer)
+- **Tests:** 1,025+ total (all passing ✅)
 
 ## 🛣️ Roadmap
 

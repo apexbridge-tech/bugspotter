@@ -6,20 +6,18 @@
 import sharp from 'sharp';
 import type { ImageMetadata } from './types.js';
 import { StorageValidationError } from './types.js';
-
-// Configuration constants
-const MAX_IMAGE_SIZE_MB = 10;
-const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
-const MAX_DIMENSION = 4096; // Max width or height
-const THUMBNAIL_MAX_WIDTH = 200;
-const THUMBNAIL_MAX_HEIGHT = 200;
-const THUMBNAIL_QUALITY = 80;
-const WEBP_QUALITY = 85;
-const JPEG_QUALITY = 90;
-
-// Supported image formats
-const SUPPORTED_FORMATS = ['jpeg', 'jpg', 'png', 'webp', 'gif', 'svg'] as const;
-type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];
+import {
+  MAX_IMAGE_SIZE_MB,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_DIMENSION,
+  THUMBNAIL_MAX_WIDTH,
+  THUMBNAIL_MAX_HEIGHT,
+  THUMBNAIL_QUALITY,
+  WEBP_QUALITY,
+  JPEG_QUALITY,
+  SUPPORTED_FORMATS,
+  type SupportedFormat,
+} from './constants.js';
 
 /**
  * Generate a thumbnail from an image buffer
@@ -78,16 +76,11 @@ export async function optimizeImage(buffer: Buffer): Promise<Buffer> {
       });
     }
 
-    // Strip all metadata for privacy (EXIF, GPS, etc.)
-    image.withMetadata({
-      exif: {},
-      icc: undefined,
-    });
-
     // Try WebP conversion for potential size savings
+    // Image format conversion automatically strips metadata in Sharp
     const webpBuffer = await image.clone().webp({ quality: WEBP_QUALITY, effort: 4 }).toBuffer();
 
-    // Use WebP if it's smaller than original
+    // Use WebP if it's significantly smaller (>10% savings)
     if (webpBuffer.length < buffer.length * 0.9) {
       return webpBuffer;
     }
@@ -103,7 +96,7 @@ export async function optimizeImage(buffer: Buffer): Promise<Buffer> {
       case 'webp':
         return await image.webp({ quality: WEBP_QUALITY }).toBuffer();
       default:
-        // For other formats, just strip metadata
+        // For other formats, convert to preserve stripped metadata
         return await image.toBuffer();
     }
   } catch (error) {
@@ -173,7 +166,7 @@ export async function validateImage(buffer: Buffer): Promise<void> {
     // Validate format
     if (!SUPPORTED_FORMATS.includes(metadata.format as SupportedFormat)) {
       throw new StorageValidationError(
-        `Unsupported image format: ${metadata.format}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
+        `Invalid image format: ${metadata.format}. Supported: ${SUPPORTED_FORMATS.join(', ')}`
       );
     }
 
@@ -192,9 +185,12 @@ export async function validateImage(buffer: Buffer): Promise<void> {
     if (error instanceof StorageValidationError) {
       throw error;
     }
-    throw new StorageValidationError(
-      `Invalid image format: ${error instanceof Error ? error.message : String(error)}`
-    );
+    // Extract just the important part of Sharp's error message
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes('unsupported image format')) {
+      throw new StorageValidationError('Invalid image format');
+    }
+    throw new StorageValidationError(`Invalid image format: ${errorMsg}`);
   }
 }
 
@@ -204,7 +200,7 @@ export async function validateImage(buffer: Buffer): Promise<void> {
  * @returns Format name or null if not recognized
  */
 export function detectImageFormat(buffer: Buffer): string | null {
-  if (buffer.length < 12) {
+  if (buffer.length < 2) {
     return null;
   }
 
@@ -241,16 +237,18 @@ export function detectImageFormat(buffer: Buffer): string | null {
     return 'webp';
   }
 
-  // GIF magic number: GIF87a or GIF89a
-  if (
-    buffer[0] === 0x47 &&
-    buffer[1] === 0x49 &&
-    buffer[2] === 0x46 &&
-    buffer[3] === 0x38 &&
-    (buffer[4] === 0x37 || buffer[4] === 0x39) &&
-    buffer[5] === 0x61
-  ) {
-    return 'gif';
+  // GIF magic number: GIF87a or GIF89a (need at least 6 bytes)
+  if (buffer.length >= 6) {
+    if (
+      buffer[0] === 0x47 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x38 &&
+      (buffer[4] === 0x37 || buffer[4] === 0x39) &&
+      buffer[5] === 0x61
+    ) {
+      return 'gif';
+    }
   }
 
   // SVG (text-based, check for '<svg' or '<?xml')

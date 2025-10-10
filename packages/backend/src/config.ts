@@ -12,6 +12,10 @@ const MAX_PORT = 65535;
 const MIN_TIMEOUT_MS = 1000;
 const MIN_RATE_LIMIT_WINDOW_MS = 1000;
 
+// Valid storage backends
+const VALID_STORAGE_BACKENDS = ['local', 's3', 'minio', 'r2'] as const;
+type StorageBackend = (typeof VALID_STORAGE_BACKENDS)[number];
+
 export const config = {
   database: {
     url: process.env.DATABASE_URL ?? '',
@@ -39,7 +43,7 @@ export const config = {
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10),
   },
   storage: {
-    backend: (process.env.STORAGE_BACKEND ?? 'local') as 'local' | 's3' | 'minio' | 'r2',
+    backend: (process.env.STORAGE_BACKEND ?? 'local') as StorageBackend,
     // Local storage config
     local: {
       baseDirectory: process.env.STORAGE_BASE_DIR ?? './data/uploads',
@@ -125,8 +129,10 @@ export function validateConfig(): void {
   }
 
   // Storage validation
-  if (!['local', 's3', 'minio', 'r2'].includes(config.storage.backend)) {
-    errors.push(`Invalid STORAGE_BACKEND: ${config.storage.backend}`);
+  if (!VALID_STORAGE_BACKENDS.includes(config.storage.backend as StorageBackend)) {
+    errors.push(
+      `Invalid STORAGE_BACKEND: ${config.storage.backend}. Must be one of: ${VALID_STORAGE_BACKENDS.join(', ')}`
+    );
   }
 
   // Validate S3 config if using S3-compatible backend

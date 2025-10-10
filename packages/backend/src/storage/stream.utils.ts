@@ -3,13 +3,59 @@
  * Handles buffer/stream conversions and multipart uploads
  */
 
-import { Readable, PassThrough } from 'node:stream';
+import { Readable, PassThrough, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { StorageError } from './types.js';
+import {
+  STREAM_LIMITS,
+  FILE_SIGNATURES,
+  isWebPFormat,
+  type FileSignature,
+} from './stream.constants.js';
+
+/**
+ * Generic stream processor with consistent event handling
+ * Eliminates duplicate event handler patterns across functions
+ *
+ * @param stream - Readable stream to process
+ * @param onData - Callback invoked for each data chunk
+ * @param onComplete - Function called when stream ends, returns final result
+ * @returns Promise that resolves with result from onComplete
+ * @throws StorageError on stream errors
+ */
+async function processStream<T>(
+  stream: Readable,
+  onData: (chunk: Buffer) => void,
+  onComplete: () => T
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    stream.on('data', (chunk: Buffer) => {
+      try {
+        onData(chunk);
+      } catch (error) {
+        stream.destroy();
+        reject(error);
+      }
+    });
+
+    stream.on('end', () => {
+      try {
+        resolve(onComplete());
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    stream.on('error', (error) => {
+      reject(new StorageError(`Stream error: ${error.message}`, 'STREAM_ERROR', error));
+    });
+  });
+}
 
 /**
  * Convert a Readable stream to a Buffer
  * Useful for small files that need to be fully loaded into memory
+ * Refactored to use processStream helper for consistent error handling
  *
  * @param stream - Readable stream to convert
  * @param maxSize - Maximum allowed size in bytes (default: 10MB)
@@ -18,37 +64,25 @@ import { StorageError } from './types.js';
  */
 export async function streamToBuffer(
   stream: Readable,
-  maxSize: number = 10485760
+  maxSize: number = STREAM_LIMITS.MAX_BUFFER_SIZE
 ): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let totalSize = 0;
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
 
-    stream.on('data', (chunk: Buffer) => {
+  return processStream(
+    stream,
+    (chunk) => {
       totalSize += chunk.length;
-
       if (totalSize > maxSize) {
-        stream.destroy();
-        reject(
-          new StorageError(
-            `Stream exceeds maximum size of ${maxSize} bytes`,
-            'STREAM_SIZE_EXCEEDED'
-          )
+        throw new StorageError(
+          `Stream exceeds maximum size of ${maxSize} bytes`,
+          'STREAM_SIZE_EXCEEDED'
         );
-        return;
       }
-
       chunks.push(chunk);
-    });
-
-    stream.on('end', () => {
-      resolve(Buffer.concat(chunks));
-    });
-
-    stream.on('error', (error) => {
-      reject(new StorageError(`Stream error: ${error.message}`, 'STREAM_ERROR', error));
-    });
-  });
+    },
+    () => Buffer.concat(chunks)
+  );
 }
 
 /**
@@ -86,6 +120,8 @@ export function createProgressStream(onProgress?: (bytesTransferred: number) => 
 
 /**
  * Split a stream into chunks for multipart upload
+ * Refactored to use processStream helper for consistent error handling
+ *
  * @param stream - Source stream
  * @param chunkSize - Size of each chunk in bytes
  * @returns Array of buffers (chunks)
@@ -98,8 +134,9 @@ export async function splitStreamIntoChunks(
   let currentChunk: Buffer[] = [];
   let currentSize = 0;
 
-  return new Promise((resolve, reject) => {
-    stream.on('data', (data: Buffer) => {
+  return processStream(
+    stream,
+    (data) => {
       currentChunk.push(data);
       currentSize += data.length;
 
@@ -113,18 +150,15 @@ export async function splitStreamIntoChunks(
         currentChunk = remainder.length > 0 ? [remainder] : [];
         currentSize = remainder.length;
       }
-    });
-
-    stream.on('end', () => {
+    },
+    () => {
       // Add any remaining data as final chunk
       if (currentChunk.length > 0) {
         chunks.push(Buffer.concat(currentChunk));
       }
-      resolve(chunks);
-    });
-
-    stream.on('error', reject);
-  });
+      return chunks;
+    }
+  );
 }
 
 /**
@@ -159,41 +193,44 @@ export function measureStream(stream: Readable): [Promise<number>, Readable] {
 /**
  * Retry a stream operation with exponential backoff
  * Creates a new stream for each retry attempt
+ * Now uses unified retry utility for consistency
  *
  * @param streamFactory - Function that creates a new stream
  * @param operation - Async operation to perform with the stream
- * @param maxRetries - Maximum number of retry attempts
- * @param baseDelay - Base delay in ms for exponential backoff
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelay - Base delay in ms for exponential backoff (default: 1000)
+ * @param shouldRetry - Optional predicate to determine if error should be retried (default: retry all errors)
  * @returns Result of the operation
  */
 export async function retryStreamOperation<T>(
   streamFactory: () => Readable,
   operation: (stream: Readable) => Promise<T>,
   maxRetries: number = 3,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
+  shouldRetry?: (error: unknown) => boolean
 ): Promise<T> {
-  let lastError: Error | undefined;
+  // Import at function level to avoid circular dependencies
+  const { executeWithRetry } = await import('../utils/retry.js');
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const stream = streamFactory();
-      return await operation(stream);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      if (attempt < maxRetries) {
-        // Exponential backoff: baseDelay * 2^attempt
-        const delay = baseDelay * Math.pow(2, attempt);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+  try {
+    return await executeWithRetry(
+      async () => {
+        const stream = streamFactory();
+        return await operation(stream);
+      },
+      {
+        maxAttempts: maxRetries + 1,
+        baseDelay,
+        shouldRetry, // Use provided predicate or default to retrying all errors
       }
-    }
+    );
+  } catch (error) {
+    throw new StorageError(
+      `Stream operation failed after ${maxRetries + 1} attempts: ${error instanceof Error ? error.message : String(error)}`,
+      'STREAM_OPERATION_FAILED',
+      error instanceof Error ? error : undefined
+    );
   }
-
-  throw new StorageError(
-    `Stream operation failed after ${maxRetries + 1} attempts: ${lastError?.message}`,
-    'STREAM_OPERATION_FAILED',
-    lastError
-  );
 }
 
 /**
@@ -224,46 +261,49 @@ export async function safePipe(
 }
 
 /**
- * Create a transform stream that limits read rate
- * Useful for rate-limiting uploads/downloads
+ * Create a rate-limited stream using Transform stream with proper async handling.
+ * Uses a token bucket algorithm to limit throughput while maintaining backpressure.
  *
  * @param bytesPerSecond - Maximum bytes per second
- * @returns PassThrough stream with rate limiting
+ * @returns Transform stream with rate limiting
  */
-export function createRateLimitedStream(bytesPerSecond: number): PassThrough {
-  const passThrough = new PassThrough();
+export function createRateLimitedStream(bytesPerSecond: number): Transform {
   let bytesThisSecond = 0;
   let lastReset = Date.now();
 
-  const originalPush = passThrough.push.bind(passThrough);
+  return new Transform({
+    async transform(chunk: Buffer, _encoding, callback) {
+      try {
+        const now = Date.now();
+        const elapsed = now - lastReset;
 
-  passThrough.push = function (chunk: Buffer | null, encoding?: BufferEncoding): boolean {
-    if (chunk === null) {
-      return originalPush(chunk, encoding);
-    }
+        // Reset counter every second
+        if (elapsed >= 1000) {
+          bytesThisSecond = 0;
+          lastReset = now;
+        }
 
-    const now = Date.now();
-    if (now - lastReset >= 1000) {
-      // Reset counter every second
-      bytesThisSecond = 0;
-      lastReset = now;
-    }
+        const chunkSize = chunk.length;
+        bytesThisSecond += chunkSize;
 
-    bytesThisSecond += chunk.length;
+        // If we've exceeded the rate limit, delay until next second
+        if (bytesThisSecond > bytesPerSecond) {
+          const delayMs = Math.max(0, 1000 - elapsed);
+          if (delayMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
 
-    if (bytesThisSecond > bytesPerSecond) {
-      // Delay to stay under rate limit
-      const delayMs = 1000 - (now - lastReset);
-      setTimeout(() => {
-        originalPush(chunk, encoding);
-      }, delayMs);
-      return false;
-    }
+          // Reset after delay
+          bytesThisSecond = chunkSize;
+          lastReset = Date.now();
+        }
 
-    return originalPush(chunk, encoding);
-  };
-
-  return passThrough;
+        callback(null, chunk);
+      } catch (error) {
+        callback(error as Error);
+      }
+    },
+  });
 }
 
 /**
@@ -273,7 +313,7 @@ export function createRateLimitedStream(bytesPerSecond: number): PassThrough {
  */
 export function validateStream(stream: Readable): void {
   if (!stream) {
-    throw new StorageError('Stream is null or undefined', 'INVALID_STREAM');
+    throw new StorageError('Invalid stream', 'INVALID_STREAM');
   }
 
   if (stream.destroyed) {
@@ -286,55 +326,60 @@ export function validateStream(stream: Readable): void {
 }
 
 /**
+ * Check if buffer matches a file signature
+ * Helper function for MIME type detection
+ *
+ * @param buffer - Buffer to check
+ * @param signature - File signature definition
+ * @returns True if buffer matches signature
+ */
+function matchesSignature(buffer: Buffer, signature: FileSignature): boolean {
+  const offset = signature.offset || 0;
+  // Always convert to regular array to ensure proper iteration
+  const sigBytes = Array.from(signature.signature);
+
+  if (buffer.length < offset + sigBytes.length) {
+    return false;
+  }
+
+  return sigBytes.every((byte, index) => buffer[offset + index] === byte);
+}
+
+/**
  * Get content type from buffer by checking magic numbers
+ * Refactored to use signature lookup table for maintainability
+ *
  * @param buffer - Buffer to check
  * @returns MIME type or 'application/octet-stream' if unknown
  */
 export function getContentType(buffer: Buffer): string {
-  if (buffer.length < 12) {
+  if (buffer.length < STREAM_LIMITS.MIN_BUFFER_CHECK) {
     return 'application/octet-stream';
   }
 
-  // Check common file signatures
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return 'image/jpeg';
-  }
-
-  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
-    return 'image/png';
-  }
-
-  if (
-    buffer[0] === 0x52 &&
-    buffer[1] === 0x49 &&
-    buffer[2] === 0x46 &&
-    buffer[3] === 0x46 &&
-    buffer[8] === 0x57 &&
-    buffer[9] === 0x45 &&
-    buffer[10] === 0x42 &&
-    buffer[11] === 0x50
-  ) {
+  // Special case: WEBP requires checking two locations
+  if (isWebPFormat(buffer)) {
     return 'image/webp';
   }
 
-  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
-    return 'image/gif';
+  // Check binary signatures using lookup table
+  for (const sig of FILE_SIGNATURES) {
+    if (matchesSignature(buffer, sig)) {
+      return sig.mimeType;
+    }
   }
 
-  // JSON
-  const text = buffer.slice(0, 100).toString('utf8').trim();
-  if (text.startsWith('{') || text.startsWith('[')) {
-    return 'application/json';
-  }
+  // Check text-based formats (JSON, XML, SVG)
+  if (buffer.length >= 10) {
+    const text = buffer.slice(0, STREAM_LIMITS.TEXT_PREVIEW_SIZE).toString('utf8').trim();
 
-  // XML/SVG
-  if (text.startsWith('<?xml') || text.startsWith('<svg')) {
-    return 'image/svg+xml';
-  }
+    if (text.startsWith('{') || text.startsWith('[')) {
+      return 'application/json';
+    }
 
-  // PDF
-  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) {
-    return 'application/pdf';
+    if (text.startsWith('<?xml') || text.startsWith('<svg')) {
+      return 'image/svg+xml';
+    }
   }
 
   return 'application/octet-stream';

@@ -19,6 +19,7 @@
     "test:watch": "vitest watch --config vitest.config.ts",
     "test:integration:watch": "vitest watch --config vitest.integration.config.ts",
     "test:coverage": "vitest run --coverage",
+    "test:cleanup": "bash scripts/cleanup-test-data.sh",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
