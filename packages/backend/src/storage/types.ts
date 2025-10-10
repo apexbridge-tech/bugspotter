@@ -38,6 +38,7 @@ export interface S3Config {
   // Performance settings
   maxRetries?: number;
   timeout?: number;
+  multipartQueueSize?: number; // Concurrent part uploads for multipart (default: 4)
 
   // Security settings
   serverSideEncryption?: 'AES256' | 'aws:kms'; // Encryption at rest

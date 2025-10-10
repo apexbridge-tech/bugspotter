@@ -133,6 +133,7 @@ export abstract class BaseStorageService implements IStorageService {
 
   /**
    * Hook method for logging filename sanitization
+   * Logs only that sanitization occurred to avoid exposing sensitive filename data
    * Can be overridden by subclasses if needed
    * @protected
    */
@@ -145,8 +146,9 @@ export abstract class BaseStorageService implements IStorageService {
     logger.info('Attachment filename sanitized', {
       projectId,
       bugId,
-      original,
-      sanitized,
+      changed: true,
+      originalLength: original.length,
+      sanitizedLength: sanitized.length,
     });
   }
 

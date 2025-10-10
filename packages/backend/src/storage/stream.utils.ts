@@ -266,7 +266,7 @@ export function createRateLimitedStream(bytesPerSecond: number): Transform {
   let lastReset = Date.now();
 
   return new Transform({
-    async transform(chunk: Buffer, _encoding, callback) {
+    transform(chunk: Buffer, _encoding, callback) {
       try {
         const now = Date.now();
         const elapsed = now - lastReset;
@@ -284,7 +284,14 @@ export function createRateLimitedStream(bytesPerSecond: number): Transform {
         if (bytesThisSecond > bytesPerSecond) {
           const delayMs = Math.max(0, 1000 - elapsed);
           if (delayMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            // Use callback pattern to maintain proper backpressure
+            setTimeout(() => {
+              // Reset after delay
+              bytesThisSecond = chunkSize;
+              lastReset = Date.now();
+              callback(null, chunk);
+            }, delayMs);
+            return;
           }
 
           // Reset after delay

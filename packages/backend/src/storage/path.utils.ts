@@ -421,8 +421,7 @@ export function buildStorageKey(
   }
 
   // Validate type - only allow specific resource types (whitelist approach)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Type widening needed for array includes check
-  if (!DEFAULT_STORAGE_TYPES.includes(type as any)) {
+  if (!(DEFAULT_STORAGE_TYPES as readonly string[]).includes(type)) {
     logger.warn('Invalid storage type provided', { type });
     throw new Error(`Invalid storage type: ${type}`);
   }

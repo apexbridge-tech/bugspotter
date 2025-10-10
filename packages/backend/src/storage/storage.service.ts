@@ -6,16 +6,10 @@ import {
   DeleteObjectsCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
-  CreateBucketCommand,
   HeadBucketCommand,
   type PutObjectCommandInput,
   type ListObjectsV2CommandOutput,
-  type BucketLocationConstraint,
-  type ServerSideEncryption,
-  type StorageClass,
-  type S3ClientConfig,
 } from '@aws-sdk/client-s3';
-import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { Readable } from 'node:stream';
 import type {
@@ -28,21 +22,20 @@ import type {
   MultipartUploadOptions,
 } from './types.js';
 import { BaseStorageService } from './base-storage.service.js';
-import {
-  StorageError,
-  StorageConnectionError,
-  StorageUploadError,
-  StorageNotFoundError,
-} from './types.js';
+import { StorageError, StorageUploadError, StorageNotFoundError } from './types.js';
 import {
   DEFAULT_EXPIRATION_SECONDS,
   DEFAULT_MAX_RETRIES,
   DEFAULT_RETRY_DELAY_MS,
-  DEFAULT_TIMEOUT_MS,
   MAX_KEYS_PER_REQUEST,
 } from './constants.js';
 import { executeWithRetry, RetryPredicates } from '../utils/retry.js';
 import { getLogger } from '../logger.js';
+import { S3ClientBuilder } from './s3-client.builder.js';
+import { S3UrlBuilder } from './s3-url.builder.js';
+import { S3BucketInitializer } from './s3-bucket.initializer.js';
+import { S3ParamsBuilder } from './s3-params.builder.js';
+import { S3StreamUploader } from './s3-stream.uploader.js';
 
 const logger = getLogger();
 
@@ -53,6 +46,10 @@ export class StorageService extends BaseStorageService {
   private readonly client: S3Client;
   private readonly bucket: string;
   private readonly config: S3Config;
+  private readonly urlBuilder: S3UrlBuilder;
+  private readonly paramsBuilder: S3ParamsBuilder;
+  private readonly streamUploader: S3StreamUploader;
+  private readonly bucketInitializer: S3BucketInitializer;
   private initialized = false;
 
   constructor(config: S3Config) {
@@ -60,38 +57,27 @@ export class StorageService extends BaseStorageService {
     this.config = config;
     this.bucket = config.bucket;
 
-    // Build S3 client config
-    const clientConfig: S3ClientConfig = {
-      endpoint: config.endpoint,
-      region: config.region,
-      forcePathStyle: config.forcePathStyle ?? false,
-      maxAttempts: config.maxRetries ?? DEFAULT_MAX_RETRIES,
-      requestHandler: {
-        requestTimeout: config.timeout ?? DEFAULT_TIMEOUT_MS,
-      },
-    };
+    // Build S3 client using helper
+    this.client = S3ClientBuilder.build(config);
 
-    // Only set credentials if provided (allows IAM role usage)
-    if (config.accessKeyId && config.secretAccessKey) {
-      clientConfig.credentials = {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-        sessionToken: config.sessionToken, // Optional: for STS/assumed roles
-      };
-    }
-    // If no credentials, SDK will use default credential chain:
-    // 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    // 2. Shared credentials file (~/.aws/credentials)
-    // 3. IAM role for EC2/ECS/Lambda
-
-    this.client = new S3Client(clientConfig);
+    // Initialize helper classes (Single Responsibility Principle)
+    this.urlBuilder = new S3UrlBuilder(config, this.bucket);
+    this.paramsBuilder = new S3ParamsBuilder(config);
+    this.streamUploader = new S3StreamUploader(
+      this.client,
+      this.bucket,
+      config,
+      this.urlBuilder,
+      this.paramsBuilder
+    );
+    this.bucketInitializer = new S3BucketInitializer(this.client, this.bucket, config);
 
     logger.info('S3 storage service created', {
       bucket: this.bucket,
       region: config.region,
       endpoint: config.endpoint ?? 'AWS S3',
       forcePathStyle: config.forcePathStyle,
-      authMethod: config.accessKeyId ? 'access-key' : 'iam-role/default-chain',
+      hasCredentials: S3ClientBuilder.hasCredentials(config),
     });
   }
 
@@ -101,65 +87,9 @@ export class StorageService extends BaseStorageService {
       return;
     }
 
-    try {
-      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
-      logger.info('Bucket exists and is accessible', { bucket: this.bucket });
-    } catch (error: unknown) {
-      const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
-
-      if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
-        logger.info('Bucket not found, attempting to create', { bucket: this.bucket });
-        try {
-          await this.client.send(
-            new CreateBucketCommand({
-              Bucket: this.bucket,
-              CreateBucketConfiguration:
-                this.config.region !== 'us-east-1'
-                  ? { LocationConstraint: this.config.region as BucketLocationConstraint }
-                  : undefined,
-            })
-          );
-          logger.info('Bucket created successfully', { bucket: this.bucket });
-        } catch (createError) {
-          throw new StorageConnectionError(
-            `Failed to create bucket: ${createError instanceof Error ? createError.message : String(createError)}`,
-            createError instanceof Error ? createError : undefined
-          );
-        }
-      } else {
-        throw new StorageConnectionError(
-          `Failed to access bucket: ${err.name ?? 'Unknown error'}`,
-          error instanceof Error ? error : undefined
-        );
-      }
-    }
-
-    try {
-      const testKey = '.health-check';
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: testKey,
-          Body: Buffer.from('OK'),
-          ContentType: 'text/plain',
-        })
-      );
-
-      // Clean up test file
-      await this.client.send(
-        new DeleteObjectCommand({
-          Bucket: this.bucket,
-          Key: testKey,
-        })
-      );
-
-      logger.info('Storage write test successful');
-    } catch (error) {
-      throw new StorageConnectionError(
-        `No write permissions on bucket: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      );
-    }
+    // Use bucket initializer helper (Single Responsibility)
+    await this.bucketInitializer.verifyBucketAccess();
+    await this.bucketInitializer.testWritePermissions();
 
     this.initialized = true;
     logger.info('Storage service initialized successfully');
@@ -210,8 +140,20 @@ export class StorageService extends BaseStorageService {
     try {
       let deletedCount = 0;
       let continuationToken: string | undefined;
+      let iterations = 0;
+      const maxIterations = 1000; // Safety limit: 1M objects max (1000 iterations * 1000 keys)
 
       do {
+        iterations++;
+        if (iterations > maxIterations) {
+          logger.warn('Delete folder reached max iterations limit', {
+            prefix,
+            deletedCount,
+            maxIterations,
+          });
+          break;
+        }
+
         const listResult = await this.client.send(
           new ListObjectsV2Command({
             Bucket: this.bucket,
@@ -352,54 +294,8 @@ export class StorageService extends BaseStorageService {
     stream: Readable,
     options?: MultipartUploadOptions
   ): Promise<UploadResult> {
-    try {
-      const contentType = options?.contentType ?? 'application/octet-stream';
-      let uploadedBytes = 0;
-
-      // Use S3 Upload for true streaming (no buffering entire file in memory)
-      const upload = new Upload({
-        client: this.client,
-        params: {
-          Bucket: this.bucket,
-          Key: key,
-          Body: stream,
-          ContentType: contentType,
-          ...this.buildS3ObjectParams(), // Apply encryption and storage class
-        },
-        queueSize: 4, // Number of concurrent part uploads
-        partSize: options?.partSize ?? 5 * 1024 * 1024, // Default 5MB parts (S3 minimum)
-      });
-
-      // Track upload progress if callback provided
-      if (options?.onProgress) {
-        upload.on('httpUploadProgress', (progress) => {
-          if (progress.loaded && progress.total) {
-            uploadedBytes = progress.loaded;
-            options.onProgress!(progress.loaded, progress.total);
-          }
-        });
-      }
-
-      const result = await upload.done();
-
-      // Use tracked bytes if available, otherwise estimate from result
-      const size = uploadedBytes || 0;
-
-      logger.debug('Stream uploaded', { key, size });
-
-      return {
-        key,
-        url: this.buildObjectUrl(key),
-        size,
-        etag: result.ETag,
-        contentType,
-      };
-    } catch (error) {
-      throw new StorageUploadError(
-        `Stream upload failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      );
-    }
+    // Delegate to stream uploader helper (Single Responsibility)
+    return this.streamUploader.upload(key, stream, options);
   }
 
   async healthCheck(): Promise<boolean> {
@@ -409,48 +305,6 @@ export class StorageService extends BaseStorageService {
     } catch {
       return false;
     }
-  }
-
-  /**
-   * Build common S3 object parameters from config
-   * Applies encryption and storage class settings
-   */
-  private buildS3ObjectParams(): {
-    ServerSideEncryption?: ServerSideEncryption;
-    SSEKMSKeyId?: string;
-    StorageClass?: StorageClass;
-  } {
-    const params: {
-      ServerSideEncryption?: ServerSideEncryption;
-      SSEKMSKeyId?: string;
-      StorageClass?: StorageClass;
-    } = {};
-
-    if (this.config.serverSideEncryption) {
-      params.ServerSideEncryption = this.config.serverSideEncryption as ServerSideEncryption;
-      if (this.config.serverSideEncryption === 'aws:kms' && this.config.sseKmsKeyId) {
-        params.SSEKMSKeyId = this.config.sseKmsKeyId;
-      }
-    }
-
-    if (this.config.storageClass) {
-      params.StorageClass = this.config.storageClass as StorageClass;
-    }
-
-    return params;
-  }
-
-  /**
-   * Build public URL for an S3 object
-   * Handles both custom endpoints and standard S3 URLs
-   */
-  private buildObjectUrl(key: string): string {
-    if (this.config.endpoint) {
-      // Custom endpoint (MinIO, R2, etc.)
-      return `${this.config.endpoint}/${this.bucket}/${key}`;
-    }
-    // Standard AWS S3 URL
-    return `https://${this.bucket}.s3.${this.config.region}.amazonaws.com/${key}`;
   }
 
   /**
@@ -478,6 +332,18 @@ export class StorageService extends BaseStorageService {
     buffer: Buffer,
     contentType: string
   ): Promise<UploadResult> {
+    // Validate buffer size
+    const bufferSize = buffer.length;
+    if (bufferSize === 0) {
+      throw new StorageUploadError('Cannot upload empty buffer');
+    }
+    if (bufferSize > 5 * 1024 * 1024 * 1024) {
+      // 5GB S3 limit for PutObject
+      throw new StorageUploadError(
+        `Buffer size ${bufferSize} bytes exceeds S3 PutObject limit (5GB). Use uploadStream for large files.`
+      );
+    }
+
     const maxAttempts = (this.config.maxRetries ?? DEFAULT_MAX_RETRIES) + 1;
 
     try {
@@ -488,8 +354,8 @@ export class StorageService extends BaseStorageService {
             Key: key,
             Body: buffer,
             ContentType: contentType,
-            ContentLength: buffer.length,
-            ...this.buildS3ObjectParams(), // Apply encryption and storage class
+            ContentLength: bufferSize,
+            ...this.paramsBuilder.buildObjectParams(), // Use params builder helper
           };
 
           const result = await this.client.send(new PutObjectCommand(params));
@@ -498,7 +364,7 @@ export class StorageService extends BaseStorageService {
 
           return {
             key,
-            url: this.buildObjectUrl(key),
+            url: this.urlBuilder.buildObjectUrl(key), // Use URL builder helper
             size: buffer.length,
             etag: result.ETag,
             contentType,
