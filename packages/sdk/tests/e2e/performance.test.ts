@@ -383,10 +383,8 @@ describe('E2E Performance Benchmarks', () => {
   });
 
   describe('Memory Usage', () => {
-    it(
-      'should maintain reasonable memory footprint',
-      async () => {
-        const bugspotter = BugSpotter.init({
+    it('should maintain reasonable memory footprint', async () => {
+      const bugspotter = BugSpotter.init({
         showWidget: false,
         replay: { enabled: true, duration: 30 },
         sanitize: { enabled: true },
@@ -413,9 +411,7 @@ describe('E2E Performance Benchmarks', () => {
       console.log(`✓ Replay buffer size: ${(replaySize / 1024).toFixed(2)}KB`);
       console.log(`  - Events captured: ${report.replay.length}`);
       console.log(`  - Console logs: ${report.console.length}`);
-      },
-      10000
-    ); // 10s timeout for memory test
+    }, 10000); // 10s timeout for memory test
   });
 
   describe('End-to-End Performance', () => {
@@ -472,10 +468,8 @@ describe('E2E Performance Benchmarks', () => {
   });
 
   describe('Concurrent Operations', () => {
-    it(
-      'should handle multiple captures efficiently',
-      async () => {
-        const bugspotter = BugSpotter.init({
+    it('should handle multiple captures efficiently', async () => {
+      const bugspotter = BugSpotter.init({
         showWidget: false,
         replay: { enabled: false }, // Disable replay for faster captures
       });
@@ -499,12 +493,10 @@ describe('E2E Performance Benchmarks', () => {
       const averageTime = totalTime / 10;
 
       expect(captures.length).toBe(10);
-        // JSDOM is slower; real browser target is <100ms
-        expect(averageTime).toBeLessThan(5000); // Very lenient for JSDOM      benchmarks.concurrentCaptures = averageTime;
+      // JSDOM is slower; real browser target is <100ms
+      expect(averageTime).toBeLessThan(5000); // Very lenient for JSDOM      benchmarks.concurrentCaptures = averageTime;
       console.log(`✓ Concurrent captures (10x): ${totalTime.toFixed(2)}ms total`);
       console.log(`  - Average per capture: ${averageTime.toFixed(2)}ms`);
-      },
-      30000
-    ); // 30s timeout for concurrent captures
+    }, 30000); // 30s timeout for concurrent captures
   });
 });
