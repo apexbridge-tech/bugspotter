@@ -2,10 +2,12 @@
 
 You are working on **BugSpotter**, a professional bug reporting SDK with session replay capabilities, built as a pnpm workspace monorepo.
 
+**Status**: Pre-release (active development, not yet published to npm)
+
 ## Project Structure
 
-- **packages/sdk** - Core TypeScript SDK with rrweb session replay (~180KB bundle)
-- **packages/backend** - Fastify 5.6.1 REST API with PostgreSQL 16 database
+- **packages/sdk** - Core TypeScript SDK with rrweb session replay (~99KB bundle)
+- **packages/backend** - Fastify 5.6.1 REST API with PostgreSQL 16 + S3 storage
 - **packages/types** - Shared TypeScript type definitions
 - **packages/backend-mock** - Mock API server for SDK testing
 - **apps/demo** - Interactive demo application
@@ -334,7 +336,7 @@ See: `packages/backend/src/api/middleware/auth.ts`, `src/api/routes/health.ts`
 
 1. Launch PostgreSQL 16 container
 2. Run migrations
-3. Execute tests (660 backend + 345 SDK = 1,005 total)
+3. Execute tests (750 backend + 345 SDK = 1,095 total)
 4. Cleanup container
 
 ```bash
@@ -345,10 +347,10 @@ pnpm test:coverage     # Coverage report
 
 **Test Distribution:**
 
-- Backend: 660 tests (unit + integration + load)
+- Backend: 750 tests (621 unit + 104 integration + 25 load/storage)
 - SDK: 345 tests (unit + E2E + Playwright)
 
-See: `packages/backend/TESTING.md`, `tests/setup.ts`
+See: `packages/backend/TESTING.md`, `packages/backend/tests/setup.ts`
 
 ## Security Best Practices
 
@@ -658,12 +660,24 @@ See: `.github/workflows/ci.yml`
 
 ## Key Files Reference
 
-- **Error Handling**: `packages/backend/src/api/middleware/error.ts` (370 lines, strategy pattern)
-- **Authentication**: `packages/backend/src/api/middleware/auth.ts` (168 lines, dual auth)
+### Backend Core
+
+- **Error Handling**: `packages/backend/src/api/middleware/error.ts` (strategy pattern)
+- **Authentication**: `packages/backend/src/api/middleware/auth.ts` (dual auth: API keys + JWT)
 - **Database Client**: `packages/backend/src/db/client.ts` (factory pattern)
-- **Repositories**: `packages/backend/src/db/repositories.ts` (repository pattern)
-- **Sanitizer**: `packages/sdk/src/utils/sanitize.ts` (facade pattern, SOLID principles)
-- **Session Replay**: `packages/sdk/docs/SESSION_REPLAY.md` (rrweb integration guide)
+- **Repositories**: `packages/backend/src/db/repositories.ts` (6 repositories, base class)
+
+### Storage Layer
+
+- **Base Storage**: `packages/backend/src/storage/base-storage-service.ts` (template method)
+- **S3 Storage**: `packages/backend/src/storage/storage-service.ts` (multipart uploads, retry)
+- **Local Storage**: `packages/backend/src/storage/local-storage.ts` (filesystem operations)
+- **Path Utils**: `packages/backend/src/storage/path-utils.ts` (defense-in-depth validation)
+
+### SDK
+
+- **Sanitizer**: `packages/sdk/src/utils/sanitize.ts` (PII detection, facade pattern)
+- **Session Replay**: `packages/sdk/docs/SESSION_REPLAY.md` (rrweb integration)
 
 ## Quick Commands
 

@@ -22,7 +22,49 @@ import { getLogger } from '../logger.js';
 
 const logger = getLogger();
 
+// Dangerous prefixes that resolve to base directory
+const DANGEROUS_PREFIXES = new Set(['.', './']);
+
+// Standard filenames for storage operations
+const STANDARD_FILENAMES = {
+  SCREENSHOT_ORIGINAL: 'original.png',
+  SCREENSHOT_THUMBNAIL: 'thumbnail.jpg',
+  REPLAY_METADATA: 'metadata.json',
+} as const;
+
+// Standard content types
+const CONTENT_TYPES = {
+  IMAGE_JPEG: 'image/jpeg',
+  APPLICATION_JSON: 'application/json',
+  APPLICATION_GZIP: 'application/gzip',
+} as const;
+
+// JSON serialization settings
+const JSON_INDENT_SPACES = 2;
+
 export abstract class BaseStorageService implements IStorageService {
+  /**
+   * Serialize object to JSON buffer with consistent formatting
+   * @param data - Object to serialize
+   * @returns Buffer containing formatted JSON
+   * @protected
+   */
+  protected serializeToJsonBuffer(data: Record<string, unknown>): Buffer {
+    return Buffer.from(JSON.stringify(data, null, JSON_INDENT_SPACES));
+  }
+
+  /**
+   * Validate chunk index for replay operations
+   * @param chunkIndex - Index to validate
+   * @throws {StorageError} If chunk index is invalid
+   * @protected
+   */
+  protected validateChunkIndex(chunkIndex: number): void {
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
+      throw new StorageError('Invalid chunk index', 'INVALID_CHUNK_INDEX');
+    }
+  }
+
   protected async uploadWithKey(
     resourceType: StorageType,
     projectId: string,
@@ -51,7 +93,13 @@ export abstract class BaseStorageService implements IStorageService {
    * Upload a screenshot (original)
    */
   async uploadScreenshot(projectId: string, bugId: string, buffer: Buffer): Promise<UploadResult> {
-    return this.uploadWithKey('screenshots', projectId, bugId, 'original.png', buffer);
+    return this.uploadWithKey(
+      'screenshots',
+      projectId,
+      bugId,
+      STANDARD_FILENAMES.SCREENSHOT_ORIGINAL,
+      buffer
+    );
   }
 
   /**
@@ -62,9 +110,9 @@ export abstract class BaseStorageService implements IStorageService {
       'screenshots',
       projectId,
       bugId,
-      'thumbnail.jpg',
+      STANDARD_FILENAMES.SCREENSHOT_THUMBNAIL,
       buffer,
-      'image/jpeg'
+      CONTENT_TYPES.IMAGE_JPEG
     );
   }
 
@@ -76,14 +124,14 @@ export abstract class BaseStorageService implements IStorageService {
     bugId: string,
     metadata: Record<string, unknown>
   ): Promise<UploadResult> {
-    const buffer = Buffer.from(JSON.stringify(metadata, null, 2));
+    const buffer = this.serializeToJsonBuffer(metadata);
     return this.uploadWithKey(
       'replays',
       projectId,
       bugId,
-      'metadata.json',
+      STANDARD_FILENAMES.REPLAY_METADATA,
       buffer,
-      'application/json'
+      CONTENT_TYPES.APPLICATION_JSON
     );
   }
 
@@ -96,10 +144,7 @@ export abstract class BaseStorageService implements IStorageService {
     chunkIndex: number,
     data: Buffer
   ): Promise<UploadResult> {
-    // Validate chunk index
-    if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
-      throw new StorageError('Invalid chunk index', 'INVALID_CHUNK_INDEX');
-    }
+    this.validateChunkIndex(chunkIndex);
 
     return this.uploadWithKey(
       'replays',
@@ -107,7 +152,7 @@ export abstract class BaseStorageService implements IStorageService {
       bugId,
       `chunks/${chunkIndex}.json.gz`,
       data,
-      'application/gzip'
+      CONTENT_TYPES.APPLICATION_GZIP
     );
   }
 
@@ -150,6 +195,51 @@ export abstract class BaseStorageService implements IStorageService {
       originalLength: original.length,
       sanitizedLength: sanitized.length,
     });
+  }
+
+  /**
+   * Validate prefix for deleteFolder operations
+   * Prevents deletion of entire storage with dangerous prefixes
+   *
+   * Security checks:
+   * - Blocks empty strings and whitespace-only
+   * - Blocks '.' (resolves to base directory)
+   * - Blocks './' (also resolves to base directory)
+   *
+   * @param prefix - Storage prefix to validate
+   * @throws {StorageError} If prefix is invalid or dangerous
+   * @protected
+   */
+  protected validateDeletePrefix(prefix: string): string {
+    const trimmed = prefix?.trim() || '';
+
+    // Block empty and dangerous prefixes (., ./)
+    if (!trimmed || DANGEROUS_PREFIXES.has(trimmed)) {
+      throw new StorageError(
+        'deleteFolder requires a valid folder prefix. Use clearAllStorage() to delete everything.',
+        'INVALID_PREFIX'
+      );
+    }
+
+    return trimmed;
+  }
+
+  /**
+   * Validate optional prefix for listObjects operations
+   * Allows empty prefix (lists all objects) but sanitizes dangerous patterns
+   *
+   * @param prefix - Optional storage prefix
+   * @returns Sanitized prefix (empty string if not provided)
+   * @protected
+   */
+  protected validateListPrefix(prefix?: string): string {
+    if (!prefix) {
+      return '';
+    }
+
+    const trimmed = prefix.trim();
+
+    return DANGEROUS_PREFIXES.has(trimmed) ? '' : trimmed;
   }
 
   /**

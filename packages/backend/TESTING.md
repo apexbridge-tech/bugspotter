@@ -37,19 +37,20 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 
 ### What Gets Tested
 
-#### Unit Tests (244 tests)
+#### Unit Tests (621 tests)
 
-- ✅ Database connection and pooling
+- ✅ Database connection, pooling, query builder
 - ✅ CRUD operations for all entities
-- ✅ Query filtering and pagination
-- ✅ JSON serialization/deserialization
-- ✅ Foreign key relationships
-- ✅ Unique constraints
-- ✅ Error handling and retry logic
+- ✅ Repository pattern (6 repositories)
+- ✅ Storage layer (base, S3, local, helpers)
+- ✅ Path utilities and sanitization
+- ✅ Stream utilities and transformations
+- ✅ Image processing
+- ✅ Retry logic and error handling
 - ✅ API routes and middleware
-- ✅ Repository-specific methods (access control, project members)
+- ✅ Authentication and authorization
 
-#### Integration Tests (79 tests)
+#### Integration Tests (104 tests)
 
 - ✅ Full API endpoints with authentication
 - ✅ Database transactions and concurrency
@@ -57,10 +58,10 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ JWT token generation and refresh
 - ✅ API key authentication
 - ✅ Role-based access control
-- ✅ Rate limiting
+- ✅ Storage operations (local + S3)
 - ✅ Cross-project access prevention
 
-#### Load Tests (13 tests)
+#### Load Tests (25 tests)
 
 - ✅ 100+ concurrent operations
 - ✅ Connection pool management
@@ -69,19 +70,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-#### Storage Integration Tests (25 tests)
-
-- ✅ Local filesystem storage operations
-- ✅ Screenshot upload and retrieval
-- ✅ Thumbnail generation
-- ✅ Replay metadata and chunks
-- ✅ Attachment handling with path sanitization
-- ✅ Folder deletion (recursive)
-- ✅ Image processing (validation, optimization)
-- ✅ Performance (5MB uploads, batch operations)
-- ✅ MinIO integration (requires TEST_MINIO=true)
-
-**Total: 398 tests**
+**Total: 750 tests across 27 test files**
 
 ## Test Commands
 

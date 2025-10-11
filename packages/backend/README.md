@@ -6,11 +6,11 @@ Production-ready backend for BugSpotter with PostgreSQL database, REST API, and 
 
 - 🗄️ **PostgreSQL Database** - Schema with migrations, connection pooling, ACID transactions
 - 🔐 **Dual Authentication** - API keys (SDK) + JWT tokens (users)
-- 💾 **S3 Storage** - Screenshots, attachments, replay chunks (S3/MinIO/LocalStack)
+- 💾 **S3 Storage** - Screenshots, attachments, replay chunks (S3/MinIO/LocalStack/Local)
 - 🛡️ **Security** - CORS, Helmet, rate limiting, input validation, SQL injection protection
 - 🔍 **Query & Filter** - Pagination, sorting, role-based access control
 - 🏥 **Health Checks** - Liveness and readiness endpoints
-- 🧪 **Testing** - 457 tests with Testcontainers (no manual setup required)
+- 🧪 **Testing** - 750 tests with Testcontainers (no manual setup required)
 
 ## Quick Start
 
@@ -22,36 +22,45 @@ pnpm install
 
 ### 2. Configure Environment
 
-```bash
-cp .env.example .env
-```
+Create a `.env` file in the backend package directory:
 
-Required variables:
-
-```bash
-# Database
+````bash
+# Required
 DATABASE_URL=postgresql://user:password@localhost:5432/bugspotter
-
-# Security
 JWT_SECRET=your-secret-key-min-32-characters-long  # Generate: openssl rand -base64 32
 
-# Storage (choose one)
-STORAGE_BACKEND=local  # or 's3'
-# For S3:
+# Storage Backend (choose one)
+STORAGE_BACKEND=local  # Options: local, s3
+
+# For local storage:
+STORAGE_BASE_DIR=./data/uploads
+STORAGE_BASE_URL=http://localhost:3000/uploads
+
+# For S3 storage:
 # S3_BUCKET=bugspotter
 # S3_REGION=us-east-1
 # AWS_ACCESS_KEY_ID=your-key
 # AWS_SECRET_ACCESS_KEY=your-secret
-```
 
-See `.env.example` for all options.
+# Optional - Server
+PORT=3000
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:3000
+
+# Optional - Database Pool
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+
+# Optional - JWT
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
 
 ### 3. Set Up Database
 
 ```bash
 createdb bugspotter
 pnpm migrate
-```
+````
 
 ### 4. Start Server
 
@@ -329,13 +338,18 @@ pnpm test:watch
 
 # Coverage
 pnpm test:coverage
+
+# Specific test suites
+pnpm test:unit              # Unit tests only
+pnpm test:integration       # Integration tests
+pnpm test:load              # Load/performance tests
 ```
 
-**457 tests** total:
+**750 tests** total (27 test files):
 
-- 340 unit tests (database, API, storage, utilities)
+- 621 unit tests (database, API, storage, utilities)
 - 104 integration tests (API + DB + storage)
-- 13 load tests (performance)
+- 25 storage integration tests (local + S3)
 
 Uses [Testcontainers](https://testcontainers.com/) - **no manual database setup required!**
 

@@ -4,7 +4,7 @@
 
 Capture screenshots, console logs, network requests, **session replays**, and metadata - helping developers reproduce bugs faster.
 
-[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]()
+[![Tests](https://img.shields.io/badge/tests-1095%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
 
 ## ✨ Features
 
@@ -20,16 +20,20 @@ Capture screenshots, console logs, network requests, **session replays**, and me
 
 ## 🚀 Quick Start
 
-### Installation
+> **Note**: BugSpotter is in active development and not yet released to npm.
+
+### Installation (Development)
 
 ```bash
-# Clone and install
+# Clone repository
 git clone https://github.com/apexbridge-tech/bugspotter.git
 cd bugspotter
+
+# Install dependencies
 pnpm install
 
-# Build SDK
-cd packages/sdk && pnpm run build
+# Build all packages
+pnpm build
 ```
 
 ### Try the Demo
@@ -112,13 +116,14 @@ customPatterns: [
 
 ## 🧪 Testing
 
-**SDK:** 404 tests (unit + E2E + Playwright)  
-**Backend:** 621 tests (unit + integration + load)  
-**Total:** 1,025+ tests - all passing ✅
+**SDK:** 345 tests (unit + E2E + Playwright)  
+**Backend:** 750 tests (unit + integration + load + storage)  
+**Total:** 1,095 tests - all passing ✅
 
 ```bash
-pnpm test              # All tests
-pnpm test --watch      # Watch mode
+pnpm test              # All tests (requires Docker)
+pnpm test:watch        # Watch mode
+pnpm test:coverage     # Coverage report
 ```
 
 ## 🏗️ Tech Stack
@@ -133,13 +138,29 @@ pnpm test --watch      # Watch mode
 - **Bundle:** ~99 KB minified
 - **Load:** <100ms
 - **Memory:** <15 MB (30s buffer)
-- **Tests:** 1,025+ total (all passing ✅)
+- **Tests:** 1,095 total (100% passing ✅)
 
 ## 🛣️ Roadmap
 
-✅ **Completed:** Core SDK, Session Replay, PII Sanitization, 404 Tests  
-🚧 **In Progress:** Documentation, Performance  
-⏳ **Planned:** NPM Package, React/Vue/Angular, Cloud Storage, Analytics
+✅ **Completed:**
+
+- Core SDK with session replay (rrweb)
+- PII sanitization (10+ patterns)
+- Backend API with PostgreSQL & S3 storage
+- Comprehensive testing (1,095 tests)
+
+🚧 **In Progress (Pre-Release):**
+
+- Production deployment guides
+- API documentation finalization
+- Performance optimization
+
+⏳ **Planned for v1.0:**
+
+- NPM package release
+- Framework integrations (React, Vue, Angular)
+- Hosted backend service
+- Analytics dashboard
 
 ## 🤝 Contributing
 

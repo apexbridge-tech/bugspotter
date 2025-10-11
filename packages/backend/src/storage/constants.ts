@@ -9,6 +9,7 @@ export const DEFAULT_MAX_RETRIES = 3;
 export const DEFAULT_RETRY_DELAY_MS = 1000; // 1 second base delay for exponential backoff
 export const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
 export const MULTIPART_THRESHOLD = 5 * 1024 * 1024; // 5MB
+export const S3_MAX_PUT_OBJECT_SIZE = 5 * 1024 * 1024 * 1024; // 5GB S3 PutObject limit
 export const MAX_KEYS_PER_REQUEST = 1000;
 
 // Image Processing

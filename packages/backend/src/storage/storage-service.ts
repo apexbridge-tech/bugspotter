@@ -28,6 +28,7 @@ import {
   DEFAULT_MAX_RETRIES,
   DEFAULT_RETRY_DELAY_MS,
   MAX_KEYS_PER_REQUEST,
+  S3_MAX_PUT_OBJECT_SIZE,
 } from './constants.js';
 import { executeWithRetry, RetryPredicates } from '../utils/retry.js';
 import { getLogger } from '../logger.js';
@@ -137,13 +138,8 @@ export class StorageService extends BaseStorageService {
   }
 
   async deleteFolder(prefix: string): Promise<void> {
-    // Critical safety check: prevent accidental deletion of entire bucket
-    if (!prefix || prefix.trim() === '') {
-      throw new StorageError(
-        'deleteFolder requires a non-empty prefix. Use clearAllStorage() to delete everything.',
-        'INVALID_PREFIX'
-      );
-    }
+    // Use base class validation (DRY + consistent security)
+    const validatedPrefix = this.validateDeletePrefix(prefix);
 
     try {
       let deletedCount = 0;
@@ -155,7 +151,7 @@ export class StorageService extends BaseStorageService {
         iterations++;
         if (iterations > maxIterations) {
           logger.warn('Delete folder reached max iterations limit', {
-            prefix,
+            prefix: validatedPrefix,
             deletedCount,
             maxIterations,
           });
@@ -165,7 +161,7 @@ export class StorageService extends BaseStorageService {
         const listResult = await this.client.send(
           new ListObjectsV2Command({
             Bucket: this.bucket,
-            Prefix: prefix,
+            Prefix: validatedPrefix,
             MaxKeys: MAX_KEYS_PER_REQUEST,
             ContinuationToken: continuationToken,
           })
@@ -188,7 +184,7 @@ export class StorageService extends BaseStorageService {
 
           if (deleteResult.Errors && deleteResult.Errors.length > 0) {
             logger.warn('Some objects failed to delete', {
-              prefix,
+              prefix: validatedPrefix,
               errors: deleteResult.Errors,
             });
           }
@@ -197,7 +193,7 @@ export class StorageService extends BaseStorageService {
         continuationToken = listResult.NextContinuationToken;
       } while (continuationToken);
 
-      logger.info('Folder deleted', { prefix, deletedCount });
+      logger.info('Folder deleted', { prefix: validatedPrefix, deletedCount });
     } catch (error) {
       throw new StorageError(
         `Failed to delete folder: ${error instanceof Error ? error.message : String(error)}`,
@@ -208,11 +204,14 @@ export class StorageService extends BaseStorageService {
   }
 
   async listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult> {
+    // Use base class validation for consistency
+    const validatedPrefix = this.validateListPrefix(options?.prefix);
+
     try {
       const result: ListObjectsV2CommandOutput = await this.client.send(
         new ListObjectsV2Command({
           Bucket: this.bucket,
-          Prefix: options?.prefix,
+          Prefix: validatedPrefix || undefined,
           MaxKeys: options?.maxKeys ?? MAX_KEYS_PER_REQUEST,
           ContinuationToken: options?.continuationToken,
         })
@@ -382,6 +381,24 @@ export class StorageService extends BaseStorageService {
   }
 
   /**
+   * Validate buffer size for upload operations
+   * @throws {StorageUploadError} If buffer is empty or exceeds size limit
+   */
+  private validateBufferSize(buffer: Buffer, maxSize: number): void {
+    const bufferSize = buffer.length;
+
+    if (bufferSize === 0) {
+      throw new StorageUploadError('Cannot upload empty buffer');
+    }
+
+    if (bufferSize > maxSize) {
+      throw new StorageUploadError(
+        `Buffer size ${bufferSize} bytes exceeds maximum limit (${maxSize} bytes). Use uploadStream for large files.`
+      );
+    }
+  }
+
+  /**
    * Build retry configuration for upload operations
    */
   private buildRetryConfig(key: string, maxAttempts: number) {
@@ -406,17 +423,8 @@ export class StorageService extends BaseStorageService {
     buffer: Buffer,
     contentType: string
   ): Promise<UploadResult> {
-    // Validate buffer size
-    const bufferSize = buffer.length;
-    if (bufferSize === 0) {
-      throw new StorageUploadError('Cannot upload empty buffer');
-    }
-    if (bufferSize > 5 * 1024 * 1024 * 1024) {
-      // 5GB S3 limit for PutObject
-      throw new StorageUploadError(
-        `Buffer size ${bufferSize} bytes exceeds S3 PutObject limit (5GB). Use uploadStream for large files.`
-      );
-    }
+    // Validate buffer size using helper
+    this.validateBufferSize(buffer, S3_MAX_PUT_OBJECT_SIZE);
 
     const maxAttempts = (this.config.maxRetries ?? DEFAULT_MAX_RETRIES) + 1;
 
@@ -428,7 +436,7 @@ export class StorageService extends BaseStorageService {
             Key: key,
             Body: buffer,
             ContentType: contentType,
-            ContentLength: bufferSize,
+            ContentLength: buffer.length,
             ...this.paramsBuilder.buildObjectParams(), // Use params builder helper
           };
 

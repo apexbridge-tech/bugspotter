@@ -103,15 +103,10 @@ export class LocalStorageService extends BaseStorageService {
   }
 
   async deleteFolder(prefix: string): Promise<void> {
-    // Critical safety check: prevent accidental deletion of entire storage
-    if (!prefix || prefix.trim() === '') {
-      throw new StorageError(
-        'deleteFolder requires a non-empty prefix. Use clearAllStorage() to delete everything.',
-        'INVALID_PREFIX'
-      );
-    }
+    // Use base class validation (DRY + consistent security)
+    const validatedPrefix = this.validateDeletePrefix(prefix);
 
-    const folderPath = this.keyToPath(prefix);
+    const folderPath = this.keyToPath(validatedPrefix);
 
     try {
       // Use Node.js built-in recursive deletion
@@ -181,7 +176,8 @@ export class LocalStorageService extends BaseStorageService {
   }
 
   async listObjects(options?: ListObjectsOptions): Promise<ListObjectsResult> {
-    const prefix = options?.prefix ?? '';
+    // Use base class validation for consistency
+    const prefix = this.validateListPrefix(options?.prefix);
     const maxKeys = options?.maxKeys ?? 1000;
     const startAfter = options?.continuationToken;
 
@@ -283,9 +279,8 @@ export class LocalStorageService extends BaseStorageService {
     const contentType = options?.contentType ?? 'application/octet-stream';
 
     try {
-      // Ensure directory exists
-      const dir = path.dirname(filePath);
-      await fs.mkdir(dir, { recursive: true });
+      // Ensure directory exists using helper
+      await this.ensureDirectoryExists(filePath);
 
       // Use Node.js pipeline for true streaming (constant memory usage)
       let uploadedBytes = 0;
@@ -342,8 +337,7 @@ export class LocalStorageService extends BaseStorageService {
     const filePath = this.keyToPath(key);
 
     try {
-      const dir = path.dirname(filePath);
-      await fs.mkdir(dir, { recursive: true });
+      await this.ensureDirectoryExists(filePath);
       await fs.writeFile(filePath, buffer);
 
       logger.debug('File uploaded', { key, filePath, size: buffer.length });
@@ -366,14 +360,16 @@ export class LocalStorageService extends BaseStorageService {
 
   private keyToPath(key: string): string {
     const fullPath = path.resolve(this.baseDirectory, key);
+    const normalizedBase = path.resolve(this.baseDirectory);
+
+    // Critical security check: Block operations on base directory itself
+    if (fullPath === normalizedBase) {
+      throw new StorageError('Cannot operate on base directory itself', 'INVALID_KEY');
+    }
 
     // Critical security check: Prevent directory traversal attacks
-    const normalizedBase = path.resolve(this.baseDirectory);
-    if (!fullPath.startsWith(normalizedBase + path.sep) && fullPath !== normalizedBase) {
-      throw new StorageError(
-        'Path traversal detected in key',
-        'INVALID_KEY'
-      );
+    if (!fullPath.startsWith(normalizedBase + path.sep)) {
+      throw new StorageError('Path traversal detected in key', 'INVALID_KEY');
     }
 
     return fullPath;
@@ -384,11 +380,15 @@ export class LocalStorageService extends BaseStorageService {
    * Example: prefix "screenshots/proj-123/" -> start from that directory
    */
   private resolveSearchPath(prefix: string): string {
-    if (!prefix) return this.baseDirectory;
+    if (!prefix) {
+      return this.baseDirectory;
+    }
 
     // Convert prefix to filesystem path
     const prefixParts = prefix.split('/').filter(Boolean);
-    if (prefixParts.length === 0) return this.baseDirectory;
+    if (prefixParts.length === 0) {
+      return this.baseDirectory;
+    }
 
     // Start from the deepest directory in the prefix
     const prefixPath = prefixParts.join(path.sep);
@@ -423,6 +423,15 @@ export class LocalStorageService extends BaseStorageService {
     }
 
     return left;
+  }
+
+  /**
+   * Ensure parent directory exists for a file path
+   * @param filePath - Full path to the file
+   */
+  private async ensureDirectoryExists(filePath: string): Promise<void> {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
   }
 
   private async listFilesRecursive(
