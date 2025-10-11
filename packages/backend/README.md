@@ -9,8 +9,9 @@ Production-ready backend for BugSpotter with PostgreSQL database, REST API, and 
 - 💾 **S3 Storage** - Screenshots, attachments, replay chunks (S3/MinIO/LocalStack/Local)
 - 🛡️ **Security** - CORS, Helmet, rate limiting, input validation, SQL injection protection
 - 🔍 **Query & Filter** - Pagination, sorting, role-based access control
+- 🕐 **Data Retention** - Automated lifecycle management with compliance support (GDPR, CCPA, Kazakhstan)
 - 🏥 **Health Checks** - Liveness and readiness endpoints
-- 🧪 **Testing** - 750 tests with Testcontainers (no manual setup required)
+- 🧪 **Testing** - 850 tests with Testcontainers (no manual setup required)
 
 ## Quick Start
 
@@ -184,6 +185,151 @@ GET /api/v1/reports/:id
 PATCH /api/v1/reports/:id
 ```
 
+### Data Retention
+
+#### Get Project Retention Settings
+
+```http
+GET /api/v1/projects/:id/retention
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Returns retention policy for a project (requires project access)
+
+#### Update Project Retention Settings
+
+```http
+PUT /api/v1/projects/:id/retention
+Authorization: Bearer YOUR_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "bugReportRetentionDays": 90,
+  "screenshotRetentionDays": 60,
+  "replayRetentionDays": 30,
+  "dataClassification": "general",
+  "complianceRegion": "none"
+}
+```
+
+Requires project owner or admin role. Admins can bypass tier limits.
+
+**Tier Limits:**
+
+- Free: 90 days max
+- Professional: 365 days max
+- Enterprise: 3650 days max
+
+**Compliance Regions:**
+
+- `none` - No regulatory requirements
+- `eu` - GDPR (Europe)
+- `us` - CCPA (California)
+- `kz` - Kazakhstan data laws (5 years for financial)
+- `uk` - UK GDPR
+- `ca` - PIPEDA (Canada)
+
+#### Admin - Get Global Retention Config
+
+```http
+GET /api/v1/admin/retention
+Authorization: Bearer ADMIN_JWT_TOKEN
+```
+
+Returns global default retention configuration (admin only)
+
+#### Admin - Update Global Retention Config
+
+```http
+PUT /api/v1/admin/retention
+Authorization: Bearer ADMIN_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "bugReportRetentionDays": 90
+}
+```
+
+Updates global default retention policy (admin only)
+
+#### Admin - Preview Retention Policy
+
+```http
+POST /api/v1/admin/retention/preview?projectId=PROJECT_UUID
+Authorization: Bearer ADMIN_JWT_TOKEN
+```
+
+Dry-run to see what would be deleted. Returns report counts and storage estimates.
+
+#### Admin - Apply Retention Policies
+
+```http
+POST /api/v1/admin/retention/apply
+Authorization: Bearer ADMIN_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "dryRun": false,
+  "confirm": true,
+  "batchSize": 100,
+  "maxErrorRate": 5
+}
+```
+
+Executes retention policy deletion. Requires `confirm: true` for production deletions.
+
+#### Admin - Get Scheduler Status
+
+```http
+GET /api/v1/admin/retention/status
+Authorization: Bearer ADMIN_JWT_TOKEN
+```
+
+Returns retention scheduler status (enabled, next run time)
+
+#### Admin - Apply Legal Hold
+
+```http
+POST /api/v1/admin/retention/legal-hold
+Authorization: Bearer ADMIN_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "bugReportIds": ["uuid-1", "uuid-2"],
+  "reason": "litigation"
+}
+```
+
+Prevents bug reports from being deleted by retention policies (admin only)
+
+#### Admin - Restore Archived Reports
+
+```http
+POST /api/v1/admin/retention/restore
+Authorization: Bearer ADMIN_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "bugReportIds": ["uuid-1", "uuid-2"]
+}
+```
+
+Restores soft-deleted reports from archive (admin only)
+
+#### Admin - Remove Legal Hold
+
+```http
+DELETE /api/v1/admin/retention/legal-hold
+Authorization: Bearer ADMIN_JWT_TOKEN
+Content-Type: application/json
+
+{
+  "bugReportIds": ["uuid-1", "uuid-2"]
+}
+```
+
+Removes legal hold protection from bug reports (admin only)
+
 ### Health Checks
 
 ```http
@@ -327,6 +473,43 @@ await db.bugReports.findById(id);
 await db.bugReports.create(data);
 ```
 
+### Data Retention Services
+
+Automated data lifecycle management with compliance support:
+
+```typescript
+import { RetentionService, RetentionScheduler } from '@bugspotter/backend';
+
+// Initialize services
+const retentionService = new RetentionService(db, storage);
+const scheduler = new RetentionScheduler(retentionService, notificationService);
+
+// Preview what would be deleted
+const preview = await retentionService.previewRetentionPolicy();
+// { totalReports: 150, affectedProjects: [...], totalStorageBytes: 52428800 }
+
+// Apply retention policies
+const result = await retentionService.applyRetentionPolicies({
+  dryRun: false,
+  batchSize: 100,
+  maxErrorRate: 5,
+});
+// { totalDeleted: 150, storageFreed: 52428800, projectsProcessed: 5 }
+
+// Start automated daily cleanup (runs at 2 AM)
+await scheduler.start();
+```
+
+**Features:**
+
+- Tier-based retention limits (Free: 90d, Pro: 365d, Enterprise: 3650d)
+- Compliance region support (GDPR, CCPA, Kazakhstan, UK, Canada)
+- Data classification (general, financial, healthcare, PII, sensitive, government)
+- Archive-before-delete option
+- Legal hold protection
+- Batch processing with error handling
+- Notification on completion (logger/email/Slack)
+
 ## Testing
 
 ```bash
@@ -345,9 +528,9 @@ pnpm test:integration       # Integration tests
 pnpm test:load              # Load/performance tests
 ```
 
-**750 tests** total (27 test files):
+**850 tests** total (28 test files):
 
-- 621 unit tests (database, API, storage, utilities)
+- 721 unit tests (database, API, storage, retention, utilities)
 - 104 integration tests (API + DB + storage)
 - 25 storage integration tests (local + S3)
 

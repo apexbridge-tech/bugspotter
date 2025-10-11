@@ -16,15 +16,20 @@ export const dataClassificationSchema = z.enum([
   'financial',
   'government',
   'healthcare',
+  'pii',
+  'sensitive',
 ]);
 
 export const deletionReasonSchema = z.enum([
   'retention_policy',
   'manual',
   'gdpr_request',
+  'ccpa_request',
   'user_request',
   'legal_hold_released',
 ]);
+
+export const complianceRegionSchema = z.enum(['none', 'eu', 'us', 'kz', 'uk', 'ca']);
 
 // ============================================================================
 // RETENTION POLICY SCHEMA
@@ -147,6 +152,7 @@ export const deletionCertificateSchema = z.object({
   deletedBy: z.string(),
   reason: deletionReasonSchema,
   dataClassification: dataClassificationSchema,
+  complianceRegion: complianceRegionSchema,
   verificationHash: z.string(),
   issuedAt: z.date(),
 });

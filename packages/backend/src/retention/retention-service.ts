@@ -7,8 +7,7 @@ import type { Pool } from 'pg';
 import crypto from 'crypto';
 import { getLogger } from '../logger.js';
 import type { DatabaseClient } from '../db/client.js';
-import type { StorageService } from '../storage/storage-service.js';
-import type { LocalStorageService } from '../storage/local-storage.js';
+import type { BaseStorageService } from '../storage/base-storage-service.js';
 import type {
   RetentionResult,
   RetentionPreview,
@@ -32,8 +31,6 @@ import {
 
 const logger = getLogger();
 
-type StorageBackend = StorageService | LocalStorageService;
-
 /**
  * RetentionService - Orchestrates data retention and lifecycle management
  */
@@ -41,7 +38,7 @@ export class RetentionService {
   constructor(
     private db: DatabaseClient,
     private pool: Pool,
-    private storage: StorageBackend
+    private storage: BaseStorageService
   ) {}
 
   /**
@@ -206,8 +203,12 @@ export class RetentionService {
       for (const report of oldReports) {
         const cleanup = await this.deleteReportStorage(report);
         storageFreed += cleanup.bytesFreed;
-        if (report.screenshot_url) {screenshotsDeleted++;}
-        if (report.replay_url) {replaysDeleted++;}
+        if (report.screenshot_url) {
+          screenshotsDeleted++;
+        }
+        if (report.replay_url) {
+          replaysDeleted++;
+        }
       }
 
       // Soft delete reports
@@ -263,7 +264,9 @@ export class RetentionService {
     userId: string | null,
     reason: DeletionReason
   ): Promise<void> {
-    if (reportIds.length === 0) {return;}
+    if (reportIds.length === 0) {
+      return;
+    }
 
     const query = `
       UPDATE bug_reports
@@ -290,7 +293,9 @@ export class RetentionService {
     userId: string | null,
     generateCertificate = true
   ): Promise<DeletionCertificate | null> {
-    if (reportIds.length === 0) {return null;}
+    if (reportIds.length === 0) {
+      return null;
+    }
 
     const client = await this.pool.connect();
     let certificate: DeletionCertificate | null = null;
@@ -349,7 +354,9 @@ export class RetentionService {
    * Archive bug reports to long-term storage
    */
   async archiveReports(reports: BugReport[], reason: DeletionReason): Promise<ArchivedBugReport[]> {
-    if (reports.length === 0) {return [];}
+    if (reports.length === 0) {
+      return [];
+    }
 
     const archived: ArchivedBugReport[] = [];
 
@@ -416,7 +423,9 @@ export class RetentionService {
    * Restore soft-deleted bug reports
    */
   async restoreReports(reportIds: string[]): Promise<number> {
-    if (reportIds.length === 0) {return 0;}
+    if (reportIds.length === 0) {
+      return 0;
+    }
 
     const query = `
       UPDATE bug_reports
@@ -446,8 +455,12 @@ export class RetentionService {
 
     const filesToDelete: string[] = [];
 
-    if (report.screenshot_url) {filesToDelete.push(report.screenshot_url);}
-    if (report.replay_url) {filesToDelete.push(report.replay_url);}
+    if (report.screenshot_url) {
+      filesToDelete.push(report.screenshot_url);
+    }
+    if (report.replay_url) {
+      filesToDelete.push(report.replay_url);
+    }
 
     for (const url of filesToDelete) {
       try {
@@ -493,14 +506,17 @@ export class RetentionService {
 
   /**
    * Get file size from storage
+   * Uses storage backend's headObject method (S3 HeadObjectCommand or fs.stat for local)
    */
-  private async getFileSize(_key: string): Promise<number> {
+  private async getFileSize(key: string): Promise<number> {
     try {
-      // This is a placeholder - actual implementation depends on storage backend
-      // For S3: use headObject
-      // For local: use fs.stat
-      return 0; // Will be implemented based on storage backend
-    } catch {
+      const object = await this.storage.headObject(key);
+      return object?.size ?? 0;
+    } catch (error) {
+      logger.debug('Failed to get file size', {
+        key,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return 0;
     }
   }
@@ -585,12 +601,16 @@ export class RetentionService {
       : await this.db.projects.findAll();
 
     for (const project of projects) {
-      if (!project) {continue;}
+      if (!project) {
+        continue;
+      }
 
       const settings = project.settings as unknown as ProjectRetentionSettings;
       const retentionPolicy = settings?.retention;
 
-      if (!retentionPolicy) {continue;}
+      if (!retentionPolicy) {
+        continue;
+      }
 
       const cutoffDate = calculateCutoffDate(retentionPolicy.bugReportRetentionDays);
       const reports = await this.findReportsForDeletion(project.id, cutoffDate);
@@ -599,8 +619,12 @@ export class RetentionService {
         const estimatedStorage = reports.reduce((sum, r) => {
           // Estimate 100KB per screenshot, 500KB per replay
           let size = 0;
-          if (r.screenshot_url) {size += 100 * 1024;}
-          if (r.replay_url) {size += 500 * 1024;}
+          if (r.screenshot_url) {
+            size += 100 * 1024;
+          }
+          if (r.replay_url) {
+            size += 500 * 1024;
+          }
           return sum + size;
         }, 0);
 
@@ -629,7 +653,9 @@ export class RetentionService {
    * Apply or remove legal hold on bug reports
    */
   async setLegalHold(reportIds: string[], hold: boolean, userId: string): Promise<number> {
-    if (reportIds.length === 0) {return 0;}
+    if (reportIds.length === 0) {
+      return 0;
+    }
 
     const query = `
       UPDATE bug_reports

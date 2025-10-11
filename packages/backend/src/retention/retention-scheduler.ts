@@ -11,6 +11,8 @@ import {
   RETENTION_SCHEDULER_ENABLED,
   RETENTION_CRON_TIMEZONE,
 } from './retention-config.js';
+import type { BaseNotificationService } from './notification-service.js';
+import { createNotificationService } from './notification-service.js';
 
 const logger = getLogger();
 
@@ -20,8 +22,14 @@ const logger = getLogger();
 export class RetentionScheduler {
   private task: cron.ScheduledTask | null = null;
   private isRunning = false;
+  private notificationService: BaseNotificationService;
 
-  constructor(private retentionService: RetentionService) {}
+  constructor(
+    private retentionService: RetentionService,
+    notificationService?: BaseNotificationService
+  ) {
+    this.notificationService = notificationService ?? createNotificationService('logger');
+  }
 
   /**
    * Start the retention scheduler
@@ -96,16 +104,14 @@ export class RetentionScheduler {
         ...result,
       });
 
-      // Send summary email if configured
-      await this.sendCompletionSummary(result, duration);
+      await this.notificationService.sendCompletionNotification(result, duration);
     } catch (error) {
       logger.error('Retention job failed', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
 
-      // Send error notification if configured
-      await this.sendErrorNotification(error);
+      await this.notificationService.sendErrorNotification(error);
     } finally {
       this.isRunning = false;
     }
@@ -135,54 +141,45 @@ export class RetentionScheduler {
 
   /**
    * Get next scheduled run time
+   * Calculates the next occurrence based on the configured cron schedule
    */
   getNextRunTime(): Date | null {
-    // Parse cron expression to calculate next run time
-    // This is a simplified version - production would use a cron parser library
+    if (!this.task) {
+      return null;
+    }
+
+    // Parse the cron expression (format: "minute hour day month weekday")
+    // Current schedule: "0 2 * * *" = daily at 2:00 AM
+    const parts = RETENTION_CRON_SCHEDULE.split(' ');
+    if (parts.length !== 5) {
+      return null;
+    }
+
+    const [minute, hour, day, month, weekday] = parts;
+
+    const now = new Date();
+    const next = new Date(now);
+
+    // Handle simple daily schedule (e.g., "0 2 * * *")
+    if (day === '*' && month === '*' && weekday === '*') {
+      const targetHour = parseInt(hour, 10);
+      const targetMinute = parseInt(minute, 10);
+
+      next.setHours(targetHour, targetMinute, 0, 0);
+
+      // If the time has passed today, schedule for tomorrow
+      if (next <= now) {
+        next.setDate(next.getDate() + 1);
+      }
+
+      return next;
+    }
+
+    // For more complex schedules, return null
+    // This could be extended to handle more patterns as needed
+    logger.warn('Complex cron schedule detected - cannot calculate next run time', {
+      schedule: RETENTION_CRON_SCHEDULE,
+    });
     return null;
-  }
-
-  /**
-   * Send completion summary email
-   * Placeholder - implement with email service
-   */
-  private async sendCompletionSummary(
-    result: Awaited<ReturnType<RetentionService['applyRetentionPolicies']>>,
-    duration: number
-  ): Promise<void> {
-    // TODO: Implement email notification
-    // For now, just log the summary
-    logger.info('Retention job summary', {
-      projectsProcessed: result.projectsProcessed,
-      totalDeleted: result.totalDeleted,
-      totalArchived: result.totalArchived,
-      storageFreed: this.formatBytes(result.storageFreed),
-      errors: result.errors.length,
-      duration: `${(duration / 1000).toFixed(2)}s`,
-    });
-  }
-
-  /**
-   * Send error notification
-   * Placeholder - implement with notification service
-   */
-  private async sendErrorNotification(error: unknown): Promise<void> {
-    // TODO: Implement error notification (email, Slack, etc.)
-    logger.error('Retention job error notification', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-
-  /**
-   * Format bytes to human-readable string
-   */
-  private formatBytes(bytes: number): string {
-    if (bytes === 0) {return '0 Bytes';}
-
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }
 }

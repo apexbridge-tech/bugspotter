@@ -1,15 +1,10 @@
 /**
  * Retention API Routes
  * Admin endpoints for managing data retention policies
- *
- * NOTE: This is a skeleton implementation. Full integration requires:
- * 1. Proper FastifyInstance type augmentation with db property
- * 2. RetentionService and RetentionScheduler initialization
- * 3. Auth middleware configuration
- * 4. Request type definitions with authUser property
  */
 
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply, preHandlerHookHandler } from 'fastify';
+import type { ZodSchema } from 'zod';
 import type { DatabaseClient } from '../../db/client.js';
 import type { RetentionService } from '../../retention/retention-service.js';
 import type { RetentionScheduler } from '../../retention/retention-scheduler.js';
@@ -30,6 +25,54 @@ import { getLogger } from '../../logger.js';
 
 const logger = getLogger();
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const USER_ROLES = {
+  ADMIN: 'admin',
+  OWNER: 'owner',
+} as const;
+
+const DEFAULT_TIER = 'free' as const;
+
+const ERROR_MESSAGES = {
+  ADMIN_REQUIRED: 'Admin access required',
+  OWNER_OR_ADMIN_REQUIRED: 'Project owner or admin access required',
+  PROJECT_ACCESS_DENIED: 'Access denied to this project',
+  PROJECT_NOT_FOUND: 'Project not found',
+  VALIDATION_FAILED: 'Validation failed',
+} as const;
+
+// ============================================================================
+// MIDDLEWARE HELPERS
+// ============================================================================
+
+/**
+ * Require admin role for route access
+ */
+const requireAdmin: preHandlerHookHandler = async (request, reply) => {
+  if (request.authUser?.role !== USER_ROLES.ADMIN) {
+    return reply.code(403).send({ error: ERROR_MESSAGES.ADMIN_REQUIRED });
+  }
+};
+
+/**
+ * Validate request body against Zod schema
+ * Returns validation result for handler to use
+ */
+function validateRequestBody<T>(schema: ZodSchema<T>, body: unknown) {
+  const validation = schema.safeParse(body);
+  return validation;
+}
+
+/**
+ * Format success response
+ */
+function successResponse(data: Record<string, unknown>) {
+  return { success: true, ...data };
+}
+
 /**
  * Register retention API routes
  */
@@ -45,18 +88,10 @@ export function retentionRoutes(
    */
   fastify.get(
     '/api/v1/admin/retention',
-    {
-      schema: {},
-    },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
-      // Return default retention configuration
+    { preHandler: requireAdmin },
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       const config = {
-        defaultPolicy: getRetentionPolicyForTier('free'),
+        defaultPolicy: getRetentionPolicyForTier(DEFAULT_TIER),
         schedulerEnabled: retentionScheduler.isJobRunning(),
         schedulerStatus: retentionScheduler.isJobRunning() ? 'running' : 'idle',
       };
@@ -72,19 +107,13 @@ export function retentionRoutes(
   fastify.put(
     '/api/v1/admin/retention',
     {
-      schema: {
-        description: 'Update global retention policy',
-        body: updateRetentionPolicyRequestSchema.shape.body,
-      },
+      preHandler: requireAdmin,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
-      // Validate request body
-      const validation = updateRetentionPolicyRequestSchema.shape.body.safeParse(request.body);
+      const validation = validateRequestBody(
+        updateRetentionPolicyRequestSchema.shape.body,
+        request.body
+      );
       if (!validation.success) {
         return reply.code(400).send({ error: validation.error.message });
       }
@@ -94,7 +123,7 @@ export function retentionRoutes(
         updates: validation.data,
       });
 
-      return reply.send({ success: true, policy: validation.data });
+      return reply.send(successResponse({ policy: validation.data }));
     }
   );
 
@@ -117,22 +146,38 @@ export function retentionRoutes(
     async (request, reply: FastifyReply) => {
       const { id: projectId } = request.params;
 
-      // Check if user has access to project
-      const hasAccess = await db.projects.hasAccess(projectId, request.authUser?.id ?? '');
-      if (!hasAccess) {
-        return reply.code(403).send({ error: 'Access denied to this project' });
+      // CRITICAL: Verify user is authenticated
+      if (!request.authUser) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'User authentication required (Authorization Bearer token)',
+        });
+      }
+
+      // Admins can access any project
+      const isAdmin = request.authUser.role === USER_ROLES.ADMIN;
+      if (!isAdmin) {
+        const hasAccess = await db.projects.hasAccess(projectId, request.authUser.id);
+        if (!hasAccess) {
+          return reply.code(403).send({ error: ERROR_MESSAGES.PROJECT_ACCESS_DENIED });
+        }
       }
 
       const project = await db.projects.findById(projectId);
       if (!project) {
-        return reply.code(404).send({ error: 'Project not found' });
+        return reply.code(404).send({ error: ERROR_MESSAGES.PROJECT_NOT_FOUND });
       }
 
       const settings = project.settings as unknown as ProjectRetentionSettings;
+      const retention = settings?.retention ?? getRetentionPolicyForTier(DEFAULT_TIER);
+
       return reply.send({
         projectId,
-        tier: settings?.tier ?? 'free',
-        retention: settings?.retention ?? getRetentionPolicyForTier('free'),
+        tier: settings?.tier ?? DEFAULT_TIER,
+        retention: {
+          ...retention,
+          autoDeleteEnabled: retention.bugReportRetentionDays > 0,
+        },
       });
     }
   );
@@ -151,34 +196,51 @@ export function retentionRoutes(
             id: { type: 'string', format: 'uuid' },
           },
         },
-        body: updateRetentionPolicyRequestSchema.shape.body,
       },
     },
     async (request, reply: FastifyReply) => {
       const { id: projectId } = request.params;
 
-      // Check if user is admin or project owner
-      const role = await db.projects.getUserRole(projectId, request.authUser?.id ?? '');
-      if (role !== 'owner' && request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Project owner or admin access required' });
+      // CRITICAL: Verify user is authenticated
+      if (!request.authUser) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'User authentication required (Authorization Bearer token)',
+        });
       }
 
-      // Validate request body
-      const validation = updateRetentionPolicyRequestSchema.shape.body.safeParse(request.body);
+      // Check if user has permission (owner or admin)
+      const isAdmin = request.authUser.role === USER_ROLES.ADMIN;
+      if (!isAdmin) {
+        const role = await db.projects.getUserRole(projectId, request.authUser.id);
+        if (role !== USER_ROLES.OWNER) {
+          return reply.code(403).send({ error: ERROR_MESSAGES.OWNER_OR_ADMIN_REQUIRED });
+        }
+      }
+
+      const validation = validateRequestBody(
+        updateRetentionPolicyRequestSchema.shape.body,
+        request.body
+      );
       if (!validation.success) {
-        return reply.code(400).send({ error: validation.error.message });
+        const firstError = validation.error.issues?.[0];
+        const fieldName = (firstError?.path?.join('.') || 'field')
+          .replace(/([A-Z])/g, ' $1')
+          .toLowerCase();
+        const message = firstError?.message || validation.error.message;
+        return reply.code(400).send({ error: `${fieldName}: ${message}` });
       }
 
       const project = await db.projects.findById(projectId);
       if (!project) {
-        return reply.code(404).send({ error: 'Project not found' });
+        return reply.code(404).send({ error: ERROR_MESSAGES.PROJECT_NOT_FOUND });
       }
 
       const settings = project.settings as unknown as ProjectRetentionSettings;
-      const tier = settings?.tier ?? 'free';
+      const tier = settings?.tier ?? DEFAULT_TIER;
 
-      // Validate retention days against tier limits
-      if (validation.data.bugReportRetentionDays) {
+      // Validate retention days (admins bypass tier limits)
+      if (validation.data.bugReportRetentionDays && !isAdmin) {
         const validationResult = validateRetentionDays(
           validation.data.bugReportRetentionDays,
           tier,
@@ -189,7 +251,6 @@ export function retentionRoutes(
         }
       }
 
-      // Update project settings
       const updatedSettings: ProjectRetentionSettings = {
         ...settings,
         retention: {
@@ -208,7 +269,7 @@ export function retentionRoutes(
         updates: validation.data,
       });
 
-      return reply.send({ success: true, settings: updatedSettings });
+      return reply.send(successResponse({ settings: updatedSettings }));
     }
   );
 
@@ -227,16 +288,20 @@ export function retentionRoutes(
           },
         },
       },
+      preHandler: requireAdmin,
     },
     async (request, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
       const preview = await retentionService.previewRetentionPolicy(request.query.projectId);
 
-      return reply.send(preview);
+      return reply.send({
+        totalReports: preview.totalReports,
+        reportsByProject: preview.affectedProjects.map((p) => ({
+          projectId: p.projectId,
+          projectName: p.projectName,
+          count: p.reportsToDelete,
+        })),
+        estimatedStorageFreed: preview.totalStorageBytes,
+      });
     }
   );
 
@@ -247,26 +312,16 @@ export function retentionRoutes(
   fastify.post(
     '/api/v1/admin/retention/apply',
     {
-      schema: {
-        description: 'Apply retention policies manually',
-        body: applyRetentionRequestSchema.shape.body,
-      },
+      preHandler: requireAdmin,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
-      // Validate request body
-      const validation = applyRetentionRequestSchema.shape.body.safeParse(request.body);
+      const validation = validateRequestBody(applyRetentionRequestSchema.shape.body, request.body);
       if (!validation.success) {
         return reply.code(400).send({ error: validation.error.message });
       }
 
       const { dryRun, batchSize, maxErrorRate, confirm } = validation.data;
 
-      // Require confirmation for large deletions
       if (!dryRun && !confirm) {
         const preview = await retentionService.previewRetentionPolicy();
         if (preview.totalReports > MANUAL_DELETION_CONFIRMATION_THRESHOLD) {
@@ -289,7 +344,13 @@ export function retentionRoutes(
         result,
       });
 
-      return reply.send(result);
+      return reply.send({
+        totalProcessed: result.projectsProcessed,
+        deleted: result.totalDeleted,
+        storageFreed: result.storageFreed,
+        errors: result.errors,
+        duration: result.durationMs,
+      });
     }
   );
 
@@ -300,18 +361,10 @@ export function retentionRoutes(
   fastify.post(
     '/api/v1/admin/retention/legal-hold',
     {
-      schema: {
-        description: 'Apply or remove legal hold on reports',
-        body: legalHoldRequestSchema.shape.body,
-      },
+      preHandler: requireAdmin,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
-      const validation = legalHoldRequestSchema.shape.body.safeParse(request.body);
+      const validation = validateRequestBody(legalHoldRequestSchema.shape.body, request.body);
       if (!validation.success) {
         return reply.code(400).send({ error: validation.error.message });
       }
@@ -323,11 +376,12 @@ export function retentionRoutes(
         request.authUser?.id ?? ''
       );
 
-      return reply.send({
-        success: true,
-        message: `Legal hold ${hold ? 'applied to' : 'removed from'} ${count} reports`,
-        count,
-      });
+      return reply.send(
+        successResponse({
+          message: `Legal hold ${hold ? 'applied to' : 'removed from'} ${count} reports`,
+          count,
+        })
+      );
     }
   );
 
@@ -338,18 +392,10 @@ export function retentionRoutes(
   fastify.post(
     '/api/v1/admin/retention/restore',
     {
-      schema: {
-        description: 'Restore soft-deleted reports',
-        body: restoreReportsRequestSchema.shape.body,
-      },
+      preHandler: requireAdmin,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
-      const validation = restoreReportsRequestSchema.shape.body.safeParse(request.body);
+      const validation = validateRequestBody(restoreReportsRequestSchema.shape.body, request.body);
       if (!validation.success) {
         return reply.code(400).send({ error: validation.error.message });
       }
@@ -363,11 +409,7 @@ export function retentionRoutes(
         reportIds,
       });
 
-      return reply.send({
-        success: true,
-        message: `Restored ${count} reports`,
-        count,
-      });
+      return reply.send(successResponse({ message: `Restored ${count} reports`, count }));
     }
   );
 
@@ -378,18 +420,10 @@ export function retentionRoutes(
   fastify.delete(
     '/api/v1/admin/retention/hard-delete',
     {
-      schema: {
-        description: 'Permanently delete reports (generates deletion certificate)',
-        body: hardDeleteRequestSchema.shape.body,
-      },
+      preHandler: requireAdmin,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
-      const validation = hardDeleteRequestSchema.shape.body.safeParse(request.body);
+      const validation = validateRequestBody(hardDeleteRequestSchema.shape.body, request.body);
       if (!validation.success) {
         return reply.code(400).send({ error: validation.error.message });
       }
@@ -414,11 +448,12 @@ export function retentionRoutes(
         certificateGenerated: !!certificate,
       });
 
-      return reply.send({
-        success: true,
-        message: `Permanently deleted ${reportIds.length} reports`,
-        certificate,
-      });
+      return reply.send(
+        successResponse({
+          message: `Permanently deleted ${reportIds.length} reports`,
+          certificate,
+        })
+      );
     }
   );
 
@@ -429,14 +464,9 @@ export function retentionRoutes(
   fastify.get(
     '/api/v1/admin/retention/status',
     {
-      schema: {},
+      preHandler: requireAdmin,
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      // Verify admin role
-      if (request.authUser?.role !== 'admin') {
-        return reply.code(403).send({ error: 'Admin access required' });
-      }
-
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       const status = {
         isRunning: retentionScheduler.isJobRunning(),
         nextRunTime: retentionScheduler.getNextRunTime(),
