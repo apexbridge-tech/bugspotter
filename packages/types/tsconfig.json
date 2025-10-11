@@ -2,11 +2,9 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    // Declaration-only output (no runtime code)
+    // Generate both JS and declaration files for proper module resolution
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true,
-    "composite": true,
 
     "target": "ES2022",
     "module": "NodeNext",
@@ -15,7 +13,8 @@
 
     "outDir": "dist",
     "rootDir": "src",
-    "isolatedModules": true
+    "isolatedModules": true,
+    "sourceMap": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

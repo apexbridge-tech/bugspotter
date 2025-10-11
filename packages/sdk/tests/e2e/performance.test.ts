@@ -340,7 +340,7 @@ describe('E2E Performance Benchmarks', () => {
       await wait(100);
 
       const startTimeWithSanitization = performance.now();
-      const _reportWithSanitization = await bugspotter.capture();
+      await bugspotter.capture();
       const endTimeWithSanitization = performance.now();
 
       bugspotter.destroy();
@@ -360,7 +360,7 @@ describe('E2E Performance Benchmarks', () => {
       await wait(100);
 
       const startTimeWithoutSanitization = performance.now();
-      const _reportWithoutSanitization = await bugspotterNoSanitization.capture();
+      await bugspotterNoSanitization.capture();
       const endTimeWithoutSanitization = performance.now();
 
       const sanitizationOverhead =
