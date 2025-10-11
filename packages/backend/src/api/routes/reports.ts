@@ -11,7 +11,7 @@ import {
   listBugReportsSchema,
   getBugReportSchema,
   updateBugReportSchema,
-} from '../schemas/bug-report.schema.js';
+} from '../schemas/bug-report-schema.js';
 import { requireProject } from '../middleware/auth.js';
 import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
 import { findOrThrow, checkProjectAccess } from '../utils/resource.js';

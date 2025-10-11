@@ -46,27 +46,15 @@ Major security update adding comprehensive PII detection and sanitization.
 #### Testing
 
 - 52 comprehensive sanitization tests
-- Edge cases: nested objects, Cyrillic text, performance benchmarks
-- **Total: 226 tests** (up from 174)
+- **Total SDK tests: 226** (up from 174)
 
 ### 📝 Changed
 
-- All capture modules now accept optional `Sanitizer` instance
+- All capture modules accept optional `Sanitizer` instance
 - DOM collector uses rrweb's `maskTextFn` for text sanitization
-- Default behavior: sanitization **enabled** with all built-in patterns
+- Default: sanitization **enabled** with all built-in patterns
 
-### 🔧 Configuration Example
-
-```typescript
-BugSpotter.init({
-  sanitize: {
-    enabled: true,
-    patterns: ['email', 'phone', 'creditcard', 'ssn', 'iin', 'ip'],
-    customPatterns: [{ name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }],
-    excludeSelectors: ['.public-email', '#support-contact'],
-  },
-});
-```
+See [packages/sdk/README.md](./packages/sdk/README.md) for configuration details.
 
 ## [0.2.0] - 2025-10-04
 
@@ -97,17 +85,15 @@ Major update adding comprehensive session replay functionality.
 
 #### Documentation
 
-- Comprehensive session replay documentation
-- Interactive demo guide with replay player
-- Updated all docs with current stats (162 tests, ~99KB bundle)
-- Created master documentation index
+- Session replay guide: [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md)
+- Demo guide: [apps/demo/README.md](./apps/demo/README.md)
 
 #### Testing
 
 - 17 tests for CircularBuffer
 - 13 tests for DOMCollector
-- 3 integration tests for replay in BugSpotter
-- **Total: 162 tests** (up from 129)
+- 3 integration tests for replay
+- **Total SDK tests: 174** (up from 129)
 
 ### 📝 Changed
 
@@ -116,12 +102,9 @@ Major update adding comprehensive session replay functionality.
 - Demo now includes replay player with controls
 - Backend logs now show replay event breakdown
 
-### 🔧 Technical
+### 🔧 Dependencies
 
-- Added rrweb@2.0.0-alpha.4
-- Added rrweb-snapshot@2.0.0-alpha.4
-- Added @rrweb/types@2.0.0-alpha.18
-- Updated vitest config for ES module compatibility
+- rrweb@2.0.0-alpha.4, rrweb-snapshot@2.0.0-alpha.4, @rrweb/types@2.0.0-alpha.18
 
 ## [0.1.0] - 2025-10-03
 
@@ -274,46 +257,23 @@ This is the first working version of BugSpotter SDK with full capture, widget, a
 
 ### 📊 Performance
 
-- **29.2 KB** minified bundle size
-- **< 100ms** load time
-- **< 10 MB** memory footprint
-- **~500ms** screenshot capture
-- **Zero impact** when idle
+- Bundle: 29.2 KB minified
+- Load: < 100ms
+- Memory: < 10 MB
+- Screenshot: ~500ms
 
 ### 🐛 Bug Fixes
 
-- Fixed duplicate floating buttons (SDK auto-widget + manual widget)
-- Fixed modal closing accidentally on outside click (UX improvement)
-- Fixed port conflict (backend now uses 4000, not 3001)
-- Fixed async modal submission (modal now waits for Promise resolution)
-- Fixed test for modal close behavior (async test)
+- Fixed duplicate floating buttons issue
+- Fixed modal closing on outside click (UX improvement)
+- Fixed async modal submission handling
 
-### 🔧 Developer Experience
+### 🔧 Technical
 
-- **TypeScript** strict mode enabled
-- **ESLint** configuration
-- **Prettier** formatting
-- **pnpm** workspace monorepo
-- **Hot reload** in development
-- **Source maps** for debugging
-- **Fast build** (~4 seconds)
-- **Watch mode** for development
-
-### 📦 Build System
-
-- **Webpack 5** configuration
-- **Production optimization** with minification
-- **Tree shaking** for smaller bundles
-- **TypeScript compilation** with ts-loader
-- **ES modules** support
-
-### 🚀 Deployment Ready
-
-- Mock server ready for testing
-- Production-ready SDK build
-- Documentation complete
-- All tests passing
-- Example integration provided
+- TypeScript strict mode
+- Webpack 5 build system
+- pnpm workspace monorepo
+- 129 comprehensive tests
 
 ---
 

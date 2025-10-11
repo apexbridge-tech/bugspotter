@@ -368,7 +368,7 @@ export class OfflineQueue {
 }
 
 /**
- * Global function to clear offline queue (for backwards compatibility)
+ * Global function to clear offline queue
  */
 export function clearOfflineQueue(): void {
   try {

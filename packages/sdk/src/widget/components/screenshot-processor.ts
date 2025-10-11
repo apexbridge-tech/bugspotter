@@ -5,7 +5,7 @@
  * Follows SRP: Only handles image-related operations
  */
 
-import type { RedactionRect } from './redactionCanvas';
+import type { RedactionRect } from './redaction-canvas';
 
 export class ScreenshotProcessor {
   /**

@@ -1,10 +1,10 @@
-import { StyleManager } from './components/styleManager';
-import { TemplateManager } from './components/templateManager';
-import { DOMElementCache } from './components/domElementCache';
-import { FormValidator, type FormData } from './components/formValidator';
-import { PIIDetectionDisplay } from './components/piiDetectionDisplay';
-import { RedactionCanvas } from './components/redactionCanvas';
-import { ScreenshotProcessor } from './components/screenshotProcessor';
+import { StyleManager } from './components/style-manager';
+import { TemplateManager } from './components/template-manager';
+import { DOMElementCache } from './components/dom-element-cache';
+import { FormValidator, type FormData } from './components/form-validator';
+import { PIIDetectionDisplay } from './components/pii-detection-display';
+import { RedactionCanvas } from './components/redaction-canvas';
+import { ScreenshotProcessor } from './components/screenshot-processor';
 import { createSanitizer } from '../utils/sanitize';
 import { getLogger } from '../utils/logger';
 
@@ -47,7 +47,6 @@ export class BugReportModal {
 
   // State
   private originalScreenshot: string = '';
-  private styleElement: HTMLStyleElement | null = null;
   private piiDetections: PIIDetection[] = [];
 
   // Event handler (bound to this for proper removal)
@@ -133,7 +132,7 @@ export class BugReportModal {
   }
 
   /**
-   * Destroy the modal (alias for close for backward compatibility)
+   * Destroy the modal (alias for close)
    */
   destroy(): void {
     this.close();

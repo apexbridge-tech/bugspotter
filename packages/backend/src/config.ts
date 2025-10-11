@@ -5,14 +5,36 @@
  * Note: Call dotenv.config() before importing this module if you need to load .env files
  */
 
-// Configuration constants
-const MIN_JWT_SECRET_LENGTH = 32;
-const MIN_PORT = 1;
-const MAX_PORT = 65535;
-const MIN_TIMEOUT_MS = 1000;
-const MIN_RATE_LIMIT_WINDOW_MS = 1000;
+import { getLogger } from './logger.js';
+import {
+  VALID_STORAGE_BACKENDS,
+  type StorageBackend,
+  type LogLevel,
+  type AppConfig,
+} from './config/types.js';
+import {
+  MIN_PORT,
+  MAX_PORT,
+  MIN_TIMEOUT_MS,
+  MIN_RATE_LIMIT_WINDOW_MS,
+  validateNumber,
+  validateDatabaseUrl,
+  validateDatabasePoolConfig,
+  validateJwtSecret,
+  validateS3Credentials,
+  validateS3BucketName,
+  validateS3Region,
+  validateS3Endpoint,
+  validateS3ForcePathStyle,
+  validateLocalStorageConfig,
+} from './config/validators.js';
 
-export const config = {
+const logger = getLogger();
+
+// Re-export types for convenience
+export type { StorageBackend, LogLevel } from './config/types.js';
+
+export const config: AppConfig = {
   database: {
     url: process.env.DATABASE_URL ?? '',
     poolMax: parseInt(process.env.DB_POOL_MAX ?? '10', 10),
@@ -27,7 +49,7 @@ export const config = {
     env: process.env.NODE_ENV ?? 'development',
     maxUploadSize: parseInt(process.env.MAX_UPLOAD_SIZE ?? '10485760', 10), // 10MB default
     corsOrigins: process.env.CORS_ORIGINS?.split(',') ?? ['http://localhost:3000'],
-    logLevel: (process.env.LOG_LEVEL ?? 'info') as 'debug' | 'info' | 'warn' | 'error',
+    logLevel: (process.env.LOG_LEVEL ?? 'info') as LogLevel,
   },
   jwt: {
     secret: process.env.JWT_SECRET ?? '',
@@ -38,40 +60,36 @@ export const config = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '60000', 10), // 1 minute
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '100', 10),
   },
+  storage: {
+    backend: (process.env.STORAGE_BACKEND ?? 'local') as StorageBackend,
+    // Local storage config
+    local: {
+      baseDirectory: process.env.STORAGE_BASE_DIR ?? './data/uploads',
+      baseUrl: process.env.STORAGE_BASE_URL ?? 'http://localhost:3000/uploads',
+    },
+    // S3-compatible storage config
+    s3: {
+      endpoint: process.env.S3_ENDPOINT, // Required for MinIO/R2, optional for AWS S3
+      region: process.env.S3_REGION ?? 'us-east-1',
+      accessKeyId: process.env.S3_ACCESS_KEY,
+      secretAccessKey: process.env.S3_SECRET_KEY,
+      bucket: process.env.S3_BUCKET,
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true', // Required for MinIO
+      maxRetries: parseInt(process.env.S3_MAX_RETRIES ?? '3', 10),
+      timeout: parseInt(process.env.S3_TIMEOUT_MS ?? '30000', 10),
+    },
+  },
 } as const;
 
 /**
- * Helper to validate a numeric config value
- * @returns Error message if validation fails, null otherwise
+ * Validate application configuration
+ * Delegates to focused validator functions for each concern
  */
-function validateNumber(value: number, name: string, min?: number, max?: number): string | null {
-  if (Number.isNaN(value)) {
-    return `${name} must be a valid number`;
-  }
-  if (min !== undefined && value < min) {
-    return `${name} must be at least ${min}`;
-  }
-  if (max !== undefined && value > max) {
-    return `${name} must be at most ${max}`;
-  }
-  return null;
-}
-
-// Validate required config
 export function validateConfig(): void {
   const errors: string[] = [];
 
-  // Database URL validation
-  if (!config.database.url) {
-    errors.push('DATABASE_URL is required');
-  } else if (
-    !config.database.url.startsWith('postgres://') &&
-    !config.database.url.startsWith('postgresql://')
-  ) {
-    errors.push(
-      'DATABASE_URL must be a valid PostgreSQL connection string (postgres:// or postgresql://)'
-    );
-  }
+  // Database validation
+  errors.push(...validateDatabaseUrl(config.database.url));
 
   // Numeric validations
   const numericChecks = [
@@ -87,31 +105,61 @@ export function validateConfig(): void {
     validateNumber(config.rateLimit.maxRequests, 'RATE_LIMIT_MAX_REQUESTS', 1),
   ];
 
-  errors.push(
-    ...numericChecks.filter((error): error is string => {
-      return error !== null;
-    })
-  );
+  errors.push(...numericChecks.filter((error): error is string => error !== null));
 
-  // Pool size relationship (only check if both values are valid numbers)
-  if (config.database.poolMin > config.database.poolMax) {
-    errors.push('DB_POOL_MIN cannot be greater than DB_POOL_MAX');
-  }
+  // Pool size relationship
+  errors.push(...validateDatabasePoolConfig(config.database.poolMin, config.database.poolMax));
 
   // JWT validation
-  if (!config.jwt.secret && config.server.env === 'production') {
-    errors.push('JWT_SECRET is required in production');
-  } else if (config.jwt.secret && config.jwt.secret.length < MIN_JWT_SECRET_LENGTH) {
-    errors.push(`JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters for security`);
+  errors.push(...validateJwtSecret(config.jwt.secret, config.server.env));
+
+  // Storage backend validation
+  if (!VALID_STORAGE_BACKENDS.includes(config.storage.backend)) {
+    errors.push(
+      `Invalid STORAGE_BACKEND: ${config.storage.backend}. Must be one of: ${VALID_STORAGE_BACKENDS.join(', ')}`
+    );
+  }
+
+  // S3-compatible storage validation
+  if (['s3', 'minio', 'r2'].includes(config.storage.backend)) {
+    const { accessKeyId, secretAccessKey, bucket, region, endpoint, forcePathStyle } =
+      config.storage.s3;
+
+    // Warn if no credentials in non-production
+    if (!accessKeyId && config.server.env !== 'production') {
+      logger.warn(
+        'No S3 credentials provided - will attempt to use IAM role or default credential chain'
+      );
+    }
+
+    errors.push(...validateS3Credentials(accessKeyId, secretAccessKey));
+    errors.push(...validateS3BucketName(bucket));
+    errors.push(...validateS3Region(region, config.storage.backend));
+    errors.push(...validateS3Endpoint(endpoint, config.storage.backend, config.server.env));
+    errors.push(...validateS3ForcePathStyle(forcePathStyle, config.storage.backend));
+
+    // S3 numeric validations
+    const s3NumericChecks = [
+      validateNumber(config.storage.s3.maxRetries, 'S3_MAX_RETRIES', 0),
+      validateNumber(config.storage.s3.timeout, 'S3_TIMEOUT_MS', MIN_TIMEOUT_MS),
+    ];
+
+    errors.push(...s3NumericChecks.filter((error): error is string => error !== null));
+  }
+
+  // Local storage validation
+  if (config.storage.backend === 'local') {
+    errors.push(
+      ...validateLocalStorageConfig(
+        config.storage.local.baseDirectory,
+        config.storage.local.baseUrl
+      )
+    );
   }
 
   if (errors.length > 0) {
     throw new Error(
-      `Configuration validation failed:\n${errors
-        .map((e) => {
-          return `  - ${e}`;
-        })
-        .join('\n')}`
+      `Configuration validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`
     );
   }
 }

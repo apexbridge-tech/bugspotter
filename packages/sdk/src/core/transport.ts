@@ -60,7 +60,7 @@ export interface RetryConfig {
 
 export interface TransportOptions {
   /** Authentication configuration */
-  auth?: AuthConfig | string;
+  auth?: AuthConfig;
   /** Optional logger for debugging */
   logger?: Logger;
   /** Enable retry on token expiration (default: true) */
@@ -206,7 +206,7 @@ class RetryHandler {
 // ============================================================================
 
 interface ParsedTransportParams {
-  auth?: AuthConfig | string;
+  auth?: AuthConfig;
   logger: Logger;
   enableRetry: boolean;
   retryConfig: Required<RetryConfig>;
@@ -215,30 +215,43 @@ interface ParsedTransportParams {
 
 /**
  * Type guard to check if parameter is TransportOptions
+ *
+ * Strategy: Check for properties that ONLY exist in TransportOptions, not in AuthConfig.
+ * AuthConfig has: type, apiKey?, token?, onTokenExpired?, customHeader?
+ * TransportOptions has: auth?, logger?, enableRetry?, retry?, offline?
+ *
+ * Key distinction: AuthConfig always has 'type' property, TransportOptions never does.
  */
 function isTransportOptions(obj: unknown): obj is TransportOptions {
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
 
-  const has = (prop: string, ...types: string[]) => {
-    return prop in obj && types.includes(typeof (obj as Record<string, unknown>)[prop]);
-  };
+  const record = obj as Record<string, unknown>;
 
-  return (
-    has('auth', 'object', 'string') ||
-    has('retry', 'object') ||
-    has('offline', 'object') ||
-    has('logger', 'object') ||
-    has('enableRetry', 'boolean')
-  );
+  // If it has 'type' property, it's an AuthConfig, not TransportOptions
+  if ('type' in record) {
+    return false;
+  }
+
+  // Key insight: If object has TransportOptions-specific keys (even if undefined),
+  // it's likely TransportOptions since AuthConfig never has these keys
+  const hasTransportOptionsKeys =
+    'auth' in record ||
+    'retry' in record ||
+    'offline' in record ||
+    'logger' in record ||
+    'enableRetry' in record;
+
+  // Return true if it has any TransportOptions-specific keys
+  return hasTransportOptionsKeys;
 }
 
 /**
  * Parse transport parameters, supporting both legacy and new API signatures
  */
 function parseTransportParams(
-  authOrOptions?: AuthConfig | string | TransportOptions
+  authOrOptions?: AuthConfig | TransportOptions
 ): ParsedTransportParams {
   if (isTransportOptions(authOrOptions)) {
     // Type guard ensures authOrOptions is TransportOptions
@@ -252,7 +265,7 @@ function parseTransportParams(
   }
 
   return {
-    auth: authOrOptions as AuthConfig | string | undefined,
+    auth: authOrOptions as AuthConfig | undefined,
     logger: getLogger(),
     enableRetry: DEFAULT_ENABLE_RETRY,
     retryConfig: DEFAULT_RETRY_CONFIG,
@@ -290,7 +303,7 @@ async function handleOfflineFailure(
   endpoint: string,
   body: BodyInit,
   contentHeaders: Record<string, string>,
-  auth: AuthConfig | string | undefined,
+  auth: AuthConfig | undefined,
   offlineConfig: Required<OfflineConfig>,
   logger: Logger
 ): Promise<void> {
@@ -310,15 +323,10 @@ async function handleOfflineFailure(
 
 /**
  * Get authentication headers based on configuration
- * @param auth - Authentication configuration or legacy API key string
+ * @param auth - Authentication configuration
  * @returns HTTP headers for authentication
  */
-export function getAuthHeaders(auth?: AuthConfig | string): Record<string, string> {
-  // Backward compatibility: string treated as Bearer token
-  if (typeof auth === 'string') {
-    return { Authorization: `Bearer ${auth}` };
-  }
-
+export function getAuthHeaders(auth?: AuthConfig): Record<string, string> {
   // No auth
   if (!auth) {
     return {};
@@ -332,19 +340,17 @@ export function getAuthHeaders(auth?: AuthConfig | string): Record<string, strin
 /**
  * Submit request with authentication, exponential backoff retry, and offline queue support
  *
- * Supports both legacy signature (4 parameters) and new options-based signature.
- *
  * @param endpoint - API endpoint URL
  * @param body - Request body (must be serializable for retry)
  * @param contentHeaders - Content-related headers (Content-Type, etc.)
- * @param authOrOptions - Legacy: auth config/string, or new: TransportOptions
+ * @param authOrOptions - Auth config or TransportOptions
  * @returns Response from the server
  */
 export async function submitWithAuth(
   endpoint: string,
   body: BodyInit,
   contentHeaders: Record<string, string>,
-  authOrOptions?: AuthConfig | string | TransportOptions
+  authOrOptions?: AuthConfig | TransportOptions
 ): Promise<Response> {
   // Parse options (support both old signature and new options-based API)
   const { auth, logger, enableRetry, retryConfig, offlineConfig } =
@@ -382,7 +388,7 @@ type TokenBasedAuth = Extract<AuthConfig, { type: 'jwt' | 'bearer' }>;
 /**
  * Check if auth config supports token refresh
  */
-function shouldRetryWithRefresh(auth?: AuthConfig | string): auth is TokenBasedAuth {
+function shouldRetryWithRefresh(auth?: AuthConfig): auth is TokenBasedAuth {
   return (
     typeof auth === 'object' &&
     (auth.type === 'jwt' || auth.type === 'bearer') &&
@@ -397,7 +403,7 @@ async function makeRequest(
   endpoint: string,
   body: BodyInit,
   contentHeaders: Record<string, string>,
-  auth?: AuthConfig | string
+  auth?: AuthConfig
 ): Promise<Response> {
   const authHeaders = getAuthHeaders(auth);
   const headers = { ...contentHeaders, ...authHeaders };
@@ -416,7 +422,7 @@ async function sendWithRetry(
   endpoint: string,
   body: BodyInit,
   contentHeaders: Record<string, string>,
-  auth: AuthConfig | string | undefined,
+  auth: AuthConfig | undefined,
   retryConfig: Required<RetryConfig>,
   logger: Logger,
   enableTokenRetry: boolean
@@ -526,5 +532,5 @@ async function retryWithTokenRefresh(
   }
 }
 
-// Re-export for backwards compatibility
+// Re-export offline queue utilities
 export { clearOfflineQueue, type OfflineConfig } from './offline-queue';

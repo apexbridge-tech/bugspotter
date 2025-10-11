@@ -28,9 +28,8 @@ export interface SanitizeConfig {
 }
 
 // Re-export pattern utilities for convenience
+export type { PIIPatternName, PatternDefinition } from './sanitize-patterns';
 export {
-  PIIPatternName,
-  PatternDefinition,
   DEFAULT_PATTERNS,
   PATTERN_PRESETS,
   PATTERN_CATEGORIES,
@@ -321,7 +320,7 @@ export class Sanitizer {
 }
 
 /**
- * Factory function - maintains backward compatibility
+ * Factory function to create a Sanitizer instance
  */
 export function createSanitizer(config: SanitizeConfig): Sanitizer {
   return new Sanitizer(config);

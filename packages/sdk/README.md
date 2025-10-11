@@ -118,117 +118,24 @@ button.setIcon('⚠️');
 button.setBackgroundColor('#00ff00');
 ```
 
-## � PII Sanitization
+## 🔒 PII Sanitization
 
-Protect sensitive user data with automatic PII detection and sanitization before sending bug reports.
+Automatic detection and masking of sensitive data before submission.
 
-### Built-in Patterns
-
-The SDK automatically detects and masks common PII types:
-
-| Pattern Type   | Example               | Redacted As             |
-| -------------- | --------------------- | ----------------------- |
-| Email          | `user@example.com`    | `[REDACTED-EMAIL]`      |
-| Phone          | `+1-555-123-4567`     | `[REDACTED-PHONE]`      |
-| Credit Card    | `4532-1488-0343-6467` | `[REDACTED-CREDITCARD]` |
-| SSN            | `123-45-6789`         | `[REDACTED-SSN]`        |
-| Kazakhstan IIN | `950315300123`        | `[REDACTED-IIN]`        |
-| IP Address     | `192.168.1.100`       | `[REDACTED-IP]`         |
-
-### Configuration Examples
-
-#### Default (All Patterns Enabled)
+**Built-in patterns:** Email, phone, credit card, SSN, Kazakhstan IIN, IP address
 
 ```javascript
 BugSpotter.init({
-  endpoint: 'https://api.example.com/bugs',
-  // Sanitization is enabled by default with all patterns
-});
-```
-
-#### Custom Pattern Selection
-
-```javascript
-BugSpotter.init({
-  endpoint: 'https://api.example.com/bugs',
   sanitize: {
-    enabled: true,
-    patterns: ['email', 'phone', 'creditcard'], // Only these patterns
+    enabled: true, // Default
+    patterns: ['email', 'phone', 'creditcard'],
+    customPatterns: [{ name: 'api-key', regex: /API[-_]KEY:\s*[\w-]{20,}/gi }],
+    excludeSelectors: ['.public-email'],
   },
 });
 ```
 
-#### Custom Regex Patterns
-
-```javascript
-BugSpotter.init({
-  endpoint: 'https://api.example.com/bugs',
-  sanitize: {
-    enabled: true,
-    patterns: ['email', 'custom'],
-    customPatterns: [
-      {
-        name: 'api-key',
-        regex: /(?:API[-_]?KEY[-_:]?\s*[\w\-]{20,})/gi,
-      },
-      {
-        name: 'token',
-        regex: /(?:TOKEN[-_:]?\s*[\w\-]{32,})/gi,
-      },
-    ],
-  },
-});
-```
-
-#### Exclude Public Data
-
-```javascript
-BugSpotter.init({
-  endpoint: 'https://api.example.com/bugs',
-  sanitize: {
-    enabled: true,
-    excludeSelectors: [
-      '.public-email', // Support emails you want to keep
-      '#contact-info', // Public contact information
-      '[data-public="true"]', // Elements marked as public
-    ],
-  },
-});
-```
-
-#### Disable Sanitization (Not Recommended)
-
-```javascript
-BugSpotter.init({
-  endpoint: 'https://api.example.com/bugs',
-  sanitize: {
-    enabled: false, // ⚠️ All PII will be sent in clear text
-  },
-});
-```
-
-### What Gets Sanitized
-
-- ✅ **Console logs** - Arguments and error messages
-- ✅ **Network data** - URLs, headers, request/response bodies
-- ✅ **Error stack traces** - File paths and error messages
-- ✅ **DOM content** - Text nodes in session replay
-- ✅ **Metadata** - Page URLs and user agents
-
-### Performance
-
-- **Overhead**: <10ms per bug report
-- **Memory**: Minimal - patterns compiled once at init
-- **CPU**: Efficient regex with Unicode support for Cyrillic text
-
-### International Support
-
-Full support for:
-
-- 🇺🇸 English text
-- 🇷🇺 Russian Cyrillic
-- 🇰🇿 Kazakh Cyrillic and IIN/BIN numbers
-- 🌍 All standard phone number formats
+**Performance:** <10ms overhead, supports Cyrillic text
 
 ## �📋 API Reference
 
@@ -386,33 +293,15 @@ interface BugReportData {
 
 ## 📊 Capture Modules
 
-### Session Replay (NEW! 🎥)
+The SDK automatically captures:
 
-```typescript
-import { DOMCollector } from '@bugspotter/sdk';
+- **📸 Screenshots** - CSP-safe full page capture (~500ms)
+- **🎥 Session Replay** - Last 15-30s of user interactions (rrweb)
+- **📝 Console** - All log levels with stack traces
+- **🌐 Network** - fetch/XHR timing and responses
+- **💻 Metadata** - Browser, OS, viewport, URL
 
-const collector = new DOMCollector({
-  duration: 30, // Keep last 30 seconds
-  sampling: {
-    mousemove: 100, // Throttle mousemove
-    scroll: 200, // Throttle scroll
-  },
-});
-
-collector.startRecording();
-const events = collector.getEvents();
-```
-
-**Features:**
-
-- **Circular buffer** - Automatically maintains last 15-30 seconds
-- **DOM mutations** - Records all DOM changes
-- **User interactions** - Mouse movements, clicks, scrolls
-- **Performance optimized** - Configurable sampling rates
-- **Minimal overhead** - Slim DOM recording options
-- **Auto-pruning** - Removes old events to prevent memory bloat
-
-**See [Session Replay Documentation](docs/SESSION_REPLAY.md) for detailed guide.**
+See [Session Replay Documentation](docs/SESSION_REPLAY.md) for detailed configuration.
 
 ### Screenshot Capture
 
@@ -487,165 +376,36 @@ const metadata = metadataCapture.capture();
 ## 🧪 Testing
 
 ```bash
-# Run all tests
-pnpm test
-
-# Watch mode
-pnpm test --watch
-
-# UI mode
-pnpm test --ui
-
-# Coverage
-pnpm test --coverage
+pnpm test              # All tests
+pnpm test --watch      # Watch mode
+pnpm test --coverage   # Coverage report
 ```
 
-**Test Coverage:**
+**404 tests** passing (348 unit + 55 E2E + 13 Playwright)
 
-- 348 unit tests + 55 E2E tests
-- All passing ✅
-- Unit tests for all modules
-- Integration tests for SDK
-- API submission tests
-- Widget interaction tests
-- Session replay tests (circular buffer + DOM collector)
-- Performance benchmarks
-
-## 🏗️ Building
+## �️ Building
 
 ```bash
-# Development build with watch
-pnpm run dev
-
-# Production build
-pnpm run build
+pnpm run dev    # Development with watch
+pnpm run build  # Production build
 ```
 
-**Output:**
-
-- `dist/bugspotter.min.js` (~99 KB with session replay)
-- `dist/*.d.ts` (TypeScript definitions)
-
-## 🔧 Development
-
-### Project Structure
-
-```
-sdk/
-├── src/
-│   ├── index.ts              # Main SDK export
-│   ├── capture/
-│   │   ├── console.ts        # Console capture
-│   │   ├── network.ts        # Network monitoring
-│   │   ├── screenshot.ts     # Screenshot capture
-│   │   └── metadata.ts       # Browser metadata
-│   ├── widget/
-│   │   ├── button.ts         # Floating button
-│   │   └── modal.ts          # Bug report modal
-│   └── types/
-│       └── html-to-image.d.ts
-├── tests/
-│   ├── index.test.ts
-│   ├── capture/
-│   └── widget/
-├── dist/                     # Build output
-├── package.json
-├── tsconfig.json
-├── webpack.config.js
-└── vitest.config.ts
-```
-
-### TypeScript Configuration
-
-The SDK is built with TypeScript for full type safety:
-
-```typescript
-import type { BugSpotter, BugReport, BugReportData } from '@bugspotter/sdk';
-```
-
-All exports include TypeScript definitions.
-
-## 🎯 Use Cases
-
-### 1. Simple Integration
-
-```javascript
-// Just add the script and initialize
-BugSpotter.init({
-  endpoint: 'https://api.example.com/bugs',
-  apiKey: 'your-key',
-});
-// Users can now report bugs via the floating button
-```
-
-### 2. Custom Trigger
-
-```javascript
-// Initialize without widget
-const bugSpotter = BugSpotter.init({
-  showWidget: false,
-  endpoint: 'https://api.example.com/bugs',
-});
-
-// Trigger from your own button
-document.getElementById('report-bug').addEventListener('click', async () => {
-  const report = await bugSpotter.capture();
-  // Handle submission
-});
-```
-
-### 3. Programmatic Capture
-
-```javascript
-// Capture on error
-window.addEventListener('error', async (event) => {
-  const bugSpotter = BugSpotter.getInstance();
-  if (bugSpotter) {
-    const report = await bugSpotter.capture();
-    // Auto-submit critical errors
-    await fetch('/api/bugs', {
-      method: 'POST',
-      body: JSON.stringify({
-        title: 'Unhandled Error',
-        description: event.message,
-        report,
-      }),
-    });
-  }
-});
-```
-
-## 🔒 Security
-
-- **CSP-safe** - No eval(), no inline scripts
-- **PII sanitization** - Automatic detection and masking of sensitive data
-- **Input sanitization** - All user inputs are validated
-- **Bearer auth** - API key sent in Authorization header
-- **HTTPS recommended** - Use secure endpoints in production
-- **No external calls** - All processing happens locally
+Output: `dist/bugspotter.min.js` (~99 KB)
 
 ## 📈 Performance
 
-- **Bundle size**: ~99 KB minified (with session replay)
-- **Load time**: < 100ms
-- **Memory**: < 15 MB active (with 30s replay buffer)
-- **Screenshot**: ~500ms average
-- **Replay overhead**: Minimal (throttled events)
-- **PII sanitization**: <10ms per bug report
-- **Zero impact** when idle
+- **Bundle**: ~99 KB minified
+- **Load**: < 100ms
+- **Memory**: < 15 MB (30s replay buffer)
+- **Screenshot**: ~500ms
+- **PII sanitization**: <10ms
 
-## 🧪 Testing
+## 🔒 Security
 
-- **404 tests** passing (348 unit + 55 E2E + 13 Playwright)
-  - 52 PII sanitization tests
-  - 25 DOM collector tests (including edge cases)
-  - 30 SDK integration tests
-  - 19 widget tests
-  - 11 performance benchmarks
-  - 55 E2E tests with real backend
-  - 13 browser tests (Chrome/Firefox/WebKit)
-- Full coverage of edge cases
-- Performance benchmarks included
+- CSP-safe (no eval, no inline scripts)
+- Automatic PII detection and masking
+- Input validation
+- HTTPS recommended
 
 ## 🤝 Contributing
 

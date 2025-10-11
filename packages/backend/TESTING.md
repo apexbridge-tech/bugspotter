@@ -37,19 +37,20 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 
 ### What Gets Tested
 
-#### Unit Tests (244 tests)
+#### Unit Tests (621 tests)
 
-- ✅ Database connection and pooling
+- ✅ Database connection, pooling, query builder
 - ✅ CRUD operations for all entities
-- ✅ Query filtering and pagination
-- ✅ JSON serialization/deserialization
-- ✅ Foreign key relationships
-- ✅ Unique constraints
-- ✅ Error handling and retry logic
+- ✅ Repository pattern (6 repositories)
+- ✅ Storage layer (base, S3, local, helpers)
+- ✅ Path utilities and sanitization
+- ✅ Stream utilities and transformations
+- ✅ Image processing
+- ✅ Retry logic and error handling
 - ✅ API routes and middleware
-- ✅ Repository-specific methods (access control, project members)
+- ✅ Authentication and authorization
 
-#### Integration Tests (79 tests)
+#### Integration Tests (104 tests)
 
 - ✅ Full API endpoints with authentication
 - ✅ Database transactions and concurrency
@@ -57,10 +58,10 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ JWT token generation and refresh
 - ✅ API key authentication
 - ✅ Role-based access control
-- ✅ Rate limiting
+- ✅ Storage operations (local + S3)
 - ✅ Cross-project access prevention
 
-#### Load Tests (13 tests)
+#### Load Tests (25 tests)
 
 - ✅ 100+ concurrent operations
 - ✅ Connection pool management
@@ -69,19 +70,19 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-**Total: 336 tests**
+**Total: 750 tests across 27 test files**
 
 ## Test Commands
 
 ### All Tests
 
 ```bash
-# Run all tests (unit + integration + load)
+# Run all tests (unit + integration + load + storage)
 pnpm test
 
 # Run specific test suites
-pnpm test:unit              # Unit tests only (database layer)
-pnpm test:integration       # Integration tests (API + DB)
+pnpm test:unit              # Unit tests only (database layer, storage mocks)
+pnpm test:integration       # Integration tests (API + DB + storage)
 pnpm test:load              # Load/performance tests
 
 # Watch modes
@@ -90,6 +91,11 @@ pnpm test:integration:watch # Watch integration tests
 
 # Coverage
 pnpm test:coverage          # Generate coverage report
+
+# Storage-specific tests
+pnpm vitest run tests/storage.test.ts                              # Storage unit tests
+pnpm vitest run tests/integration/storage.integration.test.ts     # Storage integration tests
+TEST_MINIO=true pnpm test:integration                              # Include MinIO tests
 ```
 
 ### Specific Tests
@@ -237,36 +243,37 @@ docker ps -a | grep testcontainers
 docker container prune
 ```
 
-## Test Structure
+## Test Coverage Summary
+
+### Overall Test Suite (457 tests)
+
+| Category              | Tests   | Description                                   |
+| --------------------- | ------- | --------------------------------------------- |
+| **Unit Tests**        | **340** | Database, API, storage, utilities             |
+| - Database            | 244     | CRUD, queries, transactions, pooling          |
+| - API                 | 38      | Routes, middleware, validation                |
+| - Storage             | 37      | Local/S3 uploads, image processing            |
+| - Utilities           | 21      | Retry logic, path utils, stream utils         |
+| **Integration Tests** | **104** | End-to-end workflows                          |
+| - API + DB            | 79      | Full request/response cycles                  |
+| - Storage             | 25      | Real backend operations                       |
+| **Load Tests**        | **13**  | Performance, concurrency, resource management |
+
+### Test Structure
 
 ```
 tests/
-├── setup.ts                       # Unit test setup
-├── setup.integration.ts           # Integration test setup (Testcontainers)
-├── setup.integration-env.ts       # Environment configuration
-├── setup-file-polyfill.ts         # Node compatibility polyfill
-│
-├── db.test.ts                     # Database unit tests
-├── repositories.test.ts           # Repository-specific methods (access control)
-├── query-builder.test.ts          # Query builder tests
-│
+├── db.test.ts                     # Database CRUD operations
+├── repositories.test.ts           # Repository-specific methods
+├── storage.test.ts                # Storage unit tests
 ├── api/                           # API unit tests
-│   ├── auth.test.ts
-│   ├── auth-middleware.test.ts
-│   ├── projects.test.ts
-│   ├── reports.test.ts
-│   ├── health.test.ts
-│   ├── error.test.ts
-│   └── server.test.ts
-│
 ├── integration/                   # Integration tests
-│   ├── api.integration.test.ts    # Full API endpoint tests
-│   ├── db.integration.test.ts     # Database integration tests
-│   ├── auth.integration.test.ts   # Auth flow tests
-│   └── load.test.ts               # Performance tests
-│
+│   ├── api.integration.test.ts
+│   ├── db.integration.test.ts
+│   ├── auth.integration.test.ts
+│   ├── storage.integration.test.ts
+│   └── load.test.ts
 └── utils/                         # Test utilities
-    └── test-utils.ts              # Helper functions
 ```
 
 ### Test Configurations
@@ -277,36 +284,34 @@ tests/
 
 ### Adding New Tests
 
-Add tests to `tests/db.test.ts`:
-
 ```typescript
 describe('Your Feature', () => {
   it('should do something', async () => {
-    // Arrange
-    const project = await db.projects.create({
-      name: 'Test Project',
-      api_key: 'test-key',
-    });
-
-    // Act
+    const project = await db.projects.create({ name: 'Test', api_key: 'key' });
     const result = await db.someMethod(project.id);
-
-    // Assert
     expect(result).toBeDefined();
   });
 });
 ```
 
-The database is automatically available and migrated.
-
 ## Performance
 
 - **Container Start**: ~5 seconds
 - **Migration Run**: ~1 second
-- **Test Execution**: ~350ms (repository tests), ~20s (all unit tests)
+- **Test Execution**: ~350ms (repository tests), ~27s (all tests)
 - **Container Stop**: ~1 second
 
-Total test run: **~27 seconds** for all 336 tests including container lifecycle
+Total test run: **~34 seconds** for all 398 tests including container lifecycle
+
+## Test Data Cleanup
+
+Test directories are automatically cleaned up after each test run. If cleanup fails or tests are interrupted, manually run:
+
+```bash
+pnpm test:cleanup
+```
+
+This removes all `test-uploads-*` and `test-e2e-uploads-*` directories.
 
 ## Best Practices
 
@@ -314,7 +319,7 @@ Total test run: **~27 seconds** for all 336 tests including container lifecycle
 2. **Use Watch Mode During Development** - Faster feedback loop
 3. **Run Full Suite Before Commit** - Ensure all tests pass
 4. **Keep Tests Independent** - Each test should work in isolation
-5. **Use Transactions for Cleanup** - (Future enhancement)
+5. **Clean Up Test Data** - Run `pnpm test:cleanup` if tests are interrupted
 
 ## Resources
 

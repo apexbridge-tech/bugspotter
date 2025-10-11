@@ -4,7 +4,7 @@
 
 Capture screenshots, console logs, network requests, **session replays**, and metadata - helping developers reproduce bugs faster.
 
-[![Tests](https://img.shields.io/badge/tests-404%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]()
+[![Tests](https://img.shields.io/badge/tests-1095%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
 
 ## ✨ Features
 
@@ -20,16 +20,20 @@ Capture screenshots, console logs, network requests, **session replays**, and me
 
 ## 🚀 Quick Start
 
-### Installation
+> **Note**: BugSpotter is in active development and not yet released to npm.
+
+### Installation (Development)
 
 ```bash
-# Clone and install
+# Clone repository
 git clone https://github.com/apexbridge-tech/bugspotter.git
 cd bugspotter
+
+# Install dependencies
 pnpm install
 
-# Build SDK
-cd packages/sdk && pnpm run build
+# Build all packages
+pnpm build
 ```
 
 ### Try the Demo
@@ -102,117 +106,61 @@ customPatterns: [
 
 ## 📦 Project Structure
 
-This is a **pnpm workspace monorepo** with the following structure:
+**pnpm workspace monorepo:**
 
-\`\`\`
-bugspotter/
-├── .github/
-│ └── workflows/
-│ └── ci.yml # CI/CD pipeline
-├── packages/
-│ ├── sdk/ # @bugspotter/sdk - Core SDK + Session Replay
-│ ├── types/ # @bugspotter/types - Shared TypeScript types
-│ └── backend-mock/ # @bugspotter/backend-mock - Mock API server
-├── apps/
-│ └── demo/ # Interactive demo application
-├── docs/ # Documentation
-├── pnpm-workspace.yaml # Workspace configuration
-└── package.json # Root package.json
-\`\`\`
-
-### Workspace Commands
-
-\`\`\`bash
-
-# Install all dependencies
-
-pnpm install
-
-# Run commands across all packages
-
-pnpm run build # Build all packages
-pnpm run test # Test all packages
-pnpm run lint # Lint all packages
-
-# Run commands for specific package
-
-pnpm --filter @bugspotter/sdk run build
-pnpm --filter @bugspotter/sdk run test
-
-# Run commands for all packages in a directory
-
-pnpm --recursive --filter "./packages/\*\*" run test
-\`\`\`
-
-## 📖 API Reference
-
-### Initialize
-
-\`\`\`javascript
-const bugSpotter = BugSpotter.init(config);
-\`\`\`
-
-### Capture
-
-\`\`\`javascript
-const report = await bugSpotter.capture();
-// { screenshot, console, network, metadata, replay }
-\`\`\`
-
-### Custom Widget
-
-\`\`\`javascript
-const button = new BugSpotter.FloatingButton({
-position: 'bottom-right',
-icon: '⚡',
-backgroundColor: '#1a365d'
-});
-
-button.onClick(async () => {
-const report = await bugSpotter.capture();
-// Handle submission
-});
-\`\`\`
-
-[Full API docs →](./packages/sdk/README.md)
+- `packages/sdk` - Core TypeScript SDK (~99KB)
+- `packages/backend` - Fastify REST API with PostgreSQL
+- `packages/types` - Shared TypeScript definitions
+- `packages/backend-mock` - Mock API server
+- `apps/demo` - Interactive demo
 
 ## 🧪 Testing
 
-\`\`\`bash
+**SDK:** 345 tests (unit + E2E + Playwright)  
+**Backend:** 750 tests (unit + integration + load + storage)  
+**Total:** 1,095 tests - all passing ✅
 
-# Run all tests
-
-cd packages/sdk
-pnpm test # Unit tests (348 tests)
-pnpm run test:e2e # E2E tests (55 tests)
-pnpm run test:browser # Playwright tests (13 tests)
-
-# Development
-
-pnpm test --watch # Watch mode
-pnpm test --ui # Visual UI
-\`\`\`
+```bash
+pnpm test              # All tests (requires Docker)
+pnpm test:watch        # Watch mode
+pnpm test:coverage     # Coverage report
+```
 
 ## 🏗️ Tech Stack
 
-**SDK:** TypeScript, Webpack, rrweb, html-to-image  
-**Testing:** Vitest (404 tests total: 348 unit + 55 E2E + 13 Playwright)  
-**Backend:** Node.js, Express, Supabase  
+**SDK:** TypeScript, Webpack, rrweb  
+**Backend:** Fastify 5.6.1, PostgreSQL 16, S3-compatible storage  
+**Testing:** Vitest, Testcontainers  
 **Dev:** pnpm, ESLint, Prettier
 
 ## 📊 Performance
 
 - **Bundle:** ~99 KB minified
 - **Load:** <100ms
-- **Screenshot:** ~500ms
-- **PII:** <10ms overhead
 - **Memory:** <15 MB (30s buffer)
+- **Tests:** 1,095 total (100% passing ✅)
 
 ## 🛣️ Roadmap
 
-✅ **Completed:** Core SDK, Session Replay, PII Sanitization, 404 Tests  
-🚧 **In Progress:** Documentation, Performance  
-⏳ **Planned:** NPM Package, React/Vue/Angular, Cloud Storage, Analytics
+✅ **Completed:**
+
+- Core SDK with session replay (rrweb)
+- PII sanitization (10+ patterns)
+- Backend API with PostgreSQL & S3 storage
+- Comprehensive testing (1,095 tests)
+
+🚧 **In Progress (Pre-Release):**
+
+- Production deployment guides
+- API documentation finalization
+- Performance optimization
+
+⏳ **Planned for v1.0:**
+
+- NPM package release
+- Framework integrations (React, Vue, Angular)
+- Hosted backend service
+- Analytics dashboard
 
 ## 🤝 Contributing
 

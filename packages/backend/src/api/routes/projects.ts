@@ -11,7 +11,7 @@ import {
   getProjectSchema,
   updateProjectSchema,
   regenerateApiKeySchema,
-} from '../schemas/project.schema.js';
+} from '../schemas/project-schema.js';
 import { requireUser, requireRole } from '../middleware/auth.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
 import { findOrThrow, checkProjectAccess } from '../utils/resource.js';
