@@ -48,13 +48,13 @@ export class S3StreamUploader {
     const contentType = options?.contentType ?? 'application/octet-stream';
     let uploadedBytes = 0;
 
-    try {
-      // Handle stream errors
-      const streamErrorHandler = (error: Error) => {
-        logger.error('Stream error during upload', { key, error: error.message });
-      };
-      stream.once('error', streamErrorHandler);
+    // Handle stream errors
+    const streamErrorHandler = (error: Error) => {
+      logger.error('Stream error during upload', { key, error: error.message });
+    };
+    stream.once('error', streamErrorHandler);
 
+    try {
       // Use S3 Upload for true streaming (no buffering entire file in memory)
       const upload = new Upload({
         client: this.client,
@@ -81,9 +81,6 @@ export class S3StreamUploader {
 
       const result = await upload.done();
 
-      // Clean up error handler
-      stream.removeListener('error', streamErrorHandler);
-
       // Get actual size from S3 response or tracked bytes
       const size = await this.getUploadedSize(key, uploadedBytes);
 
@@ -101,6 +98,9 @@ export class S3StreamUploader {
         `Stream upload failed: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
       );
+    } finally {
+      // Always clean up error handler, even on failure
+      stream.removeListener('error', streamErrorHandler);
     }
   }
 
