@@ -42,6 +42,9 @@ export interface BugReport {
   metadata: Record<string, unknown>;
   status: BugStatus;
   priority: BugPriority;
+  deleted_at: Date | null;
+  deleted_by: string | null;
+  legal_hold: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -83,6 +86,24 @@ export interface Permission {
   created_at: Date;
 }
 
+export interface ArchivedBugReport {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  screenshot_url: string | null;
+  replay_url: string | null;
+  metadata: Record<string, unknown>;
+  status: BugStatus;
+  priority: BugPriority;
+  original_created_at: Date;
+  original_updated_at: Date;
+  deleted_at: Date;
+  deleted_by: string | null;
+  archived_at: Date;
+  archived_reason: string | null;
+}
+
 export interface MigrationHistory {
   id: number;
   migration_name: string;
@@ -117,6 +138,9 @@ export type BugReportInsert = {
   metadata?: Record<string, unknown>;
   status?: BugStatus;
   priority?: BugPriority;
+  deleted_at?: Date | null;
+  deleted_by?: string | null;
+  legal_hold?: boolean;
 };
 
 export type BugReportUpdate = Partial<

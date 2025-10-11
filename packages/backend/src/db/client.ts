@@ -20,6 +20,7 @@ import {
   SessionRepository,
   TicketRepository,
 } from './repositories.js';
+import { RetentionRepository } from './retention-repository.js';
 
 const { Pool } = pg;
 
@@ -82,6 +83,7 @@ export class DatabaseClient implements RepositoryRegistry {
   public readonly users: UserRepository;
   public readonly sessions: SessionRepository;
   public readonly tickets: TicketRepository;
+  public readonly retention: RetentionRepository;
 
   /**
    * Private constructor - use static create() method instead
@@ -94,6 +96,7 @@ export class DatabaseClient implements RepositoryRegistry {
     // Initialize repositories with retry wrapping
     this.projects = this.wrapWithRetry(repositories.projects);
     this.projectMembers = this.wrapWithRetry(repositories.projectMembers);
+    this.retention = this.wrapWithRetry(repositories.retention);
     this.bugReports = this.wrapWithRetry(repositories.bugReports);
     this.users = this.wrapWithRetry(repositories.users);
     this.sessions = this.wrapWithRetry(repositories.sessions);
@@ -273,6 +276,17 @@ export class DatabaseClient implements RepositoryRegistry {
       });
       return false;
     }
+  }
+
+  /**
+   * Execute a raw SQL query
+   * Use this for complex queries not covered by repositories
+   */
+  async query<T extends pg.QueryResultRow = any>(
+    text: string,
+    params?: any[]
+  ): Promise<pg.QueryResult<T>> {
+    return await this.pool.query<T>(text, params);
   }
 
   /**

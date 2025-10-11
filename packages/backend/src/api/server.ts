@@ -18,9 +18,14 @@ import { healthRoutes } from './routes/health.js';
 import { bugReportRoutes } from './routes/reports.js';
 import { projectRoutes } from './routes/projects.js';
 import { authRoutes } from './routes/auth.js';
+import { retentionRoutes } from './routes/retention.js';
+import type { RetentionService } from '../retention/retention-service.js';
+import type { RetentionScheduler } from '../retention/retention-scheduler.js';
 
 export interface ServerOptions {
   db: DatabaseClient;
+  retentionService?: RetentionService;
+  retentionScheduler?: RetentionScheduler;
 }
 
 /**
@@ -143,6 +148,11 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   await bugReportRoutes(fastify, db);
   await projectRoutes(fastify, db);
   await authRoutes(fastify, db);
+
+  // Register retention routes if services are provided
+  if (options.retentionService && options.retentionScheduler) {
+    retentionRoutes(fastify, db, options.retentionService, options.retentionScheduler);
+  }
 
   // Register error handlers
   fastify.setErrorHandler(errorHandler);
