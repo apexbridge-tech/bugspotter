@@ -32,7 +32,7 @@ describe('Retention Routes', () => {
       baseUrl: 'http://localhost:3000/storage',
     });
     await storage.initialize();
-    const retentionService = new RetentionService(db, db['pool'], storage);
+    const retentionService = new RetentionService(db, storage);
     const notificationService = new LoggerNotificationService();
     const retentionScheduler = new RetentionScheduler(retentionService, notificationService);
 

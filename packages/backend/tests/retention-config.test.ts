@@ -2,7 +2,7 @@
  * Unit tests for retention configuration helpers
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_RETENTION_DAYS,
   SCREENSHOT_RETENTION_DAYS,
@@ -24,7 +24,7 @@ import {
   validateRetentionDays,
   calculateCutoffDate,
 } from '../src/retention/retention-config.js';
-import type { ComplianceRegion, DataClassification, ProjectTier } from '../src/retention/types.js';
+import type { ComplianceRegion } from '../src/retention/types.js';
 
 describe('Retention Configuration', () => {
   describe('Default Constants', () => {
@@ -304,7 +304,6 @@ describe('Retention Configuration', () => {
     });
 
     it('should handle enterprise tier with US SOX compliance', () => {
-      const policy = getRetentionPolicyForTier('enterprise', 'financial', 'us');
       const validation = validateRetentionDays(2555, 'enterprise', 'financial', 'us');
       expect(validation.valid).toBe(true);
       expect(requiresDeletionCertificate('us')).toBe(true);

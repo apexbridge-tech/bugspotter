@@ -5,16 +5,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RetentionService } from '../src/retention/retention-service.js';
 import type { DatabaseClient } from '../src/db/client.js';
-import type { Pool } from 'pg';
 
 describe('RetentionService', () => {
   let service: RetentionService;
   let mockDb: DatabaseClient;
-  let mockPool: Pool;
   let mockStorage: any;
 
   beforeEach(() => {
-    // Mock database client with all required repos
+    // Mock database client with all required repos and new methods
     mockDb = {
       projects: {
         findAll: vi.fn(),
@@ -28,14 +26,14 @@ describe('RetentionService', () => {
         findByBugReport: vi.fn(),
         deleteByIds: vi.fn(),
       },
-      close: vi.fn(),
-    } as any;
-
-    // Mock pool
-    mockPool = {
+      retention: {
+        findEligibleForDeletion: vi.fn(),
+        softDeleteReports: vi.fn(),
+        hardDeleteReportsInTransaction: vi.fn(),
+      },
       query: vi.fn(),
-      connect: vi.fn(),
-      end: vi.fn(),
+      transaction: vi.fn(),
+      close: vi.fn(),
     } as any;
 
     // Mock storage
@@ -44,7 +42,7 @@ describe('RetentionService', () => {
       deleteSessionReplay: vi.fn(),
     };
 
-    service = new RetentionService(mockDb, mockPool, mockStorage);
+    service = new RetentionService(mockDb, mockStorage);
   });
 
   describe('applyRetentionPolicies()', () => {
@@ -115,62 +113,65 @@ describe('RetentionService', () => {
   describe('hardDeleteReports()', () => {
     it('should delete reports and return certificate', async () => {
       const reportIds = ['report-1', 'report-2'];
-      const mockClient = {
-        query: vi
-          .fn()
-          .mockResolvedValueOnce(undefined) // BEGIN
-          .mockResolvedValueOnce({ rows: [{ id: 'report-1', project_id: 'proj-1' }] }) // SELECT
-          .mockResolvedValueOnce({ rowCount: 1 }) // DELETE
-          .mockResolvedValueOnce(undefined), // COMMIT
-        release: vi.fn(),
-      };
-      vi.mocked(mockPool.connect).mockResolvedValue(mockClient as any);
+      const mockReports = [{ id: 'report-1', project_id: 'proj-1' }];
+
+      // Mock transaction to call the callback with mock transaction context
+      vi.mocked(mockDb.transaction).mockImplementation(async (callback: any) => {
+        const mockTx = {
+          ...mockDb,
+          retention: {
+            ...mockDb.retention,
+            hardDeleteReportsInTransaction: vi.fn().mockResolvedValue(mockReports),
+          },
+        };
+        return await callback(mockTx);
+      });
 
       const certificate = await service.hardDeleteReports(reportIds, 'user-1');
 
       expect(certificate).toBeTruthy();
-      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockDb.transaction).toHaveBeenCalled();
     });
 
     it('should handle empty array', async () => {
       const certificate = await service.hardDeleteReports([], 'user-1');
 
       expect(certificate).toBeNull();
-      expect(mockPool.connect).not.toHaveBeenCalled();
+      expect(mockDb.transaction).not.toHaveBeenCalled();
     });
   });
 
   describe('restoreReports()', () => {
     it('should restore deleted reports', async () => {
       const reportIds = ['report-1', 'report-2'];
-      vi.mocked(mockPool.query).mockResolvedValue({ rowCount: 2 } as any);
+      vi.mocked(mockDb.query).mockResolvedValue({ rowCount: 2 } as any);
 
       const count = await service.restoreReports(reportIds);
 
       expect(count).toBe(2);
-      expect(mockPool.query).toHaveBeenCalled();
+      expect(mockDb.query).toHaveBeenCalled();
     });
   });
 
   describe('setLegalHold()', () => {
     it('should set legal hold flag', async () => {
       const reportIds = ['report-1'];
-      vi.mocked(mockPool.query).mockResolvedValue({ rowCount: 1 } as any);
+      vi.mocked(mockDb.query).mockResolvedValue({ rowCount: 1 } as any);
 
       const count = await service.setLegalHold(reportIds, true, 'user-1');
 
       expect(count).toBe(1);
-      expect(mockPool.query).toHaveBeenCalled();
+      expect(mockDb.query).toHaveBeenCalled();
     });
 
     it('should remove legal hold flag', async () => {
       const reportIds = ['report-1'];
-      vi.mocked(mockPool.query).mockResolvedValue({ rowCount: 1 } as any);
+      vi.mocked(mockDb.query).mockResolvedValue({ rowCount: 1 } as any);
 
       const count = await service.setLegalHold(reportIds, false, 'user-1');
 
       expect(count).toBe(1);
-      expect(mockPool.query).toHaveBeenCalled();
+      expect(mockDb.query).toHaveBeenCalled();
     });
   });
 });

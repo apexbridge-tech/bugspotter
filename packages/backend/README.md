@@ -11,7 +11,7 @@ Production-ready backend for BugSpotter with PostgreSQL database, REST API, and 
 - 🔍 **Query & Filter** - Pagination, sorting, role-based access control
 - 🕐 **Data Retention** - Automated lifecycle management with compliance support (GDPR, CCPA, Kazakhstan)
 - 🏥 **Health Checks** - Liveness and readiness endpoints
-- 🧪 **Testing** - 850 tests with Testcontainers (no manual setup required)
+- 🧪 **Testing** - 869 tests with Testcontainers (no manual setup required)
 
 ## Quick Start
 
@@ -377,7 +377,7 @@ const projectRepo = new ProjectRepository(pool);
 const project = await projectRepo.findByApiKey('bgs_...');
 ```
 
-Available repositories: `ProjectRepository`, `BugReportRepository`, `UserRepository`, `SessionRepository`, `TicketRepository`, `ProjectMemberRepository`
+Available repositories: `ProjectRepository`, `BugReportRepository`, `UserRepository`, `SessionRepository`, `TicketRepository`, `ProjectMemberRepository`, `RetentionRepository`
 
 ## Storage Layer
 
@@ -455,7 +455,8 @@ const errorHandlers = [
 DatabaseClient (Facade)
     ├── ProjectRepository
     ├── BugReportRepository
-    └── ... (6 repositories)
+    ├── RetentionRepository
+    └── ... (7 repositories total)
          └── BaseRepository (shared logic)
 ```
 
@@ -528,9 +529,9 @@ pnpm test:integration       # Integration tests
 pnpm test:load              # Load/performance tests
 ```
 
-**850 tests** total (28 test files):
+**869 tests** total (32 test files):
 
-- 721 unit tests (database, API, storage, retention, utilities)
+- 740 unit tests (database, API, storage, retention, utilities)
 - 104 integration tests (API + DB + storage)
 - 25 storage integration tests (local + S3)
 

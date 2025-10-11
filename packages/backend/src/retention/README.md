@@ -14,7 +14,7 @@ The retention system provides:
 - **Tier-based limits**: Free (max 60 days), Professional (up to 1 year), Enterprise (unlimited)
 - **Extensible**: Easy to add new compliance regions and data classifications
 
-**Test Status**: ✅ 69/69 tests passing (47 config + 13 scheduler + 9 service)
+**Test Status**: ✅ 88/88 tests passing (47 config + 13 scheduler + 9 service + 19 repository integration)
 
 ## Architecture
 
@@ -26,9 +26,25 @@ retention/
 ├── retention-scheduler.ts # Cron-based scheduler
 ├── schemas.ts            # Zod validation schemas
 └── index.ts              # Public API exports
+
+db/
+└── retention-repository.ts # Repository for retention SQL operations
 ```
 
 ### Components
+
+**RetentionRepository**: Database operations for retention lifecycle
+
+- `findEligibleForDeletion()` - Find reports older than retention cutoff
+- `softDeleteReports()` - Mark reports as deleted (with legal hold protection)
+- `archiveReports()` - Copy to archived_bug_reports table
+- `restoreArchivedReports()` - Remove from archive
+- `hardDeleteArchivedReports()` - Permanently delete from archive
+- `applyLegalHold()` - Set legal hold flag with metadata
+- `removeLegalHold()` - Remove legal hold
+- `countLegalHoldReports()` - Count protected reports
+- `getStorageStats()` - Calculate storage usage
+- `hardDeleteReportsInTransaction()` - Delete within transaction context
 
 **RetentionService**: Main orchestrator for retention operations
 
@@ -307,7 +323,7 @@ import { RetentionService, RetentionScheduler } from './retention/index.js';
 // Initialize services
 const db = await createDatabaseClient();
 const storage = await createStorage();
-const retentionService = new RetentionService(db, pool, storage);
+const retentionService = new RetentionService(db, storage);
 const retentionScheduler = new RetentionScheduler(retentionService);
 
 // Start scheduler
@@ -364,11 +380,12 @@ console.log(`Restored ${restoredCount} reports`);
 
 ## Testing
 
-**Current Status**: ✅ 69/69 tests passing (100%)
+**Current Status**: ✅ 88/88 tests passing (100%)
 
 - **retention-config.test.ts**: 47 tests - Configuration, validation, compliance rules
 - **retention-scheduler.test.ts**: 13 tests - Scheduler lifecycle, error handling
 - **retention-service.test.ts**: 9 tests - Service orchestration with mocked dependencies
+- **retention-repository.test.ts**: 19 tests - Integration tests with PostgreSQL (Testcontainers)
 
 ```bash
 # Run all retention tests
@@ -378,6 +395,7 @@ pnpm --filter @bugspotter/backend test retention
 pnpm --filter @bugspotter/backend test retention-config
 pnpm --filter @bugspotter/backend test retention-scheduler
 pnpm --filter @bugspotter/backend test retention-service
+pnpm --filter @bugspotter/backend test retention-repository
 ```
 
 ## Implementation Safeguards

@@ -3,7 +3,6 @@
  * Manages data retention policies and lifecycle operations
  */
 
-import type { Pool } from 'pg';
 import crypto from 'crypto';
 import { getLogger } from '../logger.js';
 import type { DatabaseClient } from '../db/client.js';
@@ -37,7 +36,6 @@ const logger = getLogger();
 export class RetentionService {
   constructor(
     private db: DatabaseClient,
-    private pool: Pool,
     private storage: BaseStorageService
   ) {}
 
@@ -243,17 +241,7 @@ export class RetentionService {
    * Find bug reports eligible for deletion
    */
   private async findReportsForDeletion(projectId: string, cutoffDate: Date): Promise<BugReport[]> {
-    const query = `
-      SELECT * FROM bug_reports
-      WHERE project_id = $1
-        AND created_at < $2
-        AND deleted_at IS NULL
-        AND legal_hold = FALSE
-      ORDER BY created_at ASC
-    `;
-
-    const result = await this.pool.query<BugReport>(query, [projectId, cutoffDate]);
-    return result.rows;
+    return await this.db.retention.findEligibleForDeletion(projectId, cutoffDate);
   }
 
   /**
@@ -264,25 +252,7 @@ export class RetentionService {
     userId: string | null,
     reason: DeletionReason
   ): Promise<void> {
-    if (reportIds.length === 0) {
-      return;
-    }
-
-    const query = `
-      UPDATE bug_reports
-      SET deleted_at = CURRENT_TIMESTAMP,
-          deleted_by = $1
-      WHERE id = ANY($2)
-        AND deleted_at IS NULL
-        AND legal_hold = FALSE
-    `;
-
-    await this.pool.query(query, [userId, reportIds]);
-    logger.info('Soft deleted bug reports', {
-      count: reportIds.length,
-      reason,
-      userId,
-    });
+    await this.db.retention.softDeleteReports(reportIds, userId, reason);
   }
 
   /**
@@ -297,56 +267,42 @@ export class RetentionService {
       return null;
     }
 
-    const client = await this.pool.connect();
-    let certificate: DeletionCertificate | null = null;
-
     try {
-      await client.query('BEGIN');
+      // Use DatabaseClient transaction with repository access
+      const result = await this.db.transaction(async (tx) => {
+        // Hard delete within transaction
+        const reports = await tx.retention.hardDeleteReportsInTransaction(reportIds);
 
-      // Get report details before deletion
-      const reportsQuery = `
-        SELECT id, project_id FROM bug_reports
-        WHERE id = ANY($1)
-        AND legal_hold = FALSE
-      `;
-      const reportsResult = await client.query<BugReport>(reportsQuery, [reportIds]);
-      const reports = reportsResult.rows;
+        if (reports.length === 0) {
+          return null;
+        }
 
-      if (reports.length === 0) {
-        await client.query('ROLLBACK');
-        return null;
-      }
+        // Generate deletion certificate if required
+        const certificate =
+          generateCertificate && reports.length > 0
+            ? this.generateDeletionCertificate(
+                reports[0].project_id,
+                reports.map((r) => r.id),
+                userId,
+                'manual'
+              )
+            : null;
 
-      // Delete from database
-      await client.query('DELETE FROM bug_reports WHERE id = ANY($1)', [reportIds]);
-
-      await client.query('COMMIT');
-
-      // Generate deletion certificate if required
-      if (generateCertificate && reports.length > 0) {
-        certificate = this.generateDeletionCertificate(
-          reports[0].project_id,
-          reports.map((r) => r.id),
+        logger.info('Hard deleted bug reports', {
+          count: reports.length,
           userId,
-          'manual'
-        );
-      }
+          certificateGenerated: !!certificate,
+        });
 
-      logger.info('Hard deleted bug reports', {
-        count: reports.length,
-        userId,
-        certificateGenerated: !!certificate,
+        return certificate;
       });
 
-      return certificate;
+      return result;
     } catch (error) {
-      await client.query('ROLLBACK');
       logger.error('Error hard deleting bug reports', {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
-    } finally {
-      client.release();
     }
   }
 
@@ -405,7 +361,7 @@ export class RetentionService {
         archivedReport.archived_reason,
       ];
 
-      const result = await this.pool.query<ArchivedBugReport>(query, values);
+      const result = await this.db.query<ArchivedBugReport>(query, values);
       if (result.rows.length > 0) {
         archived.push(result.rows[0]);
       }
@@ -435,7 +391,7 @@ export class RetentionService {
         AND deleted_at IS NOT NULL
     `;
 
-    const result = await this.pool.query(query, [reportIds]);
+    const result = await this.db.query(query, [reportIds]);
     const restoredCount = result.rowCount ?? 0;
 
     logger.info('Restored bug reports', { count: restoredCount });
@@ -582,7 +538,7 @@ export class RetentionService {
       log.timestamp,
     ];
 
-    await this.pool.query(query, values);
+    await this.db.query(query, values);
   }
 
   /**
@@ -643,7 +599,7 @@ export class RetentionService {
 
     // Count legal hold reports
     const legalHoldQuery = 'SELECT COUNT(*) FROM bug_reports WHERE legal_hold = TRUE';
-    const legalHoldResult = await this.pool.query<{ count: string }>(legalHoldQuery);
+    const legalHoldResult = await this.db.query<{ count: string }>(legalHoldQuery);
     preview.legalHoldCount = parseInt(legalHoldResult.rows[0].count, 10);
 
     return preview;
@@ -663,7 +619,7 @@ export class RetentionService {
       WHERE id = ANY($2)
     `;
 
-    const result = await this.pool.query(query, [hold, reportIds]);
+    const result = await this.db.query(query, [hold, reportIds]);
     const updatedCount = result.rowCount ?? 0;
 
     await this.createAuditLog({

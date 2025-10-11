@@ -11,6 +11,7 @@ import {
   SessionRepository,
   TicketRepository,
 } from './repositories.js';
+import { RetentionRepository } from './retention-repository.js';
 
 export interface RepositoryRegistry {
   projects: ProjectRepository;
@@ -19,6 +20,7 @@ export interface RepositoryRegistry {
   users: UserRepository;
   sessions: SessionRepository;
   tickets: TicketRepository;
+  retention: RetentionRepository;
 }
 
 export type TransactionContext = RepositoryRegistry;
@@ -33,5 +35,6 @@ export function createRepositories(pool: Pool | PoolClient): RepositoryRegistry 
     users: new UserRepository(pool),
     sessions: new SessionRepository(pool),
     tickets: new TicketRepository(pool),
+    retention: new RetentionRepository(pool),
   };
 }

@@ -37,11 +37,11 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 
 ### What Gets Tested
 
-#### Unit Tests (621 tests)
+#### Unit Tests (640 tests)
 
 - ✅ Database connection, pooling, query builder
 - ✅ CRUD operations for all entities
-- ✅ Repository pattern (6 repositories)
+- ✅ Repository pattern (7 repositories including RetentionRepository)
 - ✅ Storage layer (base, S3, local, helpers)
 - ✅ Path utilities and sanitization
 - ✅ Stream utilities and transformations
@@ -49,8 +49,9 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Retry logic and error handling
 - ✅ API routes and middleware
 - ✅ Authentication and authorization
+- ✅ Data retention lifecycle management
 
-#### Integration Tests (104 tests)
+#### Integration Tests (123 tests)
 
 - ✅ Full API endpoints with authentication
 - ✅ Database transactions and concurrency
@@ -60,6 +61,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Role-based access control
 - ✅ Storage operations (local + S3)
 - ✅ Cross-project access prevention
+- ✅ RetentionRepository with PostgreSQL (19 tests)
 
 #### Load Tests (25 tests)
 
@@ -70,7 +72,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-**Total: 750 tests across 27 test files**
+**Total: 869 tests across 32 test files**
 
 ## Test Commands
 
@@ -298,10 +300,10 @@ describe('Your Feature', () => {
 
 - **Container Start**: ~5 seconds
 - **Migration Run**: ~1 second
-- **Test Execution**: ~350ms (repository tests), ~27s (all tests)
+- **Test Execution**: ~350ms (repository tests), ~38s (all tests)
 - **Container Stop**: ~1 second
 
-Total test run: **~34 seconds** for all 398 tests including container lifecycle
+Total test run: **~45 seconds** for all 869 tests including container lifecycle
 
 ## Test Data Cleanup
 
