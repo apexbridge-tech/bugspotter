@@ -195,7 +195,7 @@ export function getComplianceMinRetention(
   classification: DataClassification
 ): number {
   const regionRules = COMPLIANCE_MIN_RETENTION[region];
-  if (!regionRules) return 0;
+  if (!regionRules) {return 0;}
   return regionRules[classification] ?? 0;
 }
 

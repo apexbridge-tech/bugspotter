@@ -206,8 +206,8 @@ export class RetentionService {
       for (const report of oldReports) {
         const cleanup = await this.deleteReportStorage(report);
         storageFreed += cleanup.bytesFreed;
-        if (report.screenshot_url) screenshotsDeleted++;
-        if (report.replay_url) replaysDeleted++;
+        if (report.screenshot_url) {screenshotsDeleted++;}
+        if (report.replay_url) {replaysDeleted++;}
       }
 
       // Soft delete reports
@@ -263,7 +263,7 @@ export class RetentionService {
     userId: string | null,
     reason: DeletionReason
   ): Promise<void> {
-    if (reportIds.length === 0) return;
+    if (reportIds.length === 0) {return;}
 
     const query = `
       UPDATE bug_reports
@@ -290,7 +290,7 @@ export class RetentionService {
     userId: string | null,
     generateCertificate = true
   ): Promise<DeletionCertificate | null> {
-    if (reportIds.length === 0) return null;
+    if (reportIds.length === 0) {return null;}
 
     const client = await this.pool.connect();
     let certificate: DeletionCertificate | null = null;
@@ -349,7 +349,7 @@ export class RetentionService {
    * Archive bug reports to long-term storage
    */
   async archiveReports(reports: BugReport[], reason: DeletionReason): Promise<ArchivedBugReport[]> {
-    if (reports.length === 0) return [];
+    if (reports.length === 0) {return [];}
 
     const archived: ArchivedBugReport[] = [];
 
@@ -416,7 +416,7 @@ export class RetentionService {
    * Restore soft-deleted bug reports
    */
   async restoreReports(reportIds: string[]): Promise<number> {
-    if (reportIds.length === 0) return 0;
+    if (reportIds.length === 0) {return 0;}
 
     const query = `
       UPDATE bug_reports
@@ -446,8 +446,8 @@ export class RetentionService {
 
     const filesToDelete: string[] = [];
 
-    if (report.screenshot_url) filesToDelete.push(report.screenshot_url);
-    if (report.replay_url) filesToDelete.push(report.replay_url);
+    if (report.screenshot_url) {filesToDelete.push(report.screenshot_url);}
+    if (report.replay_url) {filesToDelete.push(report.replay_url);}
 
     for (const url of filesToDelete) {
       try {
@@ -585,12 +585,12 @@ export class RetentionService {
       : await this.db.projects.findAll();
 
     for (const project of projects) {
-      if (!project) continue;
+      if (!project) {continue;}
 
       const settings = project.settings as unknown as ProjectRetentionSettings;
       const retentionPolicy = settings?.retention;
 
-      if (!retentionPolicy) continue;
+      if (!retentionPolicy) {continue;}
 
       const cutoffDate = calculateCutoffDate(retentionPolicy.bugReportRetentionDays);
       const reports = await this.findReportsForDeletion(project.id, cutoffDate);
@@ -599,8 +599,8 @@ export class RetentionService {
         const estimatedStorage = reports.reduce((sum, r) => {
           // Estimate 100KB per screenshot, 500KB per replay
           let size = 0;
-          if (r.screenshot_url) size += 100 * 1024;
-          if (r.replay_url) size += 500 * 1024;
+          if (r.screenshot_url) {size += 100 * 1024;}
+          if (r.replay_url) {size += 500 * 1024;}
           return sum + size;
         }, 0);
 
@@ -629,7 +629,7 @@ export class RetentionService {
    * Apply or remove legal hold on bug reports
    */
   async setLegalHold(reportIds: string[], hold: boolean, userId: string): Promise<number> {
-    if (reportIds.length === 0) return 0;
+    if (reportIds.length === 0) {return 0;}
 
     const query = `
       UPDATE bug_reports

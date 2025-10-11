@@ -274,7 +274,7 @@ export class BugReportRepository extends BaseRepository<
    * Soft delete bug reports
    */
   async softDelete(reportIds: string[], userId: string | null = null): Promise<number> {
-    if (reportIds.length === 0) return 0;
+    if (reportIds.length === 0) {return 0;}
 
     const query = `
       UPDATE ${this.tableName}
@@ -293,7 +293,7 @@ export class BugReportRepository extends BaseRepository<
    * Restore soft-deleted bug reports
    */
   async restore(reportIds: string[]): Promise<number> {
-    if (reportIds.length === 0) return 0;
+    if (reportIds.length === 0) {return 0;}
 
     const query = `
       UPDATE ${this.tableName}
@@ -311,7 +311,7 @@ export class BugReportRepository extends BaseRepository<
    * Hard delete bug reports (permanent deletion)
    */
   async hardDelete(reportIds: string[]): Promise<number> {
-    if (reportIds.length === 0) return 0;
+    if (reportIds.length === 0) {return 0;}
 
     const query = `
       DELETE FROM ${this.tableName}
@@ -327,7 +327,7 @@ export class BugReportRepository extends BaseRepository<
    * Set legal hold status on bug reports
    */
   async setLegalHold(reportIds: string[], hold: boolean): Promise<number> {
-    if (reportIds.length === 0) return 0;
+    if (reportIds.length === 0) {return 0;}
 
     const query = `
       UPDATE ${this.tableName}
