@@ -345,13 +345,16 @@ export class RetentionService {
     const archiveResult = await this.archiveStorage.archiveBatch(files);
 
     // Batch insert to database using VALUES clause
-    const valuesClauses: string[] = [];
+    const FIELDS_PER_ROW = 14;
     const params: any[] = [];
-    let paramIndex = 1;
 
-    for (const report of reports) {
-      const placeholder = `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, $${paramIndex + 13})`;
-      valuesClauses.push(placeholder);
+    // Pre-allocate and build placeholders efficiently
+    const valuesClauses = reports.map((report, idx) => {
+      const baseIndex = idx * FIELDS_PER_ROW + 1;
+      const placeholders = Array.from(
+        { length: FIELDS_PER_ROW },
+        (_, i) => `$${baseIndex + i}`
+      ).join(', ');
 
       params.push(
         report.id,
@@ -370,8 +373,8 @@ export class RetentionService {
         reason
       );
 
-      paramIndex += 14;
-    }
+      return `(${placeholders})`;
+    });
 
     const query = `
       INSERT INTO archived_bug_reports (

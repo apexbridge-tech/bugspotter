@@ -459,8 +459,11 @@ export class BugReportRepository extends BaseRepository<
       return [];
     }
 
-    // Delete from database
-    await this.getClient().query(`DELETE FROM ${this.tableName} WHERE id = ANY($1)`, [reportIds]);
+    // Delete from database (only reports that passed legal hold check)
+    const deletableIds = reports.map((r) => r.id);
+    await this.getClient().query(`DELETE FROM ${this.tableName} WHERE id = ANY($1)`, [
+      deletableIds,
+    ]);
 
     return reports;
   }
