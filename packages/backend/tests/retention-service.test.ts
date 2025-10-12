@@ -22,6 +22,7 @@ describe('RetentionService', () => {
         softDelete: vi.fn(),
         hardDelete: vi.fn(),
         restore: vi.fn(),
+        setLegalHold: vi.fn(),
       },
       sessions: {
         findByBugReport: vi.fn(),
@@ -159,25 +160,33 @@ describe('RetentionService', () => {
   describe('setLegalHold()', () => {
     it('should set legal hold flag', async () => {
       const reportIds = ['report-1'];
-      vi.mocked(mockDb.query)
-        .mockResolvedValueOnce({ rows: [{ project_id: 'proj-1' }] } as any)
-        .mockResolvedValueOnce({ rowCount: 1 } as any);
+      // Mock project ID query
+      vi.mocked(mockDb.query).mockResolvedValueOnce({ rows: [{ project_id: 'proj-1' }] } as any);
+      // Mock repository setLegalHold call
+      vi.mocked(mockDb.bugReports.setLegalHold).mockResolvedValueOnce(1);
+      // Mock audit log insert
+      vi.mocked(mockDb.query).mockResolvedValueOnce({ rowCount: 1 } as any);
 
       const count = await service.setLegalHold(reportIds, true, 'user-1');
 
       expect(count).toBe(1);
+      expect(mockDb.bugReports.setLegalHold).toHaveBeenCalledWith(reportIds, true);
       expect(mockDb.query).toHaveBeenCalled();
     });
 
     it('should remove legal hold flag', async () => {
       const reportIds = ['report-1'];
-      vi.mocked(mockDb.query)
-        .mockResolvedValueOnce({ rows: [{ project_id: 'proj-1' }] } as any)
-        .mockResolvedValueOnce({ rowCount: 1 } as any);
+      // Mock project ID query
+      vi.mocked(mockDb.query).mockResolvedValueOnce({ rows: [{ project_id: 'proj-1' }] } as any);
+      // Mock repository setLegalHold call
+      vi.mocked(mockDb.bugReports.setLegalHold).mockResolvedValueOnce(1);
+      // Mock audit log insert
+      vi.mocked(mockDb.query).mockResolvedValueOnce({ rowCount: 1 } as any);
 
       const count = await service.setLegalHold(reportIds, false, 'user-1');
 
       expect(count).toBe(1);
+      expect(mockDb.bugReports.setLegalHold).toHaveBeenCalledWith(reportIds, false);
       expect(mockDb.query).toHaveBeenCalled();
     });
   });

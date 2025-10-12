@@ -417,11 +417,7 @@ export function retentionRoutes(
       }
 
       const { reportIds, hold } = validation.data;
-      const count = await retentionService.setLegalHold(
-        reportIds,
-        hold,
-        request.authUser!.id
-      );
+      const count = await retentionService.setLegalHold(reportIds, hold, request.authUser!.id);
 
       return reply.send(
         successResponse({

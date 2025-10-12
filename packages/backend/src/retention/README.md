@@ -14,7 +14,7 @@ The retention system provides:
 - **Tier-based limits**: Free (max 60 days), Professional (up to 1 year), Enterprise (unlimited)
 - **Extensible**: Easy to add new compliance regions and data classifications
 
-**Test Status**: ✅ 863/863 tests passing (entire backend test suite)
+**Test Status**: ✅ 869/869 tests passing (entire backend test suite)
 
 ## Architecture
 
@@ -41,7 +41,7 @@ db/
 - `restore()` - Restore soft-deleted reports
 - `hardDelete()` - Permanently delete reports
 - `hardDeleteInTransaction()` - Delete within transaction context with report details
-- `setLegalHold()` - Set legal hold flag
+- `setLegalHold()` - Set legal hold flag (data layer only)
 - `countLegalHoldReports()` - Count protected reports
 
 **RetentionService**: Main orchestrator for retention operations
@@ -52,7 +52,7 @@ db/
 - `hardDeleteReports()` - Permanent deletion with certificate generation
 - `archiveReports()` - Archive to `archived_bug_reports` table (batch insert)
 - `restoreReports()` - Restore soft-deleted reports (**NOTE**: archived reports cannot be restored)
-- `setLegalHold()` - Apply/remove legal hold with audit logging
+- `setLegalHold()` - Apply/remove legal hold with audit logging and project tracking (calls repository method)
 
 **RetentionScheduler**: Automated job execution
 
@@ -383,7 +383,7 @@ console.log(`Restored ${restoredCount} reports`);
 
 ## Testing
 
-**Current Status**: ✅ 863/863 tests passing (100%)
+**Current Status**: ✅ 869/869 tests passing (100%)
 
 - **retention-config.test.ts**: 47 tests - Configuration, validation, compliance rules
 - **retention-scheduler.test.ts**: 13 tests - Scheduler lifecycle, error handling
@@ -440,7 +440,7 @@ Track retention metrics:
 - Multi-region compliance framework (6 regions)
 - Automated scheduler with cron support
 - Configuration system with tier limits and named constants
-- Comprehensive test suite (863 tests, 100% passing)
+- Comprehensive test suite (869 tests, 100% passing)
 - API endpoints fully implemented with authentication
 - Repository consolidation (eliminated 90-100% code duplication)
 - Magic numbers extracted to constants

@@ -664,14 +664,8 @@ export class RetentionService {
     const projectResult = await this.db.query<{ project_id: string }>(projectQuery, [reportIds]);
     const projectIds = projectResult.rows.map((row) => row.project_id);
 
-    const query = `
-      UPDATE bug_reports
-      SET legal_hold = $1
-      WHERE id = ANY($2)
-    `;
-
-    const result = await this.db.query(query, [hold, reportIds]);
-    const updatedCount = result.rowCount ?? 0;
+    // Use repository method for the update
+    const updatedCount = await this.db.bugReports.setLegalHold(reportIds, hold);
 
     // Create audit log entry (use first project ID, store all in metadata)
     await this.createAuditLog({

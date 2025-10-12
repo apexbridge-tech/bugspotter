@@ -11,7 +11,7 @@ Production-ready backend for BugSpotter with PostgreSQL database, REST API, and 
 - 🔍 **Query & Filter** - Pagination, sorting, role-based access control
 - 🕐 **Data Retention** - Automated lifecycle management with compliance support (GDPR, CCPA, Kazakhstan)
 - 🏥 **Health Checks** - Liveness and readiness endpoints
-- 🧪 **Testing** - 863 tests with Testcontainers (no manual setup required)
+- 🧪 **Testing** - 869 tests with Testcontainers (no manual setup required)
 
 ## Quick Start
 
@@ -517,7 +517,7 @@ pnpm test:integration       # Integration tests
 pnpm test:load              # Load/performance tests
 ```
 
-**863 tests** total (32 test files):
+**869 tests** total (32 test files):
 
 - 734 unit tests (database, API, storage, retention, utilities)
 - 104 integration tests (API + DB + storage)
