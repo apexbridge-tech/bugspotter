@@ -9,7 +9,7 @@ import { createServer } from '../../src/api/server.js';
 import { createDatabaseClient } from '../../src/db/client.js';
 import type { DatabaseClient } from '../../src/db/client.js';
 import type { Project } from '../../src/db/types.js';
-import { RetentionService } from '../../src/retention/retention-service.js';
+import { createRetentionService } from '../../src/retention/retention-service-factory.js';
 import { RetentionScheduler } from '../../src/retention/retention-scheduler.js';
 import { LocalStorageService } from '../../src/storage/local-storage.js';
 import { LoggerNotificationService } from '../../src/retention/notification-service.js';
@@ -32,7 +32,11 @@ describe('Retention Routes', () => {
       baseUrl: 'http://localhost:3000/storage',
     });
     await storage.initialize();
-    const retentionService = new RetentionService(db, storage);
+    const retentionService = createRetentionService({
+      db,
+      storage,
+      archiveStrategy: 'deletion', // Explicit deletion strategy for tests
+    });
     const notificationService = new LoggerNotificationService();
     const retentionScheduler = new RetentionScheduler(retentionService, notificationService);
 

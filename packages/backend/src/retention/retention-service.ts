@@ -7,6 +7,8 @@ import crypto from 'crypto';
 import { getLogger } from '../logger.js';
 import type { DatabaseClient } from '../db/client.js';
 import type { BaseStorageService } from '../storage/base-storage-service.js';
+import type { IStorageArchiver } from '../storage/archive-storage.interface.js';
+import { DeletionArchiveStrategy } from '../storage/archive-storage-service.js';
 import type {
   RetentionResult,
   RetentionPreview,
@@ -34,10 +36,16 @@ const logger = getLogger();
  * RetentionService - Orchestrates data retention and lifecycle management
  */
 export class RetentionService {
+  private archiveStorage: IStorageArchiver;
+
   constructor(
     private db: DatabaseClient,
-    private storage: BaseStorageService
-  ) {}
+    private storage: BaseStorageService,
+    archiveStrategy?: IStorageArchiver
+  ) {
+    // Allow dependency injection of archive strategy, default to deletion
+    this.archiveStorage = archiveStrategy ?? new DeletionArchiveStrategy(storage);
+  }
 
   /**
    * Apply retention policies across all projects
@@ -89,12 +97,14 @@ export class RetentionService {
           result.projectsProcessed++;
 
           // Check error rate and stop if exceeded
-          const errorRate = (result.errors.length / result.totalDeleted) * 100;
-          if (errorRate > maxErrorRate && result.totalDeleted > 10) {
+          const totalAttempts = result.totalDeleted + result.errors.length;
+          const errorRate = totalAttempts > 0 ? (result.errors.length / totalAttempts) * 100 : 0;
+          if (errorRate > maxErrorRate && totalAttempts > 10) {
             logger.error('Error rate exceeded maximum threshold', {
-              errorRate,
+              errorRate: Number(errorRate.toFixed(2)),
               maxErrorRate,
               errors: result.errors.length,
+              totalAttempts,
             });
             break;
           }
@@ -191,21 +201,33 @@ export class RetentionService {
     let reportsArchived = 0;
 
     if (!dryRun) {
-      // Archive reports if configured
+      // Archive reports if configured (includes S3 archival)
       if (retentionPolicy.archiveBeforeDelete) {
         await this.archiveReports(oldReports, 'retention_policy');
         reportsArchived = oldReports.length;
-      }
 
-      // Delete storage files
-      for (const report of oldReports) {
-        const cleanup = await this.deleteReportStorage(report);
-        storageFreed += cleanup.bytesFreed;
-        if (report.screenshot_url) {
-          screenshotsDeleted++;
+        // Count storage freed from archival
+        for (const report of oldReports) {
+          const size = await this.getFileSizeEstimate(report);
+          storageFreed += size;
+          if (report.screenshot_url) {
+            screenshotsDeleted++;
+          }
+          if (report.replay_url) {
+            replaysDeleted++;
+          }
         }
-        if (report.replay_url) {
-          replaysDeleted++;
+      } else {
+        // Delete storage files directly if not archiving
+        for (const report of oldReports) {
+          const cleanup = await this.deleteReportStorage(report);
+          storageFreed += cleanup.bytesFreed;
+          if (report.screenshot_url) {
+            screenshotsDeleted++;
+          }
+          if (report.replay_url) {
+            replaysDeleted++;
+          }
         }
       }
 
@@ -308,71 +330,70 @@ export class RetentionService {
 
   /**
    * Archive bug reports to long-term storage
+   * Uses batch insert for database efficiency and ArchiveStorageService for S3
    */
   async archiveReports(reports: BugReport[], reason: DeletionReason): Promise<ArchivedBugReport[]> {
     if (reports.length === 0) {
       return [];
     }
 
-    const archived: ArchivedBugReport[] = [];
+    // Archive S3 files (currently deletes them)
+    const files = reports.map((r) => ({
+      screenshotUrl: r.screenshot_url,
+      replayUrl: r.replay_url,
+    }));
+    const archiveResult = await this.archiveStorage.archiveBatch(files);
+
+    // Batch insert to database using VALUES clause
+    const valuesClauses: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
 
     for (const report of reports) {
-      const archivedReport: Omit<ArchivedBugReport, 'archived_at'> = {
-        id: report.id,
-        project_id: report.project_id,
-        title: report.title,
-        description: report.description,
-        screenshot_url: report.screenshot_url,
-        replay_url: report.replay_url,
-        metadata: report.metadata,
-        status: report.status,
-        priority: report.priority,
-        original_created_at: report.created_at,
-        original_updated_at: report.updated_at,
-        deleted_at: report.deleted_at ?? new Date(),
-        deleted_by: report.deleted_by,
-        archived_reason: reason,
-      };
+      const placeholder = `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, $${paramIndex + 13})`;
+      valuesClauses.push(placeholder);
 
-      const query = `
-        INSERT INTO archived_bug_reports (
-          id, project_id, title, description, screenshot_url, replay_url,
-          metadata, status, priority, original_created_at, original_updated_at,
-          deleted_at, deleted_by, archived_reason
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        ON CONFLICT (id) DO NOTHING
-        RETURNING *
-      `;
+      params.push(
+        report.id,
+        report.project_id,
+        report.title,
+        report.description,
+        report.screenshot_url,
+        report.replay_url,
+        JSON.stringify(report.metadata),
+        report.status,
+        report.priority,
+        report.created_at,
+        report.updated_at,
+        report.deleted_at ?? new Date(),
+        report.deleted_by,
+        reason
+      );
 
-      const values = [
-        archivedReport.id,
-        archivedReport.project_id,
-        archivedReport.title,
-        archivedReport.description,
-        archivedReport.screenshot_url,
-        archivedReport.replay_url,
-        JSON.stringify(archivedReport.metadata),
-        archivedReport.status,
-        archivedReport.priority,
-        archivedReport.original_created_at,
-        archivedReport.original_updated_at,
-        archivedReport.deleted_at,
-        archivedReport.deleted_by,
-        archivedReport.archived_reason,
-      ];
-
-      const result = await this.db.query<ArchivedBugReport>(query, values);
-      if (result.rows.length > 0) {
-        archived.push(result.rows[0]);
-      }
+      paramIndex += 14;
     }
 
+    const query = `
+      INSERT INTO archived_bug_reports (
+        id, project_id, title, description, screenshot_url, replay_url,
+        metadata, status, priority, original_created_at, original_updated_at,
+        deleted_at, deleted_by, archived_reason
+      ) VALUES ${valuesClauses.join(', ')}
+      ON CONFLICT (id) DO NOTHING
+      RETURNING *
+    `;
+
+    const result = await this.db.query<ArchivedBugReport>(query, params);
+
     logger.info('Archived bug reports', {
-      count: archived.length,
+      count: result.rows.length,
       reason,
+      filesArchived: archiveResult.filesArchived,
+      bytesArchived: archiveResult.bytesArchived,
+      storageErrors: archiveResult.errors.length,
     });
 
-    return archived;
+    return result.rows;
   }
 
   /**
@@ -475,6 +496,25 @@ export class RetentionService {
       });
       return 0;
     }
+  }
+
+  /**
+   * Estimate file size for a report (used when archiving)
+   */
+  private async getFileSizeEstimate(report: BugReport): Promise<number> {
+    let size = 0;
+
+    if (report.screenshot_url) {
+      const key = this.extractStorageKey(report.screenshot_url);
+      size += await this.getFileSize(key);
+    }
+
+    if (report.replay_url) {
+      const key = this.extractStorageKey(report.replay_url);
+      size += await this.getFileSize(key);
+    }
+
+    return size;
   }
 
   /**

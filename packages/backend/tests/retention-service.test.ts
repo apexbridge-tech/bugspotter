@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RetentionService } from '../src/retention/retention-service.js';
+import { DeletionArchiveStrategy } from '../src/storage/archive-storage-service.js';
 import type { DatabaseClient } from '../src/db/client.js';
 
 describe('RetentionService', () => {
@@ -42,7 +43,9 @@ describe('RetentionService', () => {
       deleteSessionReplay: vi.fn(),
     };
 
-    service = new RetentionService(mockDb, mockStorage);
+    // Use explicit deletion strategy for testing
+    const archiveStrategy = new DeletionArchiveStrategy(mockStorage);
+    service = new RetentionService(mockDb, mockStorage, archiveStrategy);
   });
 
   describe('applyRetentionPolicies()', () => {
