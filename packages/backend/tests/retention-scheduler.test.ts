@@ -234,4 +234,65 @@ describe('RetentionScheduler', () => {
       expect(mockTask.stop).toHaveBeenCalled();
     });
   });
+
+  describe('getNextRunTime()', () => {
+    it('should return null when scheduler is not started', () => {
+      const nextRun = scheduler.getNextRunTime();
+      expect(nextRun).toBeNull();
+    });
+
+    it('should calculate next run time after scheduler is started', () => {
+      scheduler.start();
+      const nextRun = scheduler.getNextRunTime();
+
+      expect(nextRun).toBeInstanceOf(Date);
+      expect(nextRun!.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('should return null after scheduler is stopped', () => {
+      scheduler.start();
+      expect(scheduler.getNextRunTime()).toBeInstanceOf(Date);
+
+      scheduler.stop();
+      expect(scheduler.getNextRunTime()).toBeNull();
+    });
+
+    it('should calculate correct next run time for daily 2am schedule', () => {
+      scheduler.start();
+      const nextRun = scheduler.getNextRunTime();
+
+      expect(nextRun).toBeInstanceOf(Date);
+      // Should be 2am UTC
+      expect(nextRun!.getUTCHours()).toBe(2);
+      expect(nextRun!.getUTCMinutes()).toBe(0);
+    });
+
+    it('should handle multiple calls correctly', () => {
+      scheduler.start();
+
+      const firstCall = scheduler.getNextRunTime();
+      const secondCall = scheduler.getNextRunTime();
+
+      // Both calls should return valid dates
+      expect(firstCall).toBeInstanceOf(Date);
+      expect(secondCall).toBeInstanceOf(Date);
+
+      // Should be the same time (no side effects)
+      expect(firstCall!.getTime()).toBe(secondCall!.getTime());
+    });
+
+    it('should return date in the future', () => {
+      scheduler.start();
+      const nextRun = scheduler.getNextRunTime();
+      const now = new Date();
+
+      expect(nextRun).toBeInstanceOf(Date);
+      expect(nextRun!.getTime()).toBeGreaterThan(now.getTime());
+
+      // Should be within 24 hours (for daily schedule)
+      const hoursDiff = (nextRun!.getTime() - now.getTime()) / (1000 * 60 * 60);
+      expect(hoursDiff).toBeLessThan(24);
+      expect(hoursDiff).toBeGreaterThan(0);
+    });
+  });
 });
