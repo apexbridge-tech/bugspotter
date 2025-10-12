@@ -336,7 +336,7 @@ See: `packages/backend/src/api/middleware/auth.ts`, `src/api/routes/health.ts`
 
 1. Launch PostgreSQL 16 container
 2. Run migrations
-3. Execute tests (750 backend + 345 SDK = 1,095 total)
+3. Execute tests (863 backend + 345 SDK = 1,208 total)
 4. Cleanup container
 
 ```bash
@@ -347,7 +347,7 @@ pnpm test:coverage     # Coverage report
 
 **Test Distribution:**
 
-- Backend: 750 tests (621 unit + 104 integration + 25 load/storage)
+- Backend: 863 tests (740 unit + 104 integration + 25 storage)
 - SDK: 345 tests (unit + E2E + Playwright)
 
 See: `packages/backend/TESTING.md`, `packages/backend/tests/setup.ts`

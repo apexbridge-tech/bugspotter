@@ -459,7 +459,7 @@ describe('Retention Routes', () => {
       expect(response.statusCode).toBe(501);
       const json = response.json();
       expect(json.error).toBe('Not Implemented');
-      expect(json.message).toContain('RETENTION_CONFIG_FILE');
+      expect(json.message).toContain('database persistence');
     });
   });
 

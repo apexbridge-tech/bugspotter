@@ -477,28 +477,6 @@ export class BugReportRepository extends BaseRepository<
     const result = await this.getClient().query<{ count: string }>(query);
     return parseInt(result.rows[0]?.count ?? '0', DECIMAL_BASE);
   }
-
-  /**
-   * Get storage statistics for reports (estimates database storage)
-   */
-  async getStorageStats(reportIds: string[]): Promise<{ totalBytes: number }> {
-    if (reportIds.length === 0) {
-      return { totalBytes: 0 };
-    }
-
-    const query = `
-      SELECT COALESCE(SUM(
-        COALESCE(octet_length(metadata::text), 0) +
-        COALESCE(octet_length(description), 0) +
-        COALESCE(octet_length(screenshot_url), 0) +
-        COALESCE(octet_length(replay_url), 0)
-      ), 0)::bigint as total_bytes
-      FROM ${this.tableName}
-      WHERE id = ANY($1)
-    `;
-    const result = await this.getClient().query<{ total_bytes: string }>(query, [reportIds]);
-    return { totalBytes: parseInt(result.rows[0]?.total_bytes ?? '0', DECIMAL_BASE) };
-  }
 }
 
 /**

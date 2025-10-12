@@ -4,6 +4,7 @@
  */
 
 import cron from 'node-cron';
+import { CronExpressionParser } from 'cron-parser';
 import { getLogger } from '../logger.js';
 import type { RetentionService } from './retention-service.js';
 import {
@@ -141,45 +142,31 @@ export class RetentionScheduler {
 
   /**
    * Get next scheduled run time
-   * Calculates the next occurrence based on the configured cron schedule
+   *
+   * Uses cron-parser library to accurately calculate the next execution time
+   * for any valid cron expression, respecting the configured timezone.
    */
   getNextRunTime(): Date | null {
     if (!this.task) {
       return null;
     }
 
-    // Parse the cron expression (format: "minute hour day month weekday")
-    // Current schedule: "0 2 * * *" = daily at 2:00 AM
-    const parts = RETENTION_CRON_SCHEDULE.split(' ');
-    if (parts.length !== 5) {
+    try {
+      // Parse cron expression with timezone support
+      const interval = CronExpressionParser.parse(RETENTION_CRON_SCHEDULE, {
+        tz: RETENTION_CRON_TIMEZONE,
+        currentDate: new Date(),
+      });
+
+      // Get next execution date
+      return interval.next().toDate();
+    } catch (error) {
+      logger.warn('Failed to calculate next run time', {
+        schedule: RETENTION_CRON_SCHEDULE,
+        timezone: RETENTION_CRON_TIMEZONE,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
-
-    const [minute, hour, day, month, weekday] = parts;
-
-    const now = new Date();
-    const next = new Date(now);
-
-    // Handle simple daily schedule (e.g., "0 2 * * *")
-    if (day === '*' && month === '*' && weekday === '*') {
-      const targetHour = parseInt(hour, 10);
-      const targetMinute = parseInt(minute, 10);
-
-      next.setHours(targetHour, targetMinute, 0, 0);
-
-      // If the time has passed today, schedule for tomorrow
-      if (next <= now) {
-        next.setDate(next.getDate() + 1);
-      }
-
-      return next;
-    }
-
-    // For more complex schedules, return null
-    // This could be extended to handle more patterns as needed
-    logger.warn('Complex cron schedule detected - cannot calculate next run time', {
-      schedule: RETENTION_CRON_SCHEDULE,
-    });
-    return null;
   }
 }

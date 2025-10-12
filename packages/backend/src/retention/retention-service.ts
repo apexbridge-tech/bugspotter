@@ -673,14 +673,17 @@ export class RetentionService {
     const result = await this.db.query(query, [hold, reportIds]);
     const updatedCount = result.rowCount ?? 0;
 
-    // Create audit log entry (use first project ID, log all in metadata)
+    // Create audit log entry (use first project ID, store all in metadata)
     await this.createAuditLog({
       action: hold ? 'legal_hold_applied' : 'legal_hold_released',
-      projectId: projectIds.join(','), // Store all project IDs
+      projectId: projectIds[0] ?? '',
       bugReportIds: reportIds,
       reason: 'manual',
       userId,
-      metadata: {},
+      metadata: {
+        allProjectIds: projectIds,
+        projectCount: projectIds.length,
+      },
       timestamp: new Date(),
     });
 

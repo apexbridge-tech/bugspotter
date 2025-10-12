@@ -43,7 +43,6 @@ db/
 - `hardDeleteInTransaction()` - Delete within transaction context with report details
 - `setLegalHold()` - Set legal hold flag
 - `countLegalHoldReports()` - Count protected reports
-- `getStorageStats()` - Calculate storage usage
 
 **RetentionService**: Main orchestrator for retention operations
 

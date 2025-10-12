@@ -172,6 +172,8 @@ export interface RetentionAuditLog {
     retentionDays?: number;
     storageFreed?: number;
     certificateId?: string;
+    allProjectIds?: string[];
+    projectCount?: number;
   };
   timestamp: Date;
 }

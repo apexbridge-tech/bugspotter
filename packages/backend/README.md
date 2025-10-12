@@ -11,7 +11,7 @@ Production-ready backend for BugSpotter with PostgreSQL database, REST API, and 
 - 🔍 **Query & Filter** - Pagination, sorting, role-based access control
 - 🕐 **Data Retention** - Automated lifecycle management with compliance support (GDPR, CCPA, Kazakhstan)
 - 🏥 **Health Checks** - Liveness and readiness endpoints
-- 🧪 **Testing** - 869 tests with Testcontainers (no manual setup required)
+- 🧪 **Testing** - 863 tests with Testcontainers (no manual setup required)
 
 ## Quick Start
 
@@ -250,7 +250,8 @@ Content-Type: application/json
 }
 ```
 
-Updates global default retention policy (admin only)
+**Status**: ⚠️ NOT IMPLEMENTED - Returns HTTP 501  
+Global retention policies are managed via environment variables. Use project-specific retention settings instead. Requires database persistence layer (system_config table) for full implementation.
 
 #### Admin - Preview Retention Policy
 
@@ -287,7 +288,7 @@ Authorization: Bearer ADMIN_JWT_TOKEN
 
 Returns retention scheduler status (enabled, next run time)
 
-#### Admin - Apply Legal Hold
+#### Admin - Legal Hold (Apply/Remove)
 
 ```http
 POST /api/v1/admin/retention/legal-hold
@@ -295,14 +296,14 @@ Authorization: Bearer ADMIN_JWT_TOKEN
 Content-Type: application/json
 
 {
-  "bugReportIds": ["uuid-1", "uuid-2"],
-  "reason": "litigation"
+  "reportIds": ["uuid-1", "uuid-2"],
+  "hold": true  // true to apply, false to remove
 }
 ```
 
-Prevents bug reports from being deleted by retention policies (admin only)
+Apply or remove legal hold protection on bug reports. Reports with legal hold cannot be deleted by retention policies (admin only).
 
-#### Admin - Restore Archived Reports
+#### Admin - Restore Soft-Deleted Reports
 
 ```http
 POST /api/v1/admin/retention/restore
@@ -310,25 +311,12 @@ Authorization: Bearer ADMIN_JWT_TOKEN
 Content-Type: application/json
 
 {
-  "bugReportIds": ["uuid-1", "uuid-2"]
+  "reportIds": ["uuid-1", "uuid-2"]
 }
 ```
 
-Restores soft-deleted reports from archive (admin only)
-
-#### Admin - Remove Legal Hold
-
-```http
-DELETE /api/v1/admin/retention/legal-hold
-Authorization: Bearer ADMIN_JWT_TOKEN
-Content-Type: application/json
-
-{
-  "bugReportIds": ["uuid-1", "uuid-2"]
-}
-```
-
-Removes legal hold protection from bug reports (admin only)
+Restore soft-deleted reports (admin only).  
+**Note**: Only restores reports still in `bug_reports` table. Archived reports (moved to `archived_bug_reports`) cannot be restored.
 
 ### Health Checks
 
@@ -529,9 +517,9 @@ pnpm test:integration       # Integration tests
 pnpm test:load              # Load/performance tests
 ```
 
-**869 tests** total (32 test files):
+**863 tests** total (32 test files):
 
-- 740 unit tests (database, API, storage, retention, utilities)
+- 734 unit tests (database, API, storage, retention, utilities)
 - 104 integration tests (API + DB + storage)
 - 25 storage integration tests (local + S3)
 
