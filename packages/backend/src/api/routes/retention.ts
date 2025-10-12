@@ -131,7 +131,7 @@ export function retentionRoutes(
 
       // TODO: Persist to system_config table once implemented
       logger.warn('Global retention policy update requested but not persisted (not implemented)', {
-        userId: request.authUser?.id,
+        userId: request.authUser!.id,
         updates: validation.data,
       });
 
@@ -312,7 +312,7 @@ export function retentionRoutes(
 
       logger.info('Updated project retention settings', {
         projectId,
-        userId: request.authUser?.id,
+        userId: request.authUser!.id,
         updates: validation.data,
       });
 
@@ -386,7 +386,7 @@ export function retentionRoutes(
       });
 
       logger.info('Manual retention policy applied', {
-        userId: request.authUser?.id,
+        userId: request.authUser!.id,
         dryRun,
         result,
       });
@@ -420,7 +420,7 @@ export function retentionRoutes(
       const count = await retentionService.setLegalHold(
         reportIds,
         hold,
-        request.authUser?.id ?? ''
+        request.authUser!.id
       );
 
       return reply.send(
@@ -451,7 +451,7 @@ export function retentionRoutes(
       const count = await retentionService.restoreReports(reportIds);
 
       logger.info('Restored soft-deleted reports', {
-        userId: request.authUser?.id,
+        userId: request.authUser!.id,
         count,
         reportIds,
       });
@@ -490,7 +490,7 @@ export function retentionRoutes(
       );
 
       logger.info('Hard deleted reports', {
-        userId: request.authUser?.id,
+        userId: request.authUser!.id,
         count: reportIds.length,
         certificateGenerated: !!certificate,
       });
