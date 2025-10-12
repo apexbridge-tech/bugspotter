@@ -91,7 +91,7 @@ COMMENT ON COLUMN bug_reports.legal_hold IS 'Prevents automatic deletion by rete
 -- Archived bug reports table (long-term storage)
 CREATE TABLE IF NOT EXISTS archived_bug_reports (
     id UUID PRIMARY KEY,
-    project_id UUID NOT NULL,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     title VARCHAR(500) NOT NULL,
     description TEXT,
     screenshot_url TEXT,
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS archived_bug_reports (
     original_created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     original_updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     deleted_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    deleted_by UUID,
+    deleted_by UUID REFERENCES users(id) ON DELETE SET NULL,
     archived_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     archived_reason TEXT,
     CONSTRAINT check_archived_date CHECK (archived_at >= deleted_at)
@@ -111,9 +111,12 @@ CREATE TABLE IF NOT EXISTS archived_bug_reports (
 CREATE INDEX IF NOT EXISTS idx_archived_bug_reports_project ON archived_bug_reports(project_id);
 CREATE INDEX IF NOT EXISTS idx_archived_bug_reports_archived_at ON archived_bug_reports(archived_at DESC);
 CREATE INDEX IF NOT EXISTS idx_archived_bug_reports_original_created ON archived_bug_reports(original_created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_archived_bug_reports_deleted_by ON archived_bug_reports(deleted_by);
 
 COMMENT ON TABLE archived_bug_reports IS 'Long-term storage for deleted bug reports (compliance/audit)';
 COMMENT ON COLUMN archived_bug_reports.archived_reason IS 'Reason for archival (retention_policy, manual, gdpr_request, etc.)';
+COMMENT ON COLUMN archived_bug_reports.project_id IS 'Project reference (CASCADE on delete)';
+COMMENT ON COLUMN archived_bug_reports.deleted_by IS 'User who deleted the report (SET NULL on user delete)';
 
 -- Sessions table
 CREATE TABLE IF NOT EXISTS sessions (
