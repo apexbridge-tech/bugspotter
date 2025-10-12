@@ -104,6 +104,16 @@ export function retentionRoutes(
   /**
    * PUT /api/v1/admin/retention
    * Update global retention policy (admin only)
+   *
+   * NOTE: Currently not implemented - requires system_config table for persistence.
+   * Global retention policies are currently defined via environment variables:
+   * - DEFAULT_RETENTION_DAYS
+   * - SCREENSHOT_RETENTION_DAYS
+   * - REPLAY_RETENTION_DAYS
+   * - ATTACHMENT_RETENTION_DAYS
+   * - ARCHIVED_RETENTION_DAYS
+   *
+   * TODO: Implement persistence when system_config table is added
    */
   fastify.put(
     '/api/v1/admin/retention',
@@ -119,12 +129,18 @@ export function retentionRoutes(
         return reply.code(400).send({ error: validation.error.message });
       }
 
-      logger.info('Updated global retention policy', {
+      // TODO: Persist to system_config table once implemented
+      logger.warn('Global retention policy update requested but not persisted (not implemented)', {
         userId: request.authUser?.id,
         updates: validation.data,
       });
 
-      return reply.send(successResponse({ policy: validation.data }));
+      return reply.code(501).send({
+        error: 'Not Implemented',
+        message:
+          'Global retention policy updates require database persistence (system_config table). Currently managed via environment variables.',
+        hint: 'Use project-specific retention policies via PUT /api/v1/projects/:id/retention instead.',
+      });
     }
   );
 

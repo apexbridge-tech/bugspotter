@@ -435,17 +435,6 @@ export class BugReportRepository extends BaseRepository<
   }
 
   /**
-   * Soft delete reports with deletion reason (used by retention service)
-   */
-  async softDeleteWithReason(
-    reportIds: string[],
-    userId: string | null,
-    _reason: string
-  ): Promise<void> {
-    await this.softDelete(reportIds, userId);
-  }
-
-  /**
    * Hard delete reports within transaction and return details for certificate generation
    */
   async hardDeleteInTransaction(

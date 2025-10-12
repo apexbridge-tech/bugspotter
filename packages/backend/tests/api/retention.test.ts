@@ -443,7 +443,7 @@ describe('Retention Routes', () => {
       expect(response.statusCode).toBe(403);
     });
 
-    it('should allow admin to update global policy', async () => {
+    it('should return 501 Not Implemented (endpoint not yet implemented)', async () => {
       const response = await server.inject({
         method: 'PUT',
         url: '/api/v1/admin/retention',
@@ -456,10 +456,10 @@ describe('Retention Routes', () => {
         },
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(501);
       const json = response.json();
-      expect(json.success).toBe(true);
-      expect(json.policy.bugReportRetentionDays).toBe(90);
+      expect(json.error).toBe('Not Implemented');
+      expect(json.message).toContain('RETENTION_CONFIG_FILE');
     });
   });
 

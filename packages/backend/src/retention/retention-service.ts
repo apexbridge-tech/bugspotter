@@ -398,6 +398,14 @@ export class RetentionService {
 
   /**
    * Restore soft-deleted bug reports
+   *
+   * NOTE: Only restores soft-deleted reports that are still in the bug_reports table.
+   * Reports that have been fully archived (moved to archived_bug_reports table) cannot
+   * be restored through this method. Archived reports are considered permanently deleted
+   * for compliance and audit purposes.
+   *
+   * @param reportIds - Array of bug report IDs to restore
+   * @returns Number of reports successfully restored
    */
   async restoreReports(reportIds: string[]): Promise<number> {
     if (reportIds.length === 0) {
@@ -415,7 +423,11 @@ export class RetentionService {
     const result = await this.db.query(query, [reportIds]);
     const restoredCount = result.rowCount ?? 0;
 
-    logger.info('Restored bug reports', { count: restoredCount });
+    logger.info('Restored soft-deleted bug reports', {
+      count: restoredCount,
+      requested: reportIds.length,
+      note: 'Archived reports cannot be restored',
+    });
 
     return restoredCount;
   }
@@ -612,17 +624,11 @@ export class RetentionService {
       const reports = await this.findReportsForDeletion(project.id, cutoffDate);
 
       if (reports.length > 0) {
-        const estimatedStorage = reports.reduce((sum, r) => {
-          // Estimate 100KB per screenshot, 500KB per replay
-          let size = 0;
-          if (r.screenshot_url) {
-            size += 100 * 1024;
-          }
-          if (r.replay_url) {
-            size += 500 * 1024;
-          }
-          return sum + size;
-        }, 0);
+        // Calculate actual storage size by querying storage backend
+        let estimatedStorage = 0;
+        for (const report of reports) {
+          estimatedStorage += await this.getFileSizeEstimate(report);
+        }
 
         preview.affectedProjects.push({
           projectId: project.id,
