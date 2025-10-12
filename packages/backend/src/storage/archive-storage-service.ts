@@ -20,7 +20,8 @@ const logger = getLogger();
  * Best for: Cost optimization, when data retention is not required
  */
 export class DeletionArchiveStrategy implements IStorageArchiver {
-  constructor(private storage: BaseStorageService) {} /**
+  constructor(private storage: BaseStorageService) {}
+  /**
    * Archive storage files for a bug report
    * Currently deletes files to free up space immediately
    *
@@ -112,7 +113,9 @@ export class DeletionArchiveStrategy implements IStorageArchiver {
    */
   getStrategyName(): string {
     return 'deletion';
-  } /**
+  }
+
+  /**
    * Extract storage key from URL
    * @private
    */
@@ -131,15 +134,7 @@ export class DeletionArchiveStrategy implements IStorageArchiver {
    * @private
    */
   private async getFileSize(key: string): Promise<number> {
-    try {
-      const object = await this.storage.headObject(key);
-      return object?.size ?? 0;
-    } catch (error) {
-      logger.debug('Failed to get file size', {
-        key,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return 0;
-    }
+    const object = await this.storage.headObject(key);
+    return object?.size ?? 0;
   }
 }

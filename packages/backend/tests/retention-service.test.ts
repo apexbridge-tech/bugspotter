@@ -122,9 +122,9 @@ describe('RetentionService', () => {
       vi.mocked(mockDb.transaction).mockImplementation(async (callback: any) => {
         const mockTx = {
           ...mockDb,
-          retention: {
-            ...mockDb.retention,
-            hardDeleteReportsInTransaction: vi.fn().mockResolvedValue(mockReports),
+          bugReports: {
+            ...mockDb.bugReports,
+            hardDeleteInTransaction: vi.fn().mockResolvedValue(mockReports),
           },
         };
         return await callback(mockTx);
@@ -159,7 +159,9 @@ describe('RetentionService', () => {
   describe('setLegalHold()', () => {
     it('should set legal hold flag', async () => {
       const reportIds = ['report-1'];
-      vi.mocked(mockDb.query).mockResolvedValue({ rowCount: 1 } as any);
+      vi.mocked(mockDb.query)
+        .mockResolvedValueOnce({ rows: [{ project_id: 'proj-1' }] } as any)
+        .mockResolvedValueOnce({ rowCount: 1 } as any);
 
       const count = await service.setLegalHold(reportIds, true, 'user-1');
 
@@ -169,7 +171,9 @@ describe('RetentionService', () => {
 
     it('should remove legal hold flag', async () => {
       const reportIds = ['report-1'];
-      vi.mocked(mockDb.query).mockResolvedValue({ rowCount: 1 } as any);
+      vi.mocked(mockDb.query)
+        .mockResolvedValueOnce({ rows: [{ project_id: 'proj-1' }] } as any)
+        .mockResolvedValueOnce({ rowCount: 1 } as any);
 
       const count = await service.setLegalHold(reportIds, false, 'user-1');
 

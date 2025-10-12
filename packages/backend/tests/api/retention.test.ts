@@ -9,7 +9,7 @@ import { createServer } from '../../src/api/server.js';
 import { createDatabaseClient } from '../../src/db/client.js';
 import type { DatabaseClient } from '../../src/db/client.js';
 import type { Project } from '../../src/db/types.js';
-import { createRetentionService } from '../../src/retention/retention-service-factory.js';
+import { createRetentionService } from '../../src/retention/retention-service.factory.js';
 import { RetentionScheduler } from '../../src/retention/retention-scheduler.js';
 import { LocalStorageService } from '../../src/storage/local-storage.js';
 import { LoggerNotificationService } from '../../src/retention/notification-service.js';

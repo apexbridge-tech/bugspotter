@@ -3,6 +3,8 @@
  * Types for data retention and lifecycle management
  */
 
+import { z } from 'zod';
+
 export type ProjectTier = 'free' | 'professional' | 'enterprise';
 export type DataClassification =
   | 'general'
@@ -19,6 +21,30 @@ export type DeletionReason =
   | 'user_request'
   | 'legal_hold_released';
 export type ComplianceRegion = 'none' | 'eu' | 'us' | 'kz' | 'uk' | 'ca';
+
+/**
+ * Zod schema for runtime validation of ProjectRetentionSettings
+ */
+export const ProjectRetentionSettingsSchema = z
+  .object({
+    tier: z.enum(['free', 'professional', 'enterprise']).optional(),
+    retention: z
+      .object({
+        bugReportRetentionDays: z.number().int().min(0),
+        screenshotRetentionDays: z.number().int().min(0).optional(),
+        replayRetentionDays: z.number().int().min(0).optional(),
+        attachmentRetentionDays: z.number().int().min(0).optional(),
+        archivedRetentionDays: z.number().int().min(0).optional(),
+        archiveBeforeDelete: z.boolean().optional(),
+        dataClassification: z
+          .enum(['general', 'financial', 'government', 'healthcare', 'pii', 'sensitive'])
+          .optional(),
+        complianceRegion: z.enum(['none', 'eu', 'us', 'kz', 'uk', 'ca']).optional(),
+      })
+      .optional(),
+    minimumRetentionDays: z.number().int().min(0).optional(),
+  })
+  .passthrough(); // Allow additional fields for forward compatibility
 
 /**
  * Retention policy configuration for a project

@@ -263,7 +263,7 @@ export class RetentionService {
    * Find bug reports eligible for deletion
    */
   private async findReportsForDeletion(projectId: string, cutoffDate: Date): Promise<BugReport[]> {
-    return await this.db.retention.findEligibleForDeletion(projectId, cutoffDate);
+    return await this.db.bugReports.findEligibleForDeletion(projectId, cutoffDate);
   }
 
   /**
@@ -272,9 +272,9 @@ export class RetentionService {
   private async softDeleteReports(
     reportIds: string[],
     userId: string | null,
-    reason: DeletionReason
+    _reason: DeletionReason
   ): Promise<void> {
-    await this.db.retention.softDeleteReports(reportIds, userId, reason);
+    await this.db.bugReports.softDelete(reportIds, userId);
   }
 
   /**
@@ -293,7 +293,7 @@ export class RetentionService {
       // Use DatabaseClient transaction with repository access
       const result = await this.db.transaction(async (tx) => {
         // Hard delete within transaction
-        const reports = await tx.retention.hardDeleteReportsInTransaction(reportIds);
+        const reports = await tx.bugReports.hardDeleteInTransaction(reportIds);
 
         if (reports.length === 0) {
           return null;
@@ -638,9 +638,7 @@ export class RetentionService {
     }
 
     // Count legal hold reports
-    const legalHoldQuery = 'SELECT COUNT(*) FROM bug_reports WHERE legal_hold = TRUE';
-    const legalHoldResult = await this.db.query<{ count: string }>(legalHoldQuery);
-    preview.legalHoldCount = parseInt(legalHoldResult.rows[0].count, 10);
+    preview.legalHoldCount = await this.db.bugReports.countLegalHoldReports();
 
     return preview;
   }

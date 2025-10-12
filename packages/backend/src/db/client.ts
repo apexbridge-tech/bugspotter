@@ -20,7 +20,6 @@ import {
   SessionRepository,
   TicketRepository,
 } from './repositories.js';
-import { RetentionRepository } from './retention-repository.js';
 
 const { Pool } = pg;
 
@@ -83,7 +82,7 @@ export class DatabaseClient implements RepositoryRegistry {
   public readonly users: UserRepository;
   public readonly sessions: SessionRepository;
   public readonly tickets: TicketRepository;
-  public readonly retention: RetentionRepository;
+  public readonly retention: BugReportRepository;
 
   /**
    * Private constructor - use static create() method instead
@@ -96,8 +95,9 @@ export class DatabaseClient implements RepositoryRegistry {
     // Initialize repositories with retry wrapping
     this.projects = this.wrapWithRetry(repositories.projects);
     this.projectMembers = this.wrapWithRetry(repositories.projectMembers);
-    this.retention = this.wrapWithRetry(repositories.retention);
     this.bugReports = this.wrapWithRetry(repositories.bugReports);
+    // Retention operations consolidated into BugReportRepository
+    this.retention = this.bugReports;
     this.users = this.wrapWithRetry(repositories.users);
     this.sessions = this.wrapWithRetry(repositories.sessions);
     this.tickets = this.wrapWithRetry(repositories.tickets);

@@ -5,6 +5,15 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { BaseRepository } from './base-repository.js';
+import {
+  MAX_BATCH_SIZE,
+  DEFAULT_BATCH_SIZE,
+  MIN_BATCH_SIZE,
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  SINGLE_ROW_LIMIT,
+  DECIMAL_BASE,
+} from './constants.js';
 import type {
   Project,
   ProjectInsert,
@@ -61,7 +70,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
               AND pm.user_id = $2
           )
         )
-      LIMIT 1
+      LIMIT ${SINGLE_ROW_LIMIT}
     `;
 
     const result = await this.getClient().query(query, [projectId, userId]);
@@ -77,7 +86,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
     const ownerQuery = `
       SELECT 'owner' as role FROM projects
       WHERE id = $1 AND created_by = $2
-      LIMIT 1
+      LIMIT ${SINGLE_ROW_LIMIT}
     `;
     const ownerResult = await this.getClient().query(ownerQuery, [projectId, userId]);
     if (ownerResult.rows.length > 0) {
@@ -88,7 +97,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
     const memberQuery = `
       SELECT role FROM project_members
       WHERE project_id = $1 AND user_id = $2
-      LIMIT 1
+      LIMIT ${SINGLE_ROW_LIMIT}
     `;
     const memberResult = await this.getClient().query(memberQuery, [projectId, userId]);
     if (memberResult.rows.length > 0) {
@@ -151,9 +160,6 @@ export class BugReportRepository extends BaseRepository<
     }
 
     // Validate batch size to prevent DoS and PostgreSQL parameter limit
-    // PostgreSQL limit: 65,535 parameters. With 8 columns = max 8,191 rows
-    // We set a conservative limit of 1000 for safety and performance
-    const MAX_BATCH_SIZE = 1000;
     if (dataArray.length > MAX_BATCH_SIZE) {
       throw new Error(
         `Batch size ${dataArray.length} exceeds maximum allowed (${MAX_BATCH_SIZE}). ` +
@@ -220,15 +226,17 @@ export class BugReportRepository extends BaseRepository<
    */
   async createBatchAuto(
     dataArray: BugReportInsert[],
-    batchSize: number = 500
+    batchSize: number = DEFAULT_BATCH_SIZE
   ): Promise<BugReport[]> {
     if (dataArray.length === 0) {
       return [];
     }
 
     // Validate batch size
-    if (batchSize < 1 || batchSize > 1000) {
-      throw new Error(`Batch size must be between 1 and 1000, got ${batchSize}`);
+    if (batchSize < MIN_BATCH_SIZE || batchSize > MAX_BATCH_SIZE) {
+      throw new Error(
+        `Batch size must be between ${MIN_BATCH_SIZE} and ${MAX_BATCH_SIZE}, got ${batchSize}`
+      );
     }
 
     // If array fits in one batch, use regular createBatch
@@ -379,7 +387,7 @@ export class BugReportRepository extends BaseRepository<
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}${softDeleteClause}`;
     const countResult = await this.getClient().query<{ count: string }>(countQuery, values);
-    const total = parseInt(countResult.rows[0].count, 10);
+    const total = parseInt(countResult.rows[0].count, DECIMAL_BASE);
 
     // Build ORDER BY clause
     const sortBy = sort?.sort_by ?? 'created_at';
@@ -387,8 +395,8 @@ export class BugReportRepository extends BaseRepository<
     const orderClause = buildOrderByClause(sortBy, order);
 
     // Build pagination
-    const page = pagination?.page ?? 1;
-    const limit = pagination?.limit ?? 20;
+    const page = pagination?.page ?? DEFAULT_PAGE;
+    const limit = pagination?.limit ?? DEFAULT_PAGE_SIZE;
     const paginationClause = buildPaginationClause(page, limit, paramCount);
 
     // Get paginated results
@@ -411,6 +419,96 @@ export class BugReportRepository extends BaseRepository<
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  // ============================================================================
+  // RETENTION OPERATIONS
+  // Consolidated from RetentionRepository to eliminate duplication
+  // ============================================================================
+
+  /**
+   * Find bug reports eligible for deletion based on retention policy
+   * Alias for findForRetention for backward compatibility
+   */
+  async findEligibleForDeletion(projectId: string, cutoffDate: Date): Promise<BugReport[]> {
+    return this.findForRetention(projectId, cutoffDate, false);
+  }
+
+  /**
+   * Soft delete reports with deletion reason (used by retention service)
+   */
+  async softDeleteWithReason(
+    reportIds: string[],
+    userId: string | null,
+    _reason: string
+  ): Promise<void> {
+    await this.softDelete(reportIds, userId);
+  }
+
+  /**
+   * Hard delete reports within transaction and return details for certificate generation
+   */
+  async hardDeleteInTransaction(
+    reportIds: string[]
+  ): Promise<Array<{ id: string; project_id: string }>> {
+    if (reportIds.length === 0) {
+      return [];
+    }
+
+    // Get report details before deletion
+    const reportsQuery = `
+      SELECT id, project_id FROM ${this.tableName}
+      WHERE id = ANY($1) AND legal_hold = FALSE
+    `;
+    const reportsResult = await this.getClient().query<{ id: string; project_id: string }>(
+      reportsQuery,
+      [reportIds]
+    );
+    const reports = reportsResult.rows;
+
+    if (reports.length === 0) {
+      return [];
+    }
+
+    // Delete from database
+    await this.getClient().query(`DELETE FROM ${this.tableName} WHERE id = ANY($1)`, [reportIds]);
+
+    return reports;
+  }
+
+  /**
+   * Count reports currently on legal hold
+   */
+  async countLegalHoldReports(): Promise<number> {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM ${this.tableName}
+      WHERE legal_hold = TRUE AND deleted_at IS NULL
+    `;
+    const result = await this.getClient().query<{ count: string }>(query);
+    return parseInt(result.rows[0]?.count ?? '0', DECIMAL_BASE);
+  }
+
+  /**
+   * Get storage statistics for reports (estimates database storage)
+   */
+  async getStorageStats(reportIds: string[]): Promise<{ totalBytes: number }> {
+    if (reportIds.length === 0) {
+      return { totalBytes: 0 };
+    }
+
+    const query = `
+      SELECT COALESCE(SUM(
+        COALESCE(octet_length(metadata::text), 0) +
+        COALESCE(octet_length(description), 0) +
+        COALESCE(octet_length(screenshot_url), 0) +
+        COALESCE(octet_length(replay_url), 0)
+      ), 0)::bigint as total_bytes
+      FROM ${this.tableName}
+      WHERE id = ANY($1)
+    `;
+    const result = await this.getClient().query<{ total_bytes: string }>(query, [reportIds]);
+    return { totalBytes: parseInt(result.rows[0]?.total_bytes ?? '0', DECIMAL_BASE) };
   }
 }
 

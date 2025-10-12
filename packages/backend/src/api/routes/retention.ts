@@ -21,6 +21,7 @@ import {
   MANUAL_DELETION_CONFIRMATION_THRESHOLD,
 } from '../../retention/retention-config.js';
 import type { ProjectRetentionSettings } from '../../retention/types.js';
+import { ProjectRetentionSettingsSchema } from '../../retention/types.js';
 import { getLogger } from '../../logger.js';
 
 const logger = getLogger();
@@ -168,12 +169,27 @@ export function retentionRoutes(
         return reply.code(404).send({ error: ERROR_MESSAGES.PROJECT_NOT_FOUND });
       }
 
-      const settings = project.settings as unknown as ProjectRetentionSettings;
-      const retention = settings?.retention ?? getRetentionPolicyForTier(DEFAULT_TIER);
+      // Validate project settings with runtime type checking
+      const validationResult = ProjectRetentionSettingsSchema.safeParse(project.settings);
+      let settings: ProjectRetentionSettings | undefined;
+
+      if (validationResult.success) {
+        // Type assertion safe after Zod validation
+        settings = validationResult.data as ProjectRetentionSettings;
+      } else {
+        logger.warn('Invalid project settings, using defaults', {
+          projectId,
+          error: validationResult.error.message,
+        });
+        settings = undefined;
+      }
+
+      const tier = settings?.tier ?? DEFAULT_TIER;
+      const retention = settings?.retention ?? getRetentionPolicyForTier(tier);
 
       return reply.send({
         projectId,
-        tier: settings?.tier ?? DEFAULT_TIER,
+        tier,
         retention: {
           ...retention,
           autoDeleteEnabled: retention.bugReportRetentionDays > 0,
@@ -236,7 +252,21 @@ export function retentionRoutes(
         return reply.code(404).send({ error: ERROR_MESSAGES.PROJECT_NOT_FOUND });
       }
 
-      const settings = project.settings as unknown as ProjectRetentionSettings;
+      // Validate project settings with runtime type checking
+      const validationResult = ProjectRetentionSettingsSchema.safeParse(project.settings);
+      let settings: ProjectRetentionSettings | undefined;
+
+      if (validationResult.success) {
+        // Type assertion safe after Zod validation
+        settings = validationResult.data as ProjectRetentionSettings;
+      } else {
+        logger.warn('Invalid project settings, using defaults', {
+          projectId,
+          error: validationResult.error.message,
+        });
+        settings = undefined;
+      }
+
       const tier = settings?.tier ?? DEFAULT_TIER;
 
       // Validate retention days (admins bypass tier limits)
@@ -253,6 +283,7 @@ export function retentionRoutes(
 
       const updatedSettings: ProjectRetentionSettings = {
         ...settings,
+        tier, // Ensure tier is always defined
         retention: {
           ...(settings?.retention ?? getRetentionPolicyForTier(tier)),
           ...validation.data,
