@@ -381,7 +381,7 @@ pnpm test --watch      # Watch mode
 pnpm test --coverage   # Coverage report
 ```
 
-**404 tests** passing (348 unit + 55 E2E + 13 Playwright)
+**345 tests** passing (unit + E2E + Playwright)
 
 ## �️ Building
 

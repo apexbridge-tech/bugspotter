@@ -315,3 +315,7 @@ export {
 
 // Export base class for custom implementations
 export { BaseStorageService } from './base-storage-service.js';
+
+// Export archive storage interface and implementations
+export type { IStorageArchiver, ArchiveResult, ReportFiles } from './archive-storage.interface.js';
+export { DeletionArchiveStrategy } from './archive-storage-service.js';

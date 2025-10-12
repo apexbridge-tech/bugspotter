@@ -82,6 +82,7 @@ export class DatabaseClient implements RepositoryRegistry {
   public readonly users: UserRepository;
   public readonly sessions: SessionRepository;
   public readonly tickets: TicketRepository;
+  public readonly retention: BugReportRepository;
 
   /**
    * Private constructor - use static create() method instead
@@ -95,6 +96,8 @@ export class DatabaseClient implements RepositoryRegistry {
     this.projects = this.wrapWithRetry(repositories.projects);
     this.projectMembers = this.wrapWithRetry(repositories.projectMembers);
     this.bugReports = this.wrapWithRetry(repositories.bugReports);
+    // Retention operations consolidated into BugReportRepository
+    this.retention = this.bugReports;
     this.users = this.wrapWithRetry(repositories.users);
     this.sessions = this.wrapWithRetry(repositories.sessions);
     this.tickets = this.wrapWithRetry(repositories.tickets);
@@ -273,6 +276,17 @@ export class DatabaseClient implements RepositoryRegistry {
       });
       return false;
     }
+  }
+
+  /**
+   * Execute a raw SQL query
+   * Use this for complex queries not covered by repositories
+   */
+  async query<T extends pg.QueryResultRow = any>(
+    text: string,
+    params?: any[]
+  ): Promise<pg.QueryResult<T>> {
+    return await this.pool.query<T>(text, params);
   }
 
   /**

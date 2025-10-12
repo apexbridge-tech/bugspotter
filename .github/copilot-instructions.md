@@ -336,7 +336,7 @@ See: `packages/backend/src/api/middleware/auth.ts`, `src/api/routes/health.ts`
 
 1. Launch PostgreSQL 16 container
 2. Run migrations
-3. Execute tests (750 backend + 345 SDK = 1,095 total)
+3. Execute tests (869 backend + 345 SDK = 1,214 total)
 4. Cleanup container
 
 ```bash
@@ -347,10 +347,40 @@ pnpm test:coverage     # Coverage report
 
 **Test Distribution:**
 
-- Backend: 750 tests (621 unit + 104 integration + 25 load/storage)
+- Backend: 869 tests (746 unit + 104 integration + 25 storage)
 - SDK: 345 tests (unit + E2E + Playwright)
 
-See: `packages/backend/TESTING.md`, `packages/backend/tests/setup.ts`
+### Unit Test Mocking
+
+**Keep mocks in sync with implementation** - when refactoring to use repository methods:
+
+```typescript
+// ❌ BAD: Mock misses new repository method after refactoring
+beforeEach(() => {
+  mockDb = {
+    bugReports: {
+      softDelete: vi.fn(),
+      // Missing setLegalHold after refactoring service to use it
+    },
+    query: vi.fn(),
+  } as any;
+});
+
+// ✅ GOOD: Mock includes all methods used by service
+beforeEach(() => {
+  mockDb = {
+    bugReports: {
+      softDelete: vi.fn(),
+      setLegalHold: vi.fn(), // Added when service refactored
+    },
+    query: vi.fn(),
+  } as any;
+});
+```
+
+**Rule**: After refactoring to eliminate duplication, update test mocks to include the new dependency methods.
+
+See: `packages/backend/TESTING.md`, `packages/backend/tests/setup.ts`, `tests/retention-service.test.ts`
 
 ## Security Best Practices
 
@@ -517,6 +547,47 @@ errorHandlers.push({ matcher: isNewErrorType, processor: processNewError });
 // Add new storage type without modifying validation
 const VALID_STORAGE_TYPES = ['screenshots', 'replays', 'attachments', 'videos'];
 ```
+
+### Separation of Concerns (Layered Architecture)
+
+**Avoid duplicating data access logic** - follow the repository pattern strictly:
+
+```typescript
+// ❌ BAD: Service duplicates repository query
+class RetentionService {
+  async setLegalHold(reportIds: string[], hold: boolean): Promise<number> {
+    const query = `UPDATE bug_reports SET legal_hold = $1 WHERE id = ANY($2)`;
+    return await this.db.query(query, [hold, reportIds]);
+  }
+}
+
+// ✅ GOOD: Service delegates to repository, adds orchestration
+class RetentionService {
+  async setLegalHold(reportIds: string[], hold: boolean, userId: string): Promise<number> {
+    // Fetch metadata for audit trail
+    const projectIds = await this.getProjectIds(reportIds);
+
+    // Use repository for data access
+    const count = await this.db.bugReports.setLegalHold(reportIds, hold);
+
+    // Add service-layer concerns (audit logging, notifications)
+    await this.createAuditLog({ action: 'legal_hold', projectIds, userId });
+    logger.info(`Legal hold ${hold ? 'applied' : 'released'}`, { count });
+
+    return count;
+  }
+}
+```
+
+**Layers**:
+
+- **Repository**: Pure data access (CRUD, queries)
+- **Service**: Orchestration (transactions, audit logs, business logic)
+- **API Route**: HTTP concerns (validation, auth, response formatting)
+
+**Rule**: If you see SQL queries in service layer that mirror repository methods, refactor to call the repository instead.
+
+See: `packages/backend/src/retention/retention-service.ts` (setLegalHold refactoring)
 
 ## Helper Function Patterns
 

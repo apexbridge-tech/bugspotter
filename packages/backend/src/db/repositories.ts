@@ -5,6 +5,15 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { BaseRepository } from './base-repository.js';
+import {
+  MAX_BATCH_SIZE,
+  DEFAULT_BATCH_SIZE,
+  MIN_BATCH_SIZE,
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  SINGLE_ROW_LIMIT,
+  DECIMAL_BASE,
+} from './constants.js';
 import type {
   Project,
   ProjectInsert,
@@ -61,7 +70,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
               AND pm.user_id = $2
           )
         )
-      LIMIT 1
+      LIMIT ${SINGLE_ROW_LIMIT}
     `;
 
     const result = await this.getClient().query(query, [projectId, userId]);
@@ -77,7 +86,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
     const ownerQuery = `
       SELECT 'owner' as role FROM projects
       WHERE id = $1 AND created_by = $2
-      LIMIT 1
+      LIMIT ${SINGLE_ROW_LIMIT}
     `;
     const ownerResult = await this.getClient().query(ownerQuery, [projectId, userId]);
     if (ownerResult.rows.length > 0) {
@@ -88,7 +97,7 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
     const memberQuery = `
       SELECT role FROM project_members
       WHERE project_id = $1 AND user_id = $2
-      LIMIT 1
+      LIMIT ${SINGLE_ROW_LIMIT}
     `;
     const memberResult = await this.getClient().query(memberQuery, [projectId, userId]);
     if (memberResult.rows.length > 0) {
@@ -96,6 +105,15 @@ export class ProjectRepository extends BaseRepository<Project, ProjectInsert, Pr
     }
 
     return null;
+  }
+
+  /**
+   * Find all projects (for retention service)
+   */
+  async findAll(): Promise<Project[]> {
+    const query = `SELECT * FROM ${this.tableName} ORDER BY created_at DESC`;
+    const result = await this.getClient().query(query);
+    return this.deserializeMany(result.rows);
   }
 }
 
@@ -124,66 +142,9 @@ export class BugReportRepository extends BaseRepository<
       metadata: serializeJsonField(data.metadata),
       status: data.status ?? 'open',
       priority: data.priority ?? 'medium',
-    };
-  }
-
-  /**
-   * List bug reports with filters, sorting, and pagination
-   */
-  async list(
-    filters?: BugReportFilters,
-    sort?: BugReportSortOptions,
-    pagination?: PaginationOptions
-  ): Promise<PaginatedResult<BugReport>> {
-    // Build WHERE clause from filters
-    const filterData: Record<string, unknown> = {};
-    if (filters?.project_id) {
-      filterData.project_id = filters.project_id;
-    }
-    if (filters?.status) {
-      filterData.status = filters.status;
-    }
-    if (filters?.priority) {
-      filterData.priority = filters.priority;
-    }
-    // Note: created_after/before need operator support (future enhancement)
-
-    const { clause: whereClause, values, paramCount } = buildWhereClause(filterData);
-
-    // Get total count
-    const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}`;
-    const countResult = await this.getClient().query<{ count: string }>(countQuery, values);
-    const total = parseInt(countResult.rows[0].count, 10);
-
-    // Build ORDER BY clause
-    const sortBy = sort?.sort_by ?? 'created_at';
-    const order = sort?.order ?? 'desc';
-    const orderClause = buildOrderByClause(sortBy, order);
-
-    // Build pagination
-    const page = pagination?.page ?? 1;
-    const limit = pagination?.limit ?? 20;
-    const paginationClause = buildPaginationClause(page, limit, paramCount);
-
-    // Get paginated results
-    const dataQuery = `
-      SELECT * FROM ${this.tableName}
-      ${whereClause}
-      ${orderClause}
-      ${paginationClause.clause}
-    `;
-    const dataValues = [...values, ...paginationClause.values];
-
-    const dataResult = await this.getClient().query(dataQuery, dataValues);
-
-    return {
-      data: this.deserializeMany(dataResult.rows),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      deleted_at: data.deleted_at ?? null,
+      deleted_by: data.deleted_by ?? null,
+      legal_hold: data.legal_hold ?? false,
     };
   }
 
@@ -199,9 +160,6 @@ export class BugReportRepository extends BaseRepository<
     }
 
     // Validate batch size to prevent DoS and PostgreSQL parameter limit
-    // PostgreSQL limit: 65,535 parameters. With 8 columns = max 8,191 rows
-    // We set a conservative limit of 1000 for safety and performance
-    const MAX_BATCH_SIZE = 1000;
     if (dataArray.length > MAX_BATCH_SIZE) {
       throw new Error(
         `Batch size ${dataArray.length} exceeds maximum allowed (${MAX_BATCH_SIZE}). ` +
@@ -268,15 +226,17 @@ export class BugReportRepository extends BaseRepository<
    */
   async createBatchAuto(
     dataArray: BugReportInsert[],
-    batchSize: number = 500
+    batchSize: number = DEFAULT_BATCH_SIZE
   ): Promise<BugReport[]> {
     if (dataArray.length === 0) {
       return [];
     }
 
     // Validate batch size
-    if (batchSize < 1 || batchSize > 1000) {
-      throw new Error(`Batch size must be between 1 and 1000, got ${batchSize}`);
+    if (batchSize < MIN_BATCH_SIZE || batchSize > MAX_BATCH_SIZE) {
+      throw new Error(
+        `Batch size must be between ${MIN_BATCH_SIZE} and ${MAX_BATCH_SIZE}, got ${batchSize}`
+      );
     }
 
     // If array fits in one batch, use regular createBatch
@@ -293,6 +253,232 @@ export class BugReportRepository extends BaseRepository<
     }
 
     return results;
+  }
+
+  /**
+   * Find bug reports older than cutoff date (for retention)
+   * Excludes soft-deleted reports and those on legal hold
+   */
+  async findForRetention(
+    projectId: string,
+    cutoffDate: Date,
+    includeDeleted = false
+  ): Promise<BugReport[]> {
+    const deletedClause = includeDeleted ? '' : 'AND deleted_at IS NULL';
+    const query = `
+      SELECT * FROM ${this.tableName}
+      WHERE project_id = $1
+        AND created_at < $2
+        ${deletedClause}
+        AND legal_hold = FALSE
+      ORDER BY created_at ASC
+    `;
+
+    const result = await this.getClient().query<BugReport>(query, [projectId, cutoffDate]);
+    return this.deserializeMany(result.rows);
+  }
+
+  /**
+   * Soft delete bug reports
+   */
+  async softDelete(reportIds: string[], userId: string | null = null): Promise<number> {
+    if (reportIds.length === 0) {
+      return 0;
+    }
+
+    const query = `
+      UPDATE ${this.tableName}
+      SET deleted_at = CURRENT_TIMESTAMP,
+          deleted_by = $1
+      WHERE id = ANY($2)
+        AND deleted_at IS NULL
+        AND legal_hold = FALSE
+    `;
+
+    const result = await this.getClient().query(query, [userId, reportIds]);
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Restore soft-deleted bug reports
+   */
+  async restore(reportIds: string[]): Promise<number> {
+    if (reportIds.length === 0) {
+      return 0;
+    }
+
+    const query = `
+      UPDATE ${this.tableName}
+      SET deleted_at = NULL,
+          deleted_by = NULL
+      WHERE id = ANY($1)
+        AND deleted_at IS NOT NULL
+    `;
+
+    const result = await this.getClient().query(query, [reportIds]);
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Hard delete bug reports (permanent deletion)
+   */
+  async hardDelete(reportIds: string[]): Promise<number> {
+    if (reportIds.length === 0) {
+      return 0;
+    }
+
+    const query = `
+      DELETE FROM ${this.tableName}
+      WHERE id = ANY($1)
+        AND legal_hold = FALSE
+    `;
+
+    const result = await this.getClient().query(query, [reportIds]);
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Set legal hold status on bug reports
+   */
+  async setLegalHold(reportIds: string[], hold: boolean): Promise<number> {
+    if (reportIds.length === 0) {
+      return 0;
+    }
+
+    const query = `
+      UPDATE ${this.tableName}
+      SET legal_hold = $1
+      WHERE id = ANY($2)
+    `;
+
+    const result = await this.getClient().query(query, [hold, reportIds]);
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Override list to exclude soft-deleted by default
+   */
+  async list(
+    filters?: BugReportFilters & { includeDeleted?: boolean },
+    sort?: BugReportSortOptions,
+    pagination?: PaginationOptions
+  ): Promise<PaginatedResult<BugReport>> {
+    // Build WHERE clause from filters
+    const filterData: Record<string, unknown> = {};
+    if (filters?.project_id) {
+      filterData.project_id = filters.project_id;
+    }
+    if (filters?.status) {
+      filterData.status = filters.status;
+    }
+    if (filters?.priority) {
+      filterData.priority = filters.priority;
+    }
+
+    const { clause: whereClause, values, paramCount } = buildWhereClause(filterData);
+
+    // Add soft-delete filter unless explicitly requesting deleted records
+    const softDeleteClause = filters?.includeDeleted
+      ? ''
+      : whereClause
+        ? ' AND deleted_at IS NULL'
+        : ' WHERE deleted_at IS NULL';
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}${softDeleteClause}`;
+    const countResult = await this.getClient().query<{ count: string }>(countQuery, values);
+    const total = parseInt(countResult.rows[0].count, DECIMAL_BASE);
+
+    // Build ORDER BY clause
+    const sortBy = sort?.sort_by ?? 'created_at';
+    const order = sort?.order ?? 'desc';
+    const orderClause = buildOrderByClause(sortBy, order);
+
+    // Build pagination
+    const page = pagination?.page ?? DEFAULT_PAGE;
+    const limit = pagination?.limit ?? DEFAULT_PAGE_SIZE;
+    const paginationClause = buildPaginationClause(page, limit, paramCount);
+
+    // Get paginated results
+    const dataQuery = `
+      SELECT * FROM ${this.tableName}
+      ${whereClause}${softDeleteClause}
+      ${orderClause}
+      ${paginationClause.clause}
+    `;
+    const dataValues = [...values, ...paginationClause.values];
+
+    const dataResult = await this.getClient().query(dataQuery, dataValues);
+
+    return {
+      data: this.deserializeMany(dataResult.rows),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // ============================================================================
+  // RETENTION OPERATIONS
+  // Consolidated from RetentionRepository to eliminate duplication
+  // ============================================================================
+
+  /**
+   * Find bug reports eligible for deletion based on retention policy
+   * Alias for findForRetention for backward compatibility
+   */
+  async findEligibleForDeletion(projectId: string, cutoffDate: Date): Promise<BugReport[]> {
+    return this.findForRetention(projectId, cutoffDate, false);
+  }
+
+  /**
+   * Hard delete reports within transaction and return details for certificate generation
+   */
+  async hardDeleteInTransaction(
+    reportIds: string[]
+  ): Promise<Array<{ id: string; project_id: string }>> {
+    if (reportIds.length === 0) {
+      return [];
+    }
+
+    // Get report details before deletion
+    const reportsQuery = `
+      SELECT id, project_id FROM ${this.tableName}
+      WHERE id = ANY($1) AND legal_hold = FALSE
+    `;
+    const reportsResult = await this.getClient().query<{ id: string; project_id: string }>(
+      reportsQuery,
+      [reportIds]
+    );
+    const reports = reportsResult.rows;
+
+    if (reports.length === 0) {
+      return [];
+    }
+
+    // Delete from database (only reports that passed legal hold check)
+    const deletableIds = reports.map((r) => r.id);
+    await this.getClient().query(`DELETE FROM ${this.tableName} WHERE id = ANY($1)`, [
+      deletableIds,
+    ]);
+
+    return reports;
+  }
+
+  /**
+   * Count reports currently on legal hold
+   */
+  async countLegalHoldReports(): Promise<number> {
+    const query = `
+      SELECT COUNT(*) as count
+      FROM ${this.tableName}
+      WHERE legal_hold = TRUE AND deleted_at IS NULL
+    `;
+    const result = await this.getClient().query<{ count: string }>(query);
+    return parseInt(result.rows[0]?.count ?? '0', DECIMAL_BASE);
   }
 }
 
