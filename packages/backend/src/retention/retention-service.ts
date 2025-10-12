@@ -653,6 +653,13 @@ export class RetentionService {
       return 0;
     }
 
+    // Fetch project IDs for audit trail
+    const projectQuery = `
+      SELECT DISTINCT project_id FROM bug_reports WHERE id = ANY($1)
+    `;
+    const projectResult = await this.db.query<{ project_id: string }>(projectQuery, [reportIds]);
+    const projectIds = projectResult.rows.map((row) => row.project_id);
+
     const query = `
       UPDATE bug_reports
       SET legal_hold = $1
@@ -662,9 +669,10 @@ export class RetentionService {
     const result = await this.db.query(query, [hold, reportIds]);
     const updatedCount = result.rowCount ?? 0;
 
+    // Create audit log entry (use first project ID, log all in metadata)
     await this.createAuditLog({
       action: hold ? 'legal_hold_applied' : 'legal_hold_released',
-      projectId: '', // Will be fetched if needed
+      projectId: projectIds.join(','), // Store all project IDs
       bugReportIds: reportIds,
       reason: 'manual',
       userId,
@@ -674,6 +682,7 @@ export class RetentionService {
 
     logger.info(`Legal hold ${hold ? 'applied' : 'released'}`, {
       count: updatedCount,
+      projectIds,
       userId,
     });
 
