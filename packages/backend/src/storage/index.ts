@@ -313,6 +313,13 @@ export {
   isValidUUID,
 } from './path-utils.js';
 
+export {
+  buildReplayChunkUrl,
+  buildReplayManifestUrl,
+  buildScreenshotUrl,
+  buildAttachmentUrl,
+} from './storage-url-builder.js';
+
 // Export base class for custom implementations
 export { BaseStorageService } from './base-storage-service.js';
 

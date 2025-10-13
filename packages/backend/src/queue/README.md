@@ -18,19 +18,19 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
    - Job result types
    - Queue metrics and statistics types
 
-3. ✅ **Queue Manager** (`queue/queue.manager.ts`)
+3. ✅ **Queue Manager** (`queue/queue-manager.ts`)
    - Centralized queue management
    - Methods: addJob, getJob, getJobStatus, getQueueStats
    - Graceful shutdown handling
    - Health checks
 
 4. ✅ **Job Definitions** (`queue/jobs/`)
-   - screenshot.job.ts - Screenshot processing interface
-   - replay.job.ts - Replay data processing interface
-   - integration.job.ts - External platform integrations
-   - notification.job.ts - Notification delivery
+   - screenshot-job.ts - Screenshot processing interface
+   - replay-job.ts - Replay data processing interface
+   - integration-job.ts - External platform integrations
+   - notification-job.ts - Notification delivery
 
-5. ✅ **Screenshot Worker** (`queue/workers/screenshot.worker.ts`)
+5. ✅ **Screenshot Worker** (`queue/workers/screenshot-worker.ts`)
    - Downloads original screenshot from storage
    - Creates optimized version with sharp
    - Generates thumbnail (320x240)
@@ -41,7 +41,7 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
 
 ### Components To Complete
 
-6. **Replay Worker** (`queue/workers/replay.worker.ts`)
+6. **Replay Worker** (`queue/workers/replay-worker.ts`)
 
    ```typescript
    - Process replay data in chunks (30-second segments)
@@ -52,7 +52,7 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
    - Concurrency: 3 (heavier processing)
    ```
 
-7. **Integration Worker** (`queue/workers/integration.worker.ts`)
+7. **Integration Worker** (`queue/workers/integration-worker.ts`)
 
    ```typescript
    - Route to correct platform service (Jira/GitHub/Linear/Slack)
@@ -63,7 +63,7 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
    - Concurrency: 10 (I/O bound)
    ```
 
-8. **Notification Worker** (`queue/workers/notification.worker.ts`)
+8. **Notification Worker** (`queue/workers/notification-worker.ts`)
 
    ```typescript
    - Send emails via configured SMTP
@@ -74,7 +74,7 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
    - Concurrency: 5
    ```
 
-9. **Worker Manager** (`queue/worker.manager.ts`)
+9. **Worker Manager** (`queue/worker-manager.ts`)
 
    ```typescript
    class WorkerManager {
@@ -167,7 +167,7 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
 12. **Worker Entry Point** (`worker.ts`)
 
     ```typescript
-    import { WorkerManager } from './queue/worker.manager.js';
+    import { WorkerManager } from './queue/worker-manager.js';
     import { getLogger } from './logger.js';
 
     const logger = getLogger();
@@ -275,7 +275,7 @@ WORKER_TYPES=screenshots,replays npm run worker
 ### Queueing Jobs
 
 ```typescript
-import { getQueueManager } from './queue/queue.manager.js';
+import { getQueueManager } from './queue/queue-manager.js';
 
 const queueManager = getQueueManager();
 await queueManager.initialize();
@@ -471,7 +471,7 @@ spec:
 
 ❌ **Remaining Work**:
 
-1. Create worker.manager.ts to orchestrate all workers with health checks
+1. Create worker-manager.ts to orchestrate all workers with health checks
 2. Create monitor.ts for advanced monitoring features (DLQ, metrics)
 3. Update API routes to queue jobs instead of processing synchronously
 4. Create worker.ts entry point for standalone worker process

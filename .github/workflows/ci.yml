@@ -174,8 +174,6 @@ jobs:
           pnpm --filter @bugspotter/sdk exec playwright install --with-deps chromium
 
       - name: Run Playwright browser tests
-        # Continue on error to not block CI if browser tests fail
-        continue-on-error: true
         run: |
           # Run browser tests in Chromium only
           pnpm --filter @bugspotter/sdk run test:playwright --project=chromium

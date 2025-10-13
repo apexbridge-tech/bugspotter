@@ -19,21 +19,64 @@
  * ```
  */
 
-import type { Worker } from 'bullmq';
 import { getLogger } from '../logger.js';
+import type { Redis } from 'ioredis';
 import { DatabaseClient } from '../db/client.js';
 import type { BaseStorageService } from '../storage/base-storage-service.js';
 import { getQueueConfig } from '../config/queue.config.js';
-import { getQueueManager } from './queue.manager.js';
-import { ScreenshotWorker } from './workers/screenshot.worker.js';
-import { createReplayWorker } from './workers/replay.worker.js';
-import { createIntegrationWorker } from './workers/integration.worker.js';
-import { createNotificationWorker } from './workers/notification.worker.js';
+import { getQueueManager } from './queue-manager.js';
+import { createScreenshotWorker } from './workers/screenshot-worker.js';
+import { createReplayWorker } from './workers/replay-worker.js';
+import { createIntegrationWorker } from './workers/integration-worker.js';
+import { createNotificationWorker } from './workers/notification-worker.js';
+import type { BaseWorker } from './workers/base-worker.js';
 
 const logger = getLogger();
 
-// Union type for all worker types
-type AnyWorker = Worker | ScreenshotWorker;
+/**
+ * Worker factory function type
+ * Accepts db, storage (optional), and connection parameters
+ */
+type WorkerFactory = (
+  db: DatabaseClient,
+  storage: BaseStorageService,
+  connection: Redis
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BaseWorker needs generic flexibility for different job types
+) => BaseWorker<any, any, any>;
+
+/**
+ * Worker configuration for registry
+ */
+interface WorkerConfig {
+  name: string;
+  factory: WorkerFactory;
+  needsStorage: boolean; // Whether factory requires storage parameter
+}
+
+/**
+ * Worker Registry - Single source of truth for all workers
+ *
+ * Adding a new worker:
+ * 1. Create worker factory function (e.g., createMyWorker)
+ * 2. Add entry to this registry
+ * 3. Add config in queue.config.ts
+ *
+ * No code changes needed in start() method or elsewhere!
+ */
+const WORKER_REGISTRY: WorkerConfig[] = [
+  { name: 'screenshot', factory: createScreenshotWorker, needsStorage: true },
+  { name: 'replay', factory: createReplayWorker, needsStorage: true },
+  {
+    name: 'integration',
+    factory: createIntegrationWorker as WorkerFactory,
+    needsStorage: false,
+  },
+  {
+    name: 'notification',
+    factory: createNotificationWorker as WorkerFactory,
+    needsStorage: false,
+  },
+];
 
 export interface WorkerMetrics {
   workerName: string;
@@ -41,6 +84,7 @@ export interface WorkerMetrics {
   jobsProcessed: number;
   jobsFailed: number;
   avgProcessingTimeMs: number;
+  totalProcessingTimeMs: number; // Cumulative processing time for accurate average
   lastProcessedAt: Date | null;
   lastError: string | null;
 }
@@ -59,7 +103,7 @@ export interface WorkerManagerMetrics {
  * Orchestrates all job queue workers
  */
 export class WorkerManager {
-  private workers: Map<string, AnyWorker>;
+  private workers: Map<string, BaseWorker<any, any, any>>;
   private workerMetrics: Map<string, WorkerMetrics>;
   private db: DatabaseClient;
   private storage: BaseStorageService;
@@ -95,24 +139,12 @@ export class WorkerManager {
         .map(([name]) => name),
     });
 
-    // Start screenshot worker
-    if (config.workers.screenshot.enabled) {
-      await this.startScreenshotWorker();
-    }
-
-    // Start replay worker
-    if (config.workers.replay.enabled) {
-      await this.startReplayWorker();
-    }
-
-    // Start integration worker
-    if (config.workers.integration.enabled) {
-      await this.startIntegrationWorker();
-    }
-
-    // Start notification worker
-    if (config.workers.notification.enabled) {
-      await this.startNotificationWorker();
+    // Start all enabled workers from registry
+    for (const workerConfig of WORKER_REGISTRY) {
+      const workerSettings = (config.workers as any)[workerConfig.name];
+      if (workerSettings?.enabled) {
+        await this.startWorker(workerConfig);
+      }
     }
 
     logger.info('WorkerManager started successfully', {
@@ -121,47 +153,33 @@ export class WorkerManager {
   }
 
   /**
-   * Start screenshot worker
+   * Generic worker startup - handles all workers uniformly
+   * Eliminates 160+ lines of duplication across 4 specific worker methods
    */
-  private async startScreenshotWorker(): Promise<void> {
+  private async startWorker(workerConfig: WorkerConfig): Promise<void> {
+    const { name, factory, needsStorage } = workerConfig;
+
     try {
+      logger.info(`Starting ${name} worker`);
       const queueManager = getQueueManager();
-      const screenshotWorker = new ScreenshotWorker(
+
+      // Call factory with appropriate parameters
+      // If worker doesn't need storage, pass undefined (will be ignored)
+      const worker = factory(
         this.db,
-        this.storage,
+        needsStorage ? this.storage : (undefined as any),
         queueManager.getConnection()
       );
 
-      this.workers.set('screenshot', screenshotWorker);
-      this.initializeWorkerMetrics('screenshot');
+      this.workers.set(name, worker);
+      this.initializeWorkerMetrics(name);
 
-      // Get the internal BullMQ worker for event tracking
-      const worker = screenshotWorker.getWorker();
+      // Attach standard event handlers for metrics tracking
+      this.attachWorkerEventHandlers(worker, name);
 
-      // Track metrics
-      worker.on('completed', (job: any) => {
-        this.updateWorkerMetrics('screenshot', {
-          jobsProcessed: 1,
-          lastProcessedAt: new Date(),
-        });
-        logger.debug('Screenshot job completed', { jobId: job.id });
-      });
-
-      worker.on('failed', (job: any, error: Error) => {
-        this.updateWorkerMetrics('screenshot', {
-          jobsFailed: 1,
-          lastError: error.message,
-          lastProcessedAt: new Date(),
-        });
-        logger.error('Screenshot job failed', {
-          jobId: job?.id,
-          error: error.message,
-        });
-      });
-
-      logger.info('Screenshot worker started');
+      logger.info(`${name.charAt(0).toUpperCase() + name.slice(1)} worker started`);
     } catch (error) {
-      logger.error('Failed to start screenshot worker', {
+      logger.error(`Failed to start ${name} worker`, {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -169,126 +187,33 @@ export class WorkerManager {
   }
 
   /**
-   * Start replay worker
+   * Attach event handlers to track worker metrics
+   * Extracted from duplicated code in all worker startup methods
    */
-  private async startReplayWorker(): Promise<void> {
-    try {
-      const queueManager = getQueueManager();
-      const worker = createReplayWorker(this.db, this.storage, queueManager.getConnection());
-
-      this.workers.set('replay', worker);
-      this.initializeWorkerMetrics('replay');
-
-      // Track metrics
-      worker.on('completed', (job: any) => {
-        this.updateWorkerMetrics('replay', {
-          jobsProcessed: 1,
-          lastProcessedAt: new Date(),
-        });
-        logger.debug('Replay job completed', { jobId: job.id });
+  private attachWorkerEventHandlers(worker: BaseWorker<any, any, any>, workerName: string): void {
+    // Track successful completions
+    worker.on('completed', (job: any) => {
+      this.updateWorkerMetrics(workerName, {
+        jobsProcessed: 1,
+        lastProcessedAt: new Date(),
       });
-
-      worker.on('failed', (job: any, error: Error) => {
-        this.updateWorkerMetrics('replay', {
-          jobsFailed: 1,
-          lastError: error.message,
-          lastProcessedAt: new Date(),
-        });
-        logger.error('Replay job failed', {
-          jobId: job?.id,
-          error: error.message,
-        });
+      logger.debug(`${workerName.charAt(0).toUpperCase() + workerName.slice(1)} job completed`, {
+        jobId: job.id,
       });
+    });
 
-      logger.info('Replay worker started');
-    } catch (error) {
-      logger.error('Failed to start replay worker', {
-        error: error instanceof Error ? error.message : String(error),
+    // Track failures
+    worker.on('failed', (job: any, error: Error) => {
+      this.updateWorkerMetrics(workerName, {
+        jobsFailed: 1,
+        lastError: error.message,
+        lastProcessedAt: new Date(),
       });
-      throw error;
-    }
-  }
-
-  /**
-   * Start integration worker
-   */
-  private async startIntegrationWorker(): Promise<void> {
-    try {
-      const queueManager = getQueueManager();
-      const worker = createIntegrationWorker(this.db, queueManager.getConnection());
-
-      this.workers.set('integration', worker);
-      this.initializeWorkerMetrics('integration');
-
-      // Track metrics
-      worker.on('completed', (job: any) => {
-        this.updateWorkerMetrics('integration', {
-          jobsProcessed: 1,
-          lastProcessedAt: new Date(),
-        });
-        logger.debug('Integration job completed', { jobId: job.id });
+      logger.error(`${workerName.charAt(0).toUpperCase() + workerName.slice(1)} job failed`, {
+        jobId: job?.id,
+        error: error.message,
       });
-
-      worker.on('failed', (job: any, error: Error) => {
-        this.updateWorkerMetrics('integration', {
-          jobsFailed: 1,
-          lastError: error.message,
-          lastProcessedAt: new Date(),
-        });
-        logger.error('Integration job failed', {
-          jobId: job?.id,
-          error: error.message,
-        });
-      });
-
-      logger.info('Integration worker started');
-    } catch (error) {
-      logger.error('Failed to start integration worker', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Start notification worker
-   */
-  private async startNotificationWorker(): Promise<void> {
-    try {
-      const queueManager = getQueueManager();
-      const worker = createNotificationWorker(this.db, queueManager.getConnection());
-
-      this.workers.set('notification', worker);
-      this.initializeWorkerMetrics('notification');
-
-      // Track metrics
-      worker.on('completed', (job: any) => {
-        this.updateWorkerMetrics('notification', {
-          jobsProcessed: 1,
-          lastProcessedAt: new Date(),
-        });
-        logger.debug('Notification job completed', { jobId: job.id });
-      });
-
-      worker.on('failed', (job: any, error: Error) => {
-        this.updateWorkerMetrics('notification', {
-          jobsFailed: 1,
-          lastError: error.message,
-          lastProcessedAt: new Date(),
-        });
-        logger.error('Notification job failed', {
-          jobId: job?.id,
-          error: error.message,
-        });
-      });
-
-      logger.info('Notification worker started');
-    } catch (error) {
-      logger.error('Failed to start notification worker', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    });
   }
 
   /**
@@ -301,17 +226,43 @@ export class WorkerManager {
       jobsProcessed: 0,
       jobsFailed: 0,
       avgProcessingTimeMs: 0,
+      totalProcessingTimeMs: 0,
       lastProcessedAt: null,
       lastError: null,
     });
   }
 
   /**
+   * Helper: Calculate true average processing time
+   * Uses cumulative total divided by job count for accuracy
+   */
+  private calculateTrueAverage(
+    totalProcessingTimeMs: number,
+    processingTimeMs: number,
+    jobsProcessed: number
+  ): { avgProcessingTimeMs: number; totalProcessingTimeMs: number } {
+    const newTotal = totalProcessingTimeMs + processingTimeMs;
+    const newAvg = jobsProcessed > 0 ? newTotal / jobsProcessed : 0;
+    return {
+      avgProcessingTimeMs: newAvg,
+      totalProcessingTimeMs: newTotal,
+    };
+  }
+
+  /**
    * Update worker metrics
+   * Uses helper functions to reduce duplication and improve maintainability
    */
   private updateWorkerMetrics(
     workerName: string,
-    updates: Partial<Omit<WorkerMetrics, 'workerName' | 'isRunning'>>
+    updates: Partial<
+      Omit<
+        WorkerMetrics,
+        'workerName' | 'isRunning' | 'avgProcessingTimeMs' | 'totalProcessingTimeMs'
+      >
+    > & {
+      processingTimeMs?: number; // Single job processing time (for true average calculation)
+    }
   ): void {
     const metrics = this.workerMetrics.get(workerName);
     if (!metrics) {
@@ -327,12 +278,21 @@ export class WorkerManager {
     if (updates.lastProcessedAt) {
       metrics.lastProcessedAt = updates.lastProcessedAt;
     }
+
+    // Update error (can be null to clear)
     if (updates.lastError !== undefined) {
       metrics.lastError = updates.lastError;
     }
-    if (updates.avgProcessingTimeMs !== undefined) {
-      // Simple moving average
-      metrics.avgProcessingTimeMs = (metrics.avgProcessingTimeMs + updates.avgProcessingTimeMs) / 2;
+
+    // Calculate true average if processing time provided
+    if (updates.processingTimeMs !== undefined) {
+      const { avgProcessingTimeMs, totalProcessingTimeMs } = this.calculateTrueAverage(
+        metrics.totalProcessingTimeMs,
+        updates.processingTimeMs,
+        metrics.jobsProcessed
+      );
+      metrics.avgProcessingTimeMs = avgProcessingTimeMs;
+      metrics.totalProcessingTimeMs = totalProcessingTimeMs;
     }
   }
 
@@ -395,12 +355,7 @@ export class WorkerManager {
       throw new Error(`Worker ${workerName} not found`);
     }
 
-    // Handle ScreenshotWorker wrapper
-    if (worker instanceof ScreenshotWorker) {
-      await worker.getWorker().pause();
-    } else {
-      await worker.pause();
-    }
+    await worker.pause();
 
     const metrics = this.workerMetrics.get(workerName);
     if (metrics) {
@@ -419,12 +374,7 @@ export class WorkerManager {
       throw new Error(`Worker ${workerName} not found`);
     }
 
-    // Handle ScreenshotWorker wrapper
-    if (worker instanceof ScreenshotWorker) {
-      await worker.getWorker().resume();
-    } else {
-      await worker.resume();
-    }
+    await worker.resume();
 
     const metrics = this.workerMetrics.get(workerName);
     if (metrics) {
@@ -455,12 +405,9 @@ export class WorkerManager {
     for (const [name, workerInstance] of this.workers.entries()) {
       logger.info(`Shutting down ${name} worker`);
 
-      // Get the actual BullMQ worker (handle ScreenshotWorker wrapper)
-      const worker =
-        workerInstance instanceof ScreenshotWorker ? workerInstance.getWorker() : workerInstance;
-
+      // All workers now implement BaseWorker interface with close() method
       shutdownPromises.push(
-        worker
+        workerInstance
           .close()
           .then(() => {
             logger.info(`${name} worker closed successfully`);

@@ -17,16 +17,22 @@
  * - Platform SDKs: Jira API, GitHub API, Linear SDK, Slack Web API
  */
 
-import { Worker, type Job, type WorkerOptions } from 'bullmq';
+import type { Job } from 'bullmq';
+import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
-import { DatabaseClient } from '../../db/client.js';
-import { getQueueConfig } from '../../config/queue.config.js';
+import type { DatabaseClient } from '../../db/client.js';
+import type { BaseStorageService } from '../../storage/base-storage-service.js';
 import {
   INTEGRATION_JOB_NAME,
   validateIntegrationJobData,
   createIntegrationJobResult,
-} from '../jobs/integration.job.js';
+} from '../jobs/integration-job.js';
 import type { IntegrationJobData, IntegrationJobResult } from '../types.js';
+import type { BaseWorker } from './base-worker.js';
+import { createBaseWorkerWrapper } from './base-worker.js';
+import { attachStandardEventHandlers } from './worker-events.js';
+import { ProgressTracker } from './progress-tracker.js';
+import { createWorker } from './worker-factory.js';
 
 const logger = getLogger();
 
@@ -269,32 +275,21 @@ async function processIntegrationJob(
     platform,
   });
 
-  // Step 1: Fetch bug report (20%)
-  await job.updateProgress(20);
+  const progress = new ProgressTracker(job, 3);
+
+  // Step 1: Fetch bug report
+  await progress.update(1, 'Fetching bug report');
   const report = await fetchBugReport(db, bugReportId);
 
-  // Step 2: Route to platform handler (50%)
-  await job.updateProgress(50);
+  // Step 2: Route to platform handler
+  await progress.update(2, `Creating ${platform} issue`);
   const result = await routeToPlatform(platform, report, credentials, config);
 
-  // Step 3: Store external ID in database (80%)
-  await job.updateProgress(80);
-  await db.query(
-    `UPDATE bug_reports 
-     SET metadata = jsonb_set(
-       jsonb_set(
-         COALESCE(metadata, '{}'::jsonb),
-         '{externalId}',
-         $1::jsonb
-       ),
-       '{externalUrl}',
-       $2::jsonb
-     )
-     WHERE id = $3`,
-    [JSON.stringify(result.externalId), JSON.stringify(result.externalUrl), bugReportId]
-  );
+  // Step 3: Store external ID in database
+  await progress.update(3, 'Updating database');
+  await db.bugReports.updateExternalIntegration(bugReportId, result.externalId, result.externalUrl);
 
-  await job.updateProgress(100);
+  await progress.complete('Done');
 
   const processingTime = Date.now() - startTime;
 
@@ -318,49 +313,30 @@ async function processIntegrationJob(
 
 /**
  * Create integration worker with concurrency and event handlers
+ * Returns a BaseWorker wrapper for consistent interface with other workers
  */
 export function createIntegrationWorker(
   db: DatabaseClient,
-  connection: any
-): Worker<IntegrationJobData, IntegrationJobResult> {
-  const config = getQueueConfig();
-
-  const workerOptions: WorkerOptions = {
+  _storage: BaseStorageService,
+  connection: Redis
+): BaseWorker<IntegrationJobData, IntegrationJobResult> {
+  const worker = createWorker<IntegrationJobData, IntegrationJobResult>({
+    name: INTEGRATION_JOB_NAME,
+    processor: async (job) => processIntegrationJob(job, db),
     connection,
-    concurrency: config.workers.integration.concurrency,
-  };
-
-  const worker = new Worker<IntegrationJobData, IntegrationJobResult>(
-    INTEGRATION_JOB_NAME,
-    async (job) => processIntegrationJob(job, db),
-    workerOptions
-  );
-
-  // Event: Job completed
-  worker.on('completed', (job, result) => {
-    logger.info('Integration job completed', {
-      jobId: job.id,
-      bugReportId: job.data.bugReportId,
-      platform: result.platform,
-      externalId: result.externalId,
-      status: result.status,
-    });
+    workerType: 'integration',
   });
 
-  // Event: Job failed
-  worker.on('failed', (job, error) => {
-    logger.error('Integration job failed', {
-      jobId: job?.id,
-      bugReportId: job?.data.bugReportId,
-      platform: job?.data.platform,
-      error: error.message,
-      stack: error.stack,
-    });
-  });
+  // Attach standard event handlers with job-specific context
+  attachStandardEventHandlers(worker, 'Integration', (data, result) => ({
+    bugReportId: data.bugReportId,
+    platform: data.platform || result?.platform,
+    externalId: result?.externalId,
+    status: result?.status,
+  }));
 
-  logger.info('Integration worker started', {
-    concurrency: config.workers.integration.concurrency,
-  });
+  logger.info('Integration worker started');
 
-  return worker;
+  // Return wrapped worker that implements BaseWorker interface
+  return createBaseWorkerWrapper(worker, 'Integration');
 }

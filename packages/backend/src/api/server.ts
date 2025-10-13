@@ -22,7 +22,7 @@ import { retentionRoutes } from './routes/retention.js';
 import { jobRoutes } from './routes/jobs.js';
 import type { RetentionService } from '../retention/retention-service.js';
 import type { RetentionScheduler } from '../retention/retention-scheduler.js';
-import type { QueueManager } from '../queue/queue.manager.js';
+import type { QueueManager } from '../queue/queue-manager.js';
 
 export interface ServerOptions {
   db: DatabaseClient;

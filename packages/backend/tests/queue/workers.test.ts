@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { validateScreenshotJobData } from '../../src/queue/jobs/screenshot.job.js';
+import { validateScreenshotJobData } from '../../src/queue/jobs/screenshot-job.js';
 
 describe('Screenshot Worker', () => {
   describe('Job Data Validation', () => {

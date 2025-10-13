@@ -5,8 +5,9 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { DatabaseClient } from '../../db/client.js';
-import type { QueueManager } from '../../queue/queue.manager.js';
+import type { QueueManager } from '../../queue/queue-manager.js';
 import type { QueueName } from '../../queue/types.js';
+import { QUEUE_NAMES } from '../../queue/queue-manager.js';
 import { sendSuccess } from '../utils/response.js';
 import { checkProjectAccess, findOrThrow } from '../utils/resource.js';
 import { AppError } from '../middleware/error.js';
@@ -106,9 +107,8 @@ export function jobRoutes(
     }
 
     try {
-      const queues: QueueName[] = ['screenshots', 'replays', 'integrations', 'notifications'];
       const metrics = await Promise.all(
-        queues.map(async (queueName) => {
+        QUEUE_NAMES.map(async (queueName) => {
           try {
             const queueMetrics = await queueManager.getQueueMetrics(queueName);
             return { queue: queueName, ...queueMetrics };

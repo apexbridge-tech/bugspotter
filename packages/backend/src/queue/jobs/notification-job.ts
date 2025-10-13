@@ -31,6 +31,7 @@ export function validateNotificationJobData(data: unknown): data is Notification
     ['email', 'slack', 'webhook'].includes(d.type) &&
     d.recipients &&
     Array.isArray(d.recipients) &&
+    d.recipients.length > 0 &&
     d.event &&
     ['created', 'updated', 'resolved', 'deleted'].includes(d.event)
   );

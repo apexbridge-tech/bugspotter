@@ -7,18 +7,21 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { QueueManager } from '../../src/queue/queue.manager.js';
+import { QueueManager } from '../../src/queue/queue-manager.js';
 import type { ScreenshotJobData } from '../../src/queue/types.js';
 
 // Mock ioredis
 vi.mock('ioredis', () => {
+  const createMockRedis = () => ({
+    on: vi.fn(),
+    ping: vi.fn().mockResolvedValue('PONG'),
+    quit: vi.fn().mockResolvedValue('OK'),
+    disconnect: vi.fn().mockResolvedValue(undefined),
+    duplicate: vi.fn().mockImplementation(() => createMockRedis()),
+  });
+
   return {
-    Redis: vi.fn().mockImplementation(() => ({
-      on: vi.fn(),
-      ping: vi.fn().mockResolvedValue('PONG'),
-      quit: vi.fn().mockResolvedValue('OK'),
-      disconnect: vi.fn().mockResolvedValue(undefined),
-    })),
+    Redis: vi.fn().mockImplementation(() => createMockRedis()),
   };
 });
 
@@ -45,6 +48,7 @@ vi.mock('bullmq', () => {
       getJob: vi.fn().mockResolvedValue(mockJob),
       pause: vi.fn().mockResolvedValue(undefined),
       resume: vi.fn().mockResolvedValue(undefined),
+      isPaused: vi.fn().mockResolvedValue(false),
       getJobCounts: vi.fn().mockResolvedValue({
         waiting: 5,
         active: 2,
@@ -54,6 +58,10 @@ vi.mock('bullmq', () => {
       }),
       close: vi.fn().mockResolvedValue(undefined),
       on: vi.fn(),
+    })),
+    QueueEvents: vi.fn().mockImplementation(() => ({
+      on: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
     })),
   };
 });
@@ -89,10 +97,11 @@ describe('QueueManager', () => {
       expect(Queue).toHaveBeenCalledTimes(4);
     });
 
-    it('should throw if initialize called twice', async () => {
+    it('should allow reinitialization (idempotent)', async () => {
       await queueManager.initialize();
 
-      await expect(queueManager.initialize()).rejects.toThrow('already initialized');
+      // Second initialization should not throw - it's idempotent
+      await expect(queueManager.initialize()).resolves.not.toThrow();
     });
   });
 
@@ -141,7 +150,7 @@ describe('QueueManager', () => {
 
     it('should throw for invalid queue name', async () => {
       await expect(queueManager.addJob('invalid-queue' as any, 'test', {})).rejects.toThrow(
-        'Invalid queue name'
+        'not found'
       );
     });
   });
@@ -255,12 +264,9 @@ describe('QueueManager', () => {
     });
 
     it('should return false for failed ping', async () => {
-      const { Redis } = await import('ioredis');
-      const mockRedis = new Redis();
-      vi.spyOn(mockRedis, 'ping').mockRejectedValue(new Error('Connection failed'));
-
-      // Override redis instance
-      (queueManager as any).redis = mockRedis;
+      // Override connection ping to fail
+      const connection = (queueManager as any).connection;
+      vi.spyOn(connection, 'ping').mockRejectedValue(new Error('Connection failed'));
 
       const healthy = await queueManager.healthCheck();
       expect(healthy).toBe(false);
@@ -277,8 +283,11 @@ describe('QueueManager', () => {
     });
 
     it('should close Redis connection', async () => {
-      const redis = (queueManager as any).redis;
-      const quitSpy = vi.spyOn(redis, 'quit');
+      const connection = (queueManager as any).connection;
+      const quitSpy = vi.spyOn(connection, 'quit');
+
+      // Mock connection status as 'ready' so quit() is called
+      connection.status = 'ready';
 
       await queueManager.shutdown();
 
@@ -286,25 +295,40 @@ describe('QueueManager', () => {
     });
 
     it('should close all queues', async () => {
+      const queues = (queueManager as any).queues;
+      const closeSpy = vi.fn().mockResolvedValue(undefined);
+      queues.forEach((queue: any) => {
+        queue.close = closeSpy;
+      });
+
       await queueManager.shutdown();
 
-      // Verify queues map is cleared
-      const queues = (queueManager as any).queues;
-      expect(queues.size).toBe(0);
+      // Verify all 4 queues had close() called
+      expect(closeSpy).toHaveBeenCalledTimes(4);
     });
 
     it('should handle shutdown errors gracefully', async () => {
-      const redis = (queueManager as any).redis;
-      vi.spyOn(redis, 'quit').mockRejectedValue(new Error('Quit failed'));
+      const connection = (queueManager as any).connection;
+      // Replace quit with a failing implementation
+      const quitSpy = vi.spyOn(connection, 'quit').mockImplementation(() => {
+        return Promise.reject(new Error('Quit failed'));
+      });
 
-      // Should not throw even if quit fails
+      // Mock connection status as 'ready' so quit() is attempted
+      connection.status = 'ready';
+
+      // Shutdown now catches errors and completes gracefully
       await expect(queueManager.shutdown()).resolves.not.toThrow();
+      expect(quitSpy).toHaveBeenCalled();
+
+      // Restore original implementation so afterEach doesn't fail
+      quitSpy.mockRestore();
     });
   });
 
   describe('singleton pattern', () => {
     it('should return same instance from getQueueManager()', async () => {
-      const { getQueueManager } = await import('../../src/queue/queue.manager.js');
+      const { getQueueManager } = await import('../../src/queue/queue-manager.js');
 
       const instance1 = getQueueManager();
       const instance2 = getQueueManager();

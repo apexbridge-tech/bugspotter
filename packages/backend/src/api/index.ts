@@ -8,7 +8,7 @@ import { createDatabaseClient } from '../db/client.js';
 import { config, validateConfig } from '../config.js';
 import { getLogger } from '../logger.js';
 import { createServer, startServer, shutdownServer } from './server.js';
-import { getQueueManager } from '../queue/queue.manager.js';
+import { getQueueManager } from '../queue/queue-manager.js';
 import { getQueueConfig } from '../config/queue.config.js';
 
 // Load environment variables from .env file

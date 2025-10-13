@@ -17,7 +17,7 @@ import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
 import { findOrThrow, checkProjectAccess } from '../utils/resource.js';
 import { resolveAccessibleProjectId } from '../utils/access-control.js';
 import { buildPagination, buildSort } from '../utils/query-builder.js';
-import type { QueueManager } from '../../queue/queue.manager.js';
+import type { QueueManager } from '../../queue/queue-manager.js';
 import { getLogger } from '../../logger.js';
 
 const logger = getLogger();

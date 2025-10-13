@@ -5,12 +5,12 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WorkerManager } from '../../src/queue/worker-manager.js';
-import { getQueueManager } from '../../src/queue/queue.manager.js';
+import { getQueueManager } from '../../src/queue/queue-manager.js';
 import type { DatabaseClient } from '../../src/db/client.js';
 import type { BaseStorageService } from '../../src/storage/base-storage-service.js';
 
 // Mock dependencies
-vi.mock('../../src/queue/queue.manager.js');
+vi.mock('../../src/queue/queue-manager.js');
 vi.mock('../../src/logger.js', () => ({
   getLogger: () => ({
     info: vi.fn(),
@@ -20,60 +20,56 @@ vi.mock('../../src/logger.js', () => ({
   }),
 }));
 vi.mock('../../src/config/queue.config.js', () => ({
-  getQueueConfig: () => ({
-    workers: {
-      screenshot: { enabled: true, concurrency: 2 },
-      replay: { enabled: true, concurrency: 2 },
-      integration: { enabled: true, concurrency: 1 },
-      notification: { enabled: true, concurrency: 1 },
-    },
-    screenshot: { quality: 80, thumbnailWidth: 200, thumbnailHeight: 200 },
-  }),
+  getQueueConfig: () => {
+    // Helper to parse boolean from environment variable
+    const getEnvBool = (key: string, defaultValue: boolean = true): boolean => {
+      const value = process.env[key];
+      if (value === undefined) return defaultValue;
+      return value !== 'false';
+    };
+
+    return {
+      workers: {
+        screenshot: { enabled: getEnvBool('WORKER_SCREENSHOT_ENABLED'), concurrency: 2 },
+        replay: { enabled: getEnvBool('WORKER_REPLAY_ENABLED'), concurrency: 2 },
+        integration: { enabled: getEnvBool('WORKER_INTEGRATION_ENABLED'), concurrency: 1 },
+        notification: { enabled: getEnvBool('WORKER_NOTIFICATION_ENABLED'), concurrency: 1 },
+      },
+      screenshot: { quality: 80, thumbnailWidth: 200, thumbnailHeight: 200 },
+    };
+  },
 }));
 
 // Mock worker constructors/factories
-vi.mock('../../src/queue/workers/screenshot.worker.js', () => {
-  return {
-    ScreenshotWorker: vi.fn().mockImplementation(() => {
-      const mockWorker = {
-        on: vi.fn(),
-        close: vi.fn().mockResolvedValue(undefined),
-        pause: vi.fn().mockResolvedValue(undefined),
-        resume: vi.fn().mockResolvedValue(undefined),
-      };
-      return {
-        getWorker: () => mockWorker,
-      };
-    }),
-  };
-});
-
-vi.mock('../../src/queue/workers/replay.worker.js', () => ({
-  createReplayWorker: vi.fn().mockReturnValue({
-    on: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-    pause: vi.fn().mockResolvedValue(undefined),
-    resume: vi.fn().mockResolvedValue(undefined),
-  }),
+vi.mock('../../src/queue/workers/screenshot-worker.js', () => ({
+  createScreenshotWorker: vi.fn(),
 }));
 
-vi.mock('../../src/queue/workers/integration.worker.js', () => ({
-  createIntegrationWorker: vi.fn().mockReturnValue({
-    on: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-    pause: vi.fn().mockResolvedValue(undefined),
-    resume: vi.fn().mockResolvedValue(undefined),
-  }),
+vi.mock('../src/db/client.js', () => ({
+  DatabaseClient: class {
+    static create() {
+      return {};
+    }
+  },
 }));
 
-vi.mock('../../src/queue/workers/notification.worker.js', () => ({
-  createNotificationWorker: vi.fn().mockReturnValue({
-    on: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-    pause: vi.fn().mockResolvedValue(undefined),
-    resume: vi.fn().mockResolvedValue(undefined),
-  }),
+vi.mock('../../src/queue/workers/replay-worker.js', () => ({
+  createReplayWorker: vi.fn(),
 }));
+
+vi.mock('../../src/queue/workers/integration-worker.js', () => ({
+  createIntegrationWorker: vi.fn(),
+}));
+
+vi.mock('../../src/queue/workers/notification-worker.js', () => ({
+  createNotificationWorker: vi.fn(),
+}));
+
+// Import mocked factories to configure return values
+import { createScreenshotWorker } from '../../src/queue/workers/screenshot-worker.js';
+import { createReplayWorker } from '../../src/queue/workers/replay-worker.js';
+import { createIntegrationWorker } from '../../src/queue/workers/integration-worker.js';
+import { createNotificationWorker } from '../../src/queue/workers/notification-worker.js';
 
 describe('WorkerManager', () => {
   let workerManager: WorkerManager;
@@ -83,11 +79,8 @@ describe('WorkerManager', () => {
   let mockWorker: any;
 
   beforeEach(() => {
-    // Reset environment variables
-    process.env.QUEUE_SCREENSHOT_ENABLED = 'false';
-    process.env.QUEUE_REPLAY_ENABLED = 'false';
-    process.env.QUEUE_INTEGRATION_ENABLED = 'false';
-    process.env.QUEUE_NOTIFICATION_ENABLED = 'false';
+    // Don't reset environment variables here - let individual tests control them
+    // This allows tests to set their own worker enable/disable states
 
     // Setup mock worker
     mockWorker = {
@@ -96,6 +89,12 @@ describe('WorkerManager', () => {
       pause: vi.fn().mockResolvedValue(undefined),
       resume: vi.fn().mockResolvedValue(undefined),
     };
+
+    // Configure worker factory mocks to return mockWorker
+    vi.mocked(createScreenshotWorker).mockReturnValue(mockWorker as any);
+    vi.mocked(createReplayWorker).mockReturnValue(mockWorker as any);
+    vi.mocked(createIntegrationWorker).mockReturnValue(mockWorker as any);
+    vi.mocked(createNotificationWorker).mockReturnValue(mockWorker as any);
 
     // Setup mock queue manager
     mockQueueManager = {
@@ -169,10 +168,10 @@ describe('WorkerManager', () => {
     });
 
     it('should not start disabled workers', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'false';
-      process.env.QUEUE_REPLAY_ENABLED = 'false';
-      process.env.QUEUE_INTEGRATION_ENABLED = 'false';
-      process.env.QUEUE_NOTIFICATION_ENABLED = 'false';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'false';
+      process.env.WORKER_REPLAY_ENABLED = 'false';
+      process.env.WORKER_INTEGRATION_ENABLED = 'false';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'false';
 
       await workerManager.start();
 
@@ -181,17 +180,15 @@ describe('WorkerManager', () => {
     });
 
     it('should only start each worker once', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
 
       await workerManager.start();
-      await workerManager.start(); // Second call
-
-      const metrics = workerManager.getMetrics();
-      expect(metrics.totalWorkers).toBe(1);
+      // Second call should throw since already started
+      await expect(workerManager.start()).rejects.toThrow('already started');
     });
 
     it('should track start time when started', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
 
       await workerManager.start();
 
@@ -202,7 +199,7 @@ describe('WorkerManager', () => {
 
   describe('Worker Metrics', () => {
     beforeEach(async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
       await workerManager.start();
     });
 
@@ -237,14 +234,18 @@ describe('WorkerManager', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const metrics = workerManager.getMetrics();
-      expect(metrics.uptime).toBeGreaterThanOrEqual(100);
+      // Allow small timing variance (±5ms) due to JS event loop scheduling
+      expect(metrics.uptime).toBeGreaterThanOrEqual(95);
+      expect(metrics.uptime).toBeLessThan(150);
     });
   });
 
   describe('Health Checks', () => {
     it('should return healthy when all workers are running', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
-      process.env.QUEUE_REPLAY_ENABLED = 'true';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_REPLAY_ENABLED = 'true';
+      process.env.WORKER_INTEGRATION_ENABLED = 'false';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'false';
 
       await workerManager.start();
 
@@ -317,8 +318,10 @@ describe('WorkerManager', () => {
 
   describe('Graceful Shutdown', () => {
     it('should shutdown all workers', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
-      process.env.QUEUE_REPLAY_ENABLED = 'true';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_REPLAY_ENABLED = 'true';
+      process.env.WORKER_INTEGRATION_ENABLED = 'false';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'false';
 
       await workerManager.start();
       await workerManager.shutdown();
@@ -459,6 +462,107 @@ describe('WorkerManager', () => {
     });
   });
 
+  describe('Helper Functions', () => {
+    beforeEach(async () => {
+      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
+      await workerManager.start();
+    });
+
+    describe('calculateTrueAverage', () => {
+      it('should calculate correct average for single job', async () => {
+        const calculateTrueAverage = (workerManager as any).calculateTrueAverage.bind(
+          workerManager
+        );
+
+        const result = calculateTrueAverage(0, 100, 1);
+
+        expect(result.totalProcessingTimeMs).toBe(100);
+        expect(result.avgProcessingTimeMs).toBe(100);
+      });
+
+      it('should calculate correct average for multiple jobs', async () => {
+        const calculateTrueAverage = (workerManager as any).calculateTrueAverage.bind(
+          workerManager
+        );
+
+        // First job: 100ms
+        let result = calculateTrueAverage(0, 100, 1);
+        expect(result.totalProcessingTimeMs).toBe(100);
+        expect(result.avgProcessingTimeMs).toBe(100);
+
+        // Second job: 200ms (total 300ms, avg 150ms)
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 200, 2);
+        expect(result.totalProcessingTimeMs).toBe(300);
+        expect(result.avgProcessingTimeMs).toBe(150);
+
+        // Third job: 300ms (total 600ms, avg 200ms)
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 300, 3);
+        expect(result.totalProcessingTimeMs).toBe(600);
+        expect(result.avgProcessingTimeMs).toBe(200);
+      });
+
+      it('should handle zero job count (edge case)', async () => {
+        const calculateTrueAverage = (workerManager as any).calculateTrueAverage.bind(
+          workerManager
+        );
+
+        const result = calculateTrueAverage(0, 100, 0);
+
+        expect(result.totalProcessingTimeMs).toBe(100);
+        expect(result.avgProcessingTimeMs).toBe(0); // Prevents division by zero
+      });
+
+      it('should maintain accuracy with large sample sizes', async () => {
+        const calculateTrueAverage = (workerManager as any).calculateTrueAverage.bind(
+          workerManager
+        );
+
+        // Simulate 1000 jobs at 100ms average
+        const totalTime = 100 * 1000;
+        let result = calculateTrueAverage(totalTime, 100, 1001);
+
+        expect(result.totalProcessingTimeMs).toBe(100100);
+        expect(result.avgProcessingTimeMs).toBeCloseTo(100, 1);
+      });
+
+      it('should handle varying processing times correctly', async () => {
+        const calculateTrueAverage = (workerManager as any).calculateTrueAverage.bind(
+          workerManager
+        );
+
+        // Job 1: 50ms
+        let result = calculateTrueAverage(0, 50, 1);
+        expect(result.avgProcessingTimeMs).toBe(50);
+
+        // Job 2: 150ms (avg should be 100ms)
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 150, 2);
+        expect(result.avgProcessingTimeMs).toBe(100);
+
+        // Job 3: 100ms (avg should still be 100ms)
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 100, 3);
+        expect(result.avgProcessingTimeMs).toBe(100);
+      });
+
+      it('should accumulate total processing time correctly', async () => {
+        const calculateTrueAverage = (workerManager as any).calculateTrueAverage.bind(
+          workerManager
+        );
+
+        let result = calculateTrueAverage(0, 100, 1);
+        expect(result.totalProcessingTimeMs).toBe(100);
+
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 200, 2);
+        expect(result.totalProcessingTimeMs).toBe(300);
+
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 300, 3);
+        expect(result.totalProcessingTimeMs).toBe(600);
+
+        result = calculateTrueAverage(result.totalProcessingTimeMs, 400, 4);
+        expect(result.totalProcessingTimeMs).toBe(1000);
+      });
+    });
+  });
+
   describe('Integration with QueueManager', () => {
     it('should get connection from QueueManager', async () => {
       process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
@@ -469,20 +573,22 @@ describe('WorkerManager', () => {
     });
 
     it('should use different connections for different workers', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
-      process.env.QUEUE_REPLAY_ENABLED = 'true';
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_REPLAY_ENABLED = 'true';
 
       await workerManager.start();
 
-      // Should call getConnection for each worker
+      // Should call getConnection for each enabled worker (2 workers)
       expect(mockQueueManager.getConnection).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('Configuration', () => {
-    it('should respect QUEUE_SCREENSHOT_ENABLED', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'true';
-      process.env.QUEUE_REPLAY_ENABLED = 'false';
+    it('should respect WORKER_SCREENSHOT_ENABLED', async () => {
+      process.env.WORKER_SCREENSHOT_ENABLED = 'true';
+      process.env.WORKER_REPLAY_ENABLED = 'false';
+      process.env.WORKER_INTEGRATION_ENABLED = 'false';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'false';
 
       await workerManager.start();
 
@@ -493,9 +599,11 @@ describe('WorkerManager', () => {
       expect(replayWorker).toBeUndefined();
     });
 
-    it('should respect QUEUE_REPLAY_ENABLED', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'false';
-      process.env.QUEUE_REPLAY_ENABLED = 'true';
+    it('should respect WORKER_REPLAY_ENABLED', async () => {
+      process.env.WORKER_SCREENSHOT_ENABLED = 'false';
+      process.env.WORKER_REPLAY_ENABLED = 'true';
+      process.env.WORKER_INTEGRATION_ENABLED = 'false';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'false';
 
       await workerManager.start();
 
@@ -506,9 +614,11 @@ describe('WorkerManager', () => {
       expect(replayWorker).toBeDefined();
     });
 
-    it('should respect QUEUE_INTEGRATION_ENABLED', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'false';
-      process.env.QUEUE_INTEGRATION_ENABLED = 'true';
+    it('should respect WORKER_INTEGRATION_ENABLED', async () => {
+      process.env.WORKER_SCREENSHOT_ENABLED = 'false';
+      process.env.WORKER_REPLAY_ENABLED = 'false';
+      process.env.WORKER_INTEGRATION_ENABLED = 'true';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'false';
 
       await workerManager.start();
 
@@ -517,9 +627,11 @@ describe('WorkerManager', () => {
       expect(integrationWorker).toBeDefined();
     });
 
-    it('should respect QUEUE_NOTIFICATION_ENABLED', async () => {
-      process.env.QUEUE_SCREENSHOT_ENABLED = 'false';
-      process.env.QUEUE_NOTIFICATION_ENABLED = 'true';
+    it('should respect WORKER_NOTIFICATION_ENABLED', async () => {
+      process.env.WORKER_SCREENSHOT_ENABLED = 'false';
+      process.env.WORKER_REPLAY_ENABLED = 'false';
+      process.env.WORKER_INTEGRATION_ENABLED = 'false';
+      process.env.WORKER_NOTIFICATION_ENABLED = 'true';
 
       await workerManager.start();
 

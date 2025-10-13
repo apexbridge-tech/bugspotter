@@ -19,26 +19,33 @@
  * - zlib: For gzip compression
  */
 
-import { Worker, type Job, type WorkerOptions } from 'bullmq';
+import type { Job } from 'bullmq';
+import type { Redis } from 'ioredis';
 import { promisify } from 'util';
 import { gzip } from 'zlib';
 import { getLogger } from '../../logger.js';
+import { buildReplayChunkUrl, buildReplayManifestUrl } from '../../storage/storage-url-builder.js';
 
 const logger = getLogger();
 import { DatabaseClient } from '../../db/client.js';
 import type { BaseStorageService } from '../../storage/base-storage-service.js';
-import { getQueueConfig } from '../../config/queue.config.js';
 import {
   REPLAY_JOB_NAME,
   validateReplayJobData,
   createReplayJobResult,
-} from '../jobs/replay.job.js';
+} from '../jobs/replay-job.js';
 import type { ReplayJobData, ReplayJobResult } from '../types.js';
+import type { BaseWorker } from './base-worker.js';
+import { createBaseWorkerWrapper } from './base-worker.js';
+import { attachStandardEventHandlers } from './worker-events.js';
+import { ProgressTracker } from './progress-tracker.js';
+import { createWorker } from './worker-factory.js';
 
 const gzipAsync = promisify(gzip);
 
 // Chunk configuration (30-second segments)
 const CHUNK_DURATION_MS = 30_000;
+const COMPRESSION_RATIO_DECIMALS = 2;
 
 /**
  * Replay chunk with compressed data
@@ -164,6 +171,91 @@ async function compressChunk(
 }
 
 /**
+ * Format compression ratio to fixed decimals
+ */
+function formatCompressionRatio(ratio: number): number {
+  return parseFloat(ratio.toFixed(COMPRESSION_RATIO_DECIMALS));
+}
+
+/**
+ * Calculate totals from chunks
+ */
+function calculateChunkTotals(chunks: Array<ReplayChunk>): {
+  totalCompressedSize: number;
+  totalOriginalSize: number;
+  overallCompressionRatio: number;
+} {
+  const totalCompressedSize = chunks.reduce((sum, c) => sum + c.compressedSize, 0);
+  const totalOriginalSize = chunks.reduce((sum, c) => sum + c.originalSize, 0);
+  const overallCompressionRatio = totalOriginalSize / totalCompressedSize;
+
+  return { totalCompressedSize, totalOriginalSize, overallCompressionRatio };
+}
+
+/**
+ * Process and upload all replay chunks
+ */
+async function processAndUploadChunks(
+  eventChunks: Array<Array<{ timestamp: number; [key: string]: unknown }>>,
+  projectId: string,
+  bugReportId: string,
+  storage: BaseStorageService,
+  jobId: string | undefined
+): Promise<Array<ReplayChunk>> {
+  const chunks: Array<ReplayChunk> = [];
+
+  for (let i = 0; i < eventChunks.length; i++) {
+    const eventChunk = eventChunks[i];
+
+    // Compress chunk
+    const compressedChunk = await compressChunk(eventChunk, i);
+    chunks.push(compressedChunk);
+
+    // Upload chunk
+    await storage.uploadReplayChunk(projectId, bugReportId, i, compressedChunk.compressedData);
+
+    logger.debug('Uploaded replay chunk', {
+      chunkIndex: i,
+      compressedSize: compressedChunk.compressedSize,
+      compressionRatio: formatCompressionRatio(compressedChunk.compressionRatio),
+      jobId,
+    });
+  }
+
+  return chunks;
+}
+
+/**
+ * Build replay manifest from chunks
+ */
+function buildReplayManifest(
+  chunks: Array<ReplayChunk>,
+  bugReportId: string,
+  projectId: string,
+  totalDuration: number,
+  totalEvents: number
+): ReplayManifest {
+  return {
+    version: '1.0',
+    bugReportId,
+    projectId,
+    totalDuration,
+    totalEvents,
+    totalChunks: chunks.length,
+    chunks: chunks.map((chunk) => ({
+      chunkIndex: chunk.chunkIndex,
+      startTime: chunk.startTime,
+      endTime: chunk.endTime,
+      eventCount: chunk.eventCount,
+      url: buildReplayChunkUrl(projectId, bugReportId, chunk.chunkIndex),
+      compressedSize: chunk.compressedSize,
+      compressionRatio: formatCompressionRatio(chunk.compressionRatio),
+    })),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/**
  * Process replay job: chunk, compress, upload
  */
 async function processReplayJob(
@@ -183,8 +275,10 @@ async function processReplayJob(
     projectId,
   });
 
-  // Step 1: Parse replay data (10%)
-  await job.updateProgress(10);
+  const progress = new ProgressTracker(job, 5);
+
+  // Step 1: Parse replay data
+  await progress.update(1, 'Parsing replay data');
   const parsed = parseReplayData(replayData as string | Record<string, unknown>);
   const { events } = parsed;
   const totalEvents = events.length;
@@ -197,8 +291,8 @@ async function processReplayJob(
     jobId: job.id,
   });
 
-  // Step 2: Chunk events (20%)
-  await job.updateProgress(20);
+  // Step 2: Chunk events
+  await progress.update(2, 'Chunking events');
   const eventChunks = chunkReplayEvents(events, CHUNK_DURATION_MS);
   const totalChunks = eventChunks.length;
 
@@ -208,74 +302,24 @@ async function processReplayJob(
     jobId: job.id,
   });
 
-  // Step 3: Compress and upload chunks (20% → 80%, divided by chunk count)
-  const chunks: ReplayChunk[] = [];
-  const progressPerChunk = 60 / totalChunks; // 60% total for compression/upload
+  // Step 3: Compress and upload chunks
+  await progress.update(3, 'Compressing and uploading chunks');
+  const chunks = await processAndUploadChunks(eventChunks, projectId, bugReportId, storage, job.id);
 
-  for (let i = 0; i < eventChunks.length; i++) {
-    const eventChunk = eventChunks[i];
-
-    // Compress chunk
-    const compressedChunk = await compressChunk(eventChunk, i);
-    chunks.push(compressedChunk);
-
-    // Upload chunk
-    await storage.uploadReplayChunk(projectId, bugReportId, i, compressedChunk.compressedData);
-
-    logger.debug('Uploaded replay chunk', {
-      chunkIndex: i,
-      compressedSize: compressedChunk.compressedSize,
-      compressionRatio: compressedChunk.compressionRatio.toFixed(2),
-      jobId: job.id,
-    });
-
-    // Update progress
-    const progress = 20 + (i + 1) * progressPerChunk;
-    await job.updateProgress(Math.min(progress, 80));
-  }
-
-  // Step 4: Create and upload manifest (90%)
-  await job.updateProgress(90);
-  const manifest: ReplayManifest = {
-    version: '1.0',
-    bugReportId,
-    projectId,
-    totalDuration,
-    totalEvents,
-    totalChunks,
-    chunks: chunks.map((chunk) => ({
-      chunkIndex: chunk.chunkIndex,
-      startTime: chunk.startTime,
-      endTime: chunk.endTime,
-      eventCount: chunk.eventCount,
-      url: `/api/v1/storage/replays/${projectId}/${bugReportId}/chunk-${chunk.chunkIndex.toString().padStart(4, '0')}.json.gz`,
-      compressedSize: chunk.compressedSize,
-      compressionRatio: parseFloat(chunk.compressionRatio.toFixed(2)),
-    })),
-    createdAt: new Date().toISOString(),
-  };
+  // Step 4: Create and upload manifest
+  await progress.update(4, 'Creating manifest');
+  const manifest = buildReplayManifest(chunks, bugReportId, projectId, totalDuration, totalEvents);
 
   await storage.uploadReplayMetadata(projectId, bugReportId, manifest);
 
-  // Step 5: Update bug_reports metadata (100%)
-  const manifestUrl = `/api/v1/storage/replays/${projectId}/${bugReportId}/manifest.json`;
-  await db.query(
-    `UPDATE bug_reports 
-     SET metadata = jsonb_set(
-       COALESCE(metadata, '{}'::jsonb),
-       '{replayManifestUrl}',
-       $1::jsonb
-     )
-     WHERE id = $2`,
-    [JSON.stringify(manifestUrl), bugReportId]
-  );
+  // Step 5: Update bug_reports metadata
+  const manifestUrl = buildReplayManifestUrl(projectId, bugReportId);
+  await db.bugReports.updateReplayManifestUrl(bugReportId, manifestUrl);
 
-  await job.updateProgress(100);
+  await progress.complete('Done');
 
   const processingTime = Date.now() - startTime;
-  const totalCompressedSize = chunks.reduce((sum, c) => sum + c.compressedSize, 0);
-  const totalOriginalSize = chunks.reduce((sum, c) => sum + c.originalSize, 0);
-  const overallCompressionRatio = totalOriginalSize / totalCompressedSize;
+  const { totalCompressedSize, overallCompressionRatio } = calculateChunkTotals(chunks);
 
   logger.info('Replay job completed', {
     jobId: job.id,
@@ -284,7 +328,7 @@ async function processReplayJob(
     totalEvents,
     totalDuration,
     totalCompressedSize,
-    overallCompressionRatio: overallCompressionRatio.toFixed(2),
+    overallCompressionRatio: formatCompressionRatio(overallCompressionRatio),
     processingTime,
   });
 
@@ -303,49 +347,30 @@ async function processReplayJob(
 
 /**
  * Create replay worker with concurrency and event handlers
+ * Returns a BaseWorker wrapper for consistent interface with other workers
  */
 export function createReplayWorker(
   db: DatabaseClient,
   storage: BaseStorageService,
-  connection: any
-): Worker<ReplayJobData, ReplayJobResult> {
-  const config = getQueueConfig();
-
-  const workerOptions: WorkerOptions = {
+  connection: Redis
+): BaseWorker<ReplayJobData, ReplayJobResult> {
+  const worker = createWorker<ReplayJobData, ReplayJobResult>({
+    name: REPLAY_JOB_NAME,
+    processor: async (job) => processReplayJob(job, db, storage),
     connection,
-    concurrency: config.workers.replay.concurrency,
-  };
-
-  const worker = new Worker<ReplayJobData, ReplayJobResult>(
-    REPLAY_JOB_NAME,
-    async (job) => processReplayJob(job, db, storage),
-    workerOptions
-  );
-
-  // Event: Job completed
-  worker.on('completed', (job, result) => {
-    logger.info('Replay job completed', {
-      jobId: job.id,
-      bugReportId: job.data.bugReportId,
-      replayUrl: result.replayUrl,
-      chunkCount: result.chunkCount,
-      duration: result.duration,
-    });
+    workerType: 'replay',
   });
 
-  // Event: Job failed
-  worker.on('failed', (job, error) => {
-    logger.error('Replay job failed', {
-      jobId: job?.id,
-      bugReportId: job?.data.bugReportId,
-      error: error.message,
-      stack: error.stack,
-    });
-  });
+  // Attach standard event handlers with job-specific context
+  attachStandardEventHandlers(worker, 'Replay', (data, result) => ({
+    bugReportId: data.bugReportId,
+    replayUrl: result?.replayUrl,
+    chunkCount: result?.chunkCount,
+    duration: result?.duration,
+  }));
 
-  logger.info('Replay worker started', {
-    concurrency: config.workers.replay.concurrency,
-  });
+  logger.info('Replay worker started');
 
-  return worker;
+  // Return wrapped worker that implements BaseWorker interface
+  return createBaseWorkerWrapper(worker, 'Replay');
 }

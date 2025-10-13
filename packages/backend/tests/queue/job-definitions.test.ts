@@ -8,22 +8,22 @@ import {
   SCREENSHOT_JOB_NAME,
   validateScreenshotJobData,
   createScreenshotJobResult,
-} from '../../src/queue/jobs/screenshot.job.js';
+} from '../../src/queue/jobs/screenshot-job.js';
 import {
   REPLAY_JOB_NAME,
   validateReplayJobData,
   createReplayJobResult,
-} from '../../src/queue/jobs/replay.job.js';
+} from '../../src/queue/jobs/replay-job.js';
 import {
   INTEGRATION_JOB_NAME,
   validateIntegrationJobData,
   createIntegrationJobResult,
-} from '../../src/queue/jobs/integration.job.js';
+} from '../../src/queue/jobs/integration-job.js';
 import {
   NOTIFICATION_JOB_NAME,
   validateNotificationJobData,
   createNotificationJobResult,
-} from '../../src/queue/jobs/notification.job.js';
+} from '../../src/queue/jobs/notification-job.js';
 
 describe('Screenshot Job', () => {
   describe('validateScreenshotJobData()', () => {
@@ -102,13 +102,23 @@ describe('Screenshot Job', () => {
       const result = createScreenshotJobResult(
         'https://example.com/optimized.jpg',
         'https://example.com/thumbnail.jpg',
-        { width: 1920, height: 1080, format: 'jpeg' }
+        {
+          originalSize: 1024000,
+          thumbnailSize: 51200,
+          width: 1920,
+          height: 1080,
+          processingTimeMs: 150,
+        }
       );
 
       expect(result).toEqual({
-        optimizedUrl: 'https://example.com/optimized.jpg',
+        originalUrl: 'https://example.com/optimized.jpg',
         thumbnailUrl: 'https://example.com/thumbnail.jpg',
-        metadata: { width: 1920, height: 1080, format: 'jpeg' },
+        originalSize: 1024000,
+        thumbnailSize: 51200,
+        width: 1920,
+        height: 1080,
+        processingTimeMs: 150,
       });
     });
   });
@@ -337,7 +347,7 @@ describe('Notification Job', () => {
         projectId: 'proj-456',
         type: 'email',
         recipients: ['user1@example.com', 'user2@example.com'],
-        event: 'bug_created',
+        event: 'created',
       };
 
       expect(validateNotificationJobData(validData)).toBe(true);
@@ -352,7 +362,7 @@ describe('Notification Job', () => {
           projectId: 'proj-456',
           type,
           recipients: ['recipient@example.com'],
-          event: 'bug_created',
+          event: 'created',
         };
 
         expect(validateNotificationJobData(validData)).toBe(true);
@@ -365,8 +375,8 @@ describe('Notification Job', () => {
         projectId: 'proj-456',
         type: 'email',
         recipients: ['user@example.com'],
-        event: 'bug_created',
-        metadata: { priority: 'high', template: 'bug-alert' },
+        event: 'created',
+        metadata: { priority: 'high', source: 'api' },
       };
 
       expect(validateNotificationJobData(validData)).toBe(true);
@@ -377,7 +387,7 @@ describe('Notification Job', () => {
         bugReportId: 'bug-123',
         projectId: 'proj-456',
         recipients: ['user@example.com'],
-        event: 'bug_created',
+        event: 'created',
       };
 
       expect(validateNotificationJobData(invalidData)).toBe(false);
@@ -388,7 +398,7 @@ describe('Notification Job', () => {
         bugReportId: 'bug-123',
         projectId: 'proj-456',
         type: 'email',
-        event: 'bug_created',
+        event: 'created',
       };
 
       expect(validateNotificationJobData(invalidData)).toBe(false);
@@ -400,7 +410,7 @@ describe('Notification Job', () => {
         projectId: 'proj-456',
         type: 'email',
         recipients: 'not-an-array',
-        event: 'bug_created',
+        event: 'created',
       };
 
       expect(validateNotificationJobData(invalidData)).toBe(false);
@@ -412,7 +422,7 @@ describe('Notification Job', () => {
         projectId: 'proj-456',
         type: 'email',
         recipients: [],
-        event: 'bug_created',
+        event: 'created',
       };
 
       expect(validateNotificationJobData(invalidData)).toBe(false);
@@ -459,6 +469,6 @@ describe('Notification Job', () => {
   });
 
   it('should have correct job name constant', () => {
-    expect(NOTIFICATION_JOB_NAME).toBe('process-notification');
+    expect(NOTIFICATION_JOB_NAME).toBe('send-notification');
   });
 });

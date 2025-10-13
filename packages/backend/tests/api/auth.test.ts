@@ -26,8 +26,8 @@ describe('Auth Routes', () => {
   });
 
   beforeEach(async () => {
-    // Note: In a real test suite, you'd clean up the database here
-    // For now, we use unique emails per test
+    // Clean up users table before each test for isolation
+    await db.query('DELETE FROM users');
   });
 
   describe('POST /api/v1/auth/register', () => {
@@ -99,7 +99,7 @@ describe('Auth Routes', () => {
         method: 'POST',
         url: '/api/v1/auth/register',
         payload: {
-          email: 'test@example.com',
+          email: 'shortpass@example.com',
           password: 'short',
         },
       });
@@ -114,7 +114,7 @@ describe('Auth Routes', () => {
         method: 'POST',
         url: '/api/v1/auth/register',
         payload: {
-          email: `default-role-${Date.now()}@example.com`,
+          email: 'default-role@example.com',
           password: 'password123',
         },
       });

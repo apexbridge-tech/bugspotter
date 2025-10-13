@@ -18,16 +18,22 @@
  * - HTTP client: For webhook delivery
  */
 
-import { Worker, type Job, type WorkerOptions } from 'bullmq';
+import type { Job } from 'bullmq';
+import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
-import { DatabaseClient } from '../../db/client.js';
-import { getQueueConfig } from '../../config/queue.config.js';
+import type { DatabaseClient } from '../../db/client.js';
+import type { BaseStorageService } from '../../storage/base-storage-service.js';
 import {
   NOTIFICATION_JOB_NAME,
   validateNotificationJobData,
   createNotificationJobResult,
-} from '../jobs/notification.job.js';
+} from '../jobs/notification-job.js';
 import type { NotificationJobData, NotificationJobResult } from '../types.js';
+import type { BaseWorker } from './base-worker.js';
+import { createBaseWorkerWrapper } from './base-worker.js';
+import { attachStandardEventHandlers } from './worker-events.js';
+import { ProgressTracker } from './progress-tracker.js';
+import { createWorker } from './worker-factory.js';
 
 const logger = getLogger();
 
@@ -288,13 +294,15 @@ async function processNotificationJob(
     event,
   });
 
-  // Step 1: Fetch bug report context (20%)
-  await job.updateProgress(20);
+  const progress = new ProgressTracker(job, 2);
+
+  // Step 1: Fetch bug report context
+  await progress.update(1, 'Fetching context');
   const context = await fetchNotificationContext(db, bugReportId);
 
-  // Step 2: Send notifications to all recipients (20% → 100%)
+  // Step 2: Send notifications to all recipients
+  await progress.update(2, 'Sending notifications');
   const results: DeliveryResult[] = [];
-  const progressPerRecipient = 80 / recipients.length;
 
   for (let i = 0; i < recipients.length; i++) {
     const recipient = recipients[i];
@@ -314,11 +322,9 @@ async function processNotificationJob(
         error: errorMessage,
       });
     }
-
-    // Update progress
-    const progress = 20 + (i + 1) * progressPerRecipient;
-    await job.updateProgress(Math.min(progress, 100));
   }
+
+  await progress.complete('Done');
 
   const successCount = results.filter((r) => r.success).length;
   const failureCount = results.length - successCount;
@@ -350,46 +356,27 @@ async function processNotificationJob(
  */
 export function createNotificationWorker(
   db: DatabaseClient,
-  connection: any
-): Worker<NotificationJobData, NotificationJobResult> {
-  const config = getQueueConfig();
-
-  const workerOptions: WorkerOptions = {
+  _storage: BaseStorageService,
+  connection: Redis
+): BaseWorker<NotificationJobData, NotificationJobResult> {
+  const worker = createWorker<NotificationJobData, NotificationJobResult>({
+    name: NOTIFICATION_JOB_NAME,
+    processor: async (job) => processNotificationJob(job, db),
     connection,
-    concurrency: config.workers.notification.concurrency,
-  };
-
-  const worker = new Worker<NotificationJobData, NotificationJobResult>(
-    NOTIFICATION_JOB_NAME,
-    async (job) => processNotificationJob(job, db),
-    workerOptions
-  );
-
-  // Event: Job completed
-  worker.on('completed', (job, result) => {
-    logger.info('Notification job completed', {
-      jobId: job.id,
-      bugReportId: job.data.bugReportId,
-      type: result.type,
-      successCount: result.successCount,
-      failureCount: result.failureCount,
-    });
+    workerType: 'notification',
   });
 
-  // Event: Job failed
-  worker.on('failed', (job, error) => {
-    logger.error('Notification job failed', {
-      jobId: job?.id,
-      bugReportId: job?.data.bugReportId,
-      type: job?.data.type,
-      error: error.message,
-      stack: error.stack,
-    });
-  });
+  // Attach standard event handlers with job-specific context
+  attachStandardEventHandlers(worker, 'Notification', (data, result) => ({
+    bugReportId: data.bugReportId,
+    type: data.type || result?.type,
+    recipientCount: data.recipients?.length,
+    successCount: result?.successCount,
+    failureCount: result?.failureCount,
+  }));
 
-  logger.info('Notification worker started', {
-    concurrency: config.workers.notification.concurrency,
-  });
+  logger.info('Notification worker started');
 
-  return worker;
+  // Return wrapped worker that implements BaseWorker interface
+  return createBaseWorkerWrapper(worker, 'Notification');
 }

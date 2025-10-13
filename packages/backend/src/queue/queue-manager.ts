@@ -11,11 +11,27 @@ import type { QueueName, JobOptions, JobStatus, QueueMetrics, QueueStats } from 
 
 const logger = getLogger();
 
+/**
+ * Queue Names Registry - Single source of truth for all queues
+ *
+ * Adding a new queue:
+ * 1. Add queue name to this array
+ * 2. Define corresponding types in types.ts
+ * 3. Update worker-manager if needed
+ */
+export const QUEUE_NAMES: readonly QueueName[] = [
+  'screenshots',
+  'replays',
+  'integrations',
+  'notifications',
+] as const;
+
 export class QueueManager {
   private connection: Redis;
   private queues: Map<QueueName, Queue>;
   private queueEvents: Map<QueueName, QueueEvents>;
   private isShuttingDown = false;
+  private isInitialized = false;
 
   constructor() {
     const config = getQueueConfig();
@@ -58,11 +74,16 @@ export class QueueManager {
    * Initialize all queues
    */
   async initialize(): Promise<void> {
-    const queueNames: QueueName[] = ['screenshots', 'replays', 'integrations', 'notifications'];
+    if (this.isInitialized) {
+      logger.warn('Queue manager already initialized');
+      return;
+    }
 
-    for (const queueName of queueNames) {
+    for (const queueName of QUEUE_NAMES) {
       await this.createQueue(queueName);
     }
+
+    this.isInitialized = true;
 
     logger.info('Queue manager initialized', {
       queues: Array.from(this.queues.keys()),
@@ -101,6 +122,17 @@ export class QueueManager {
     });
 
     // Set up event listeners
+    this.attachQueueEventHandlers(queueEvents, queueName);
+
+    this.queues.set(queueName, queue);
+    this.queueEvents.set(queueName, queueEvents);
+  }
+
+  /**
+   * Attach standard event handlers to queue events
+   * Extracted to eliminate duplication and improve maintainability
+   */
+  private attachQueueEventHandlers(queueEvents: QueueEvents, queueName: QueueName): void {
     queueEvents.on('completed', ({ jobId }) => {
       logger.debug('Job completed', { queue: queueName, jobId });
     });
@@ -112,9 +144,18 @@ export class QueueManager {
     queueEvents.on('progress', ({ jobId, data }) => {
       logger.debug('Job progress', { queue: queueName, jobId, progress: data });
     });
+  }
 
-    this.queues.set(queueName, queue);
-    this.queueEvents.set(queueName, queueEvents);
+  /**
+   * Get queue or throw error if not found
+   * Eliminates duplication across 6+ methods
+   */
+  private getQueueOrThrow(queueName: QueueName): Queue {
+    const queue = this.queues.get(queueName);
+    if (!queue) {
+      throw new Error(`Queue ${queueName} not found`);
+    }
+    return queue;
   }
 
   /**
@@ -126,10 +167,7 @@ export class QueueManager {
     data: TData,
     options?: JobOptions
   ): Promise<string> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
-    }
+    const queue = this.getQueueOrThrow(queueName);
 
     const job = await queue.add(jobName, data, options);
 
@@ -149,10 +187,7 @@ export class QueueManager {
     queueName: QueueName,
     jobId: string
   ): Promise<JobStatus<TData, TResult> | null> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
-    }
+    const queue = this.getQueueOrThrow(queueName);
 
     const job = await queue.getJob(jobId);
     if (!job) {
@@ -185,10 +220,7 @@ export class QueueManager {
    * Get job status
    */
   async getJobStatus(queueName: QueueName, jobId: string): Promise<string | null> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
-    }
+    const queue = this.getQueueOrThrow(queueName);
 
     const job = await queue.getJob(jobId);
     if (!job) {
@@ -225,10 +257,7 @@ export class QueueManager {
    * Get metrics for a specific queue
    */
   async getQueueMetrics(queueName: QueueName): Promise<QueueMetrics> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
-    }
+    const queue = this.getQueueOrThrow(queueName);
 
     const counts = await queue.getJobCounts();
     const isPaused = await queue.isPaused();
@@ -247,10 +276,7 @@ export class QueueManager {
    * Pause a queue
    */
   async pauseQueue(queueName: QueueName): Promise<void> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
-    }
+    const queue = this.getQueueOrThrow(queueName);
 
     await queue.pause();
     logger.info('Queue paused', { queue: queueName });
@@ -260,10 +286,7 @@ export class QueueManager {
    * Resume a queue
    */
   async resumeQueue(queueName: QueueName): Promise<void> {
-    const queue = this.queues.get(queueName);
-    if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
-    }
+    const queue = this.getQueueOrThrow(queueName);
 
     await queue.resume();
     logger.info('Queue resumed', { queue: queueName });
@@ -273,24 +296,42 @@ export class QueueManager {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
+    if (this.isShuttingDown) {
+      logger.warn('Queue manager shutdown already in progress');
+      return;
+    }
+
     this.isShuttingDown = true;
     logger.info('Starting queue manager shutdown');
 
-    // Close all queue event listeners
-    for (const [queueName, queueEvents] of this.queueEvents.entries()) {
-      await queueEvents.close();
-      logger.debug('Queue events closed', { queue: queueName });
-    }
+    try {
+      // Close all queue event listeners
+      for (const [queueName, queueEvents] of this.queueEvents.entries()) {
+        await queueEvents.close();
+        logger.debug('Queue events closed', { queue: queueName });
+      }
 
-    // Close all queues
-    for (const [queueName, queue] of this.queues.entries()) {
-      await queue.close();
-      logger.debug('Queue closed', { queue: queueName });
-    }
+      // Close all queues
+      for (const [queueName, queue] of this.queues.entries()) {
+        await queue.close();
+        logger.debug('Queue closed', { queue: queueName });
+      }
 
-    // Close Redis connection
-    await this.connection.quit();
-    logger.info('Queue manager shutdown complete');
+      // Close Redis connection (may already be closed during cleanup)
+      if (this.connection.status === 'ready' || this.connection.status === 'connecting') {
+        await this.connection.quit();
+        logger.debug('Redis connection closed');
+      } else {
+        logger.debug('Redis connection already closed', { status: this.connection.status });
+      }
+    } catch (error) {
+      logger.warn('Error during queue manager shutdown', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      this.isInitialized = false;
+      logger.info('Queue manager shutdown complete');
+    }
   }
 
   /**

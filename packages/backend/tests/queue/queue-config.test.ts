@@ -49,8 +49,8 @@ describe('Queue Configuration', () => {
     });
 
     it('should parse worker concurrency from environment', () => {
-      process.env.WORKER_SCREENSHOT_CONCURRENCY = '10';
-      process.env.WORKER_REPLAY_CONCURRENCY = '5';
+      process.env.SCREENSHOT_CONCURRENCY = '10';
+      process.env.REPLAY_CONCURRENCY = '5';
       const config = loadQueueConfig();
 
       expect(config.workers.screenshot.concurrency).toBe(10);
@@ -58,7 +58,7 @@ describe('Queue Configuration', () => {
     });
 
     it('should use default concurrency if not provided', () => {
-      delete process.env.WORKER_SCREENSHOT_CONCURRENCY;
+      delete process.env.SCREENSHOT_CONCURRENCY;
       const config = loadQueueConfig();
 
       expect(config.workers.screenshot.concurrency).toBe(5);
@@ -126,56 +126,97 @@ describe('Queue Configuration', () => {
       expect(() => validateQueueConfig(validConfig)).not.toThrow();
     });
 
-    it('should reject invalid Redis URL', () => {
+    it('should reject empty Redis URL', () => {
       const invalidConfig = {
-        redis: { url: 'invalid-url' },
+        redis: { url: '', maxRetries: 3, retryDelay: 1000 },
+        workers: {
+          screenshot: { enabled: true, concurrency: 5 },
+          replay: { enabled: true, concurrency: 3 },
+          integration: { enabled: true, concurrency: 10 },
+          notification: { enabled: true, concurrency: 5 },
+        },
+        jobs: { maxRetries: 3, backoffDelay: 5000, retentionDays: 7, timeout: 300000 },
+        replay: { chunkDurationSeconds: 30, maxReplaySizeMB: 50 },
+        screenshot: { quality: 85, thumbnailWidth: 320, thumbnailHeight: 240 },
       } as any;
 
-      expect(() => validateQueueConfig(invalidConfig)).toThrow('Invalid Redis URL');
+      expect(() => validateQueueConfig(invalidConfig)).toThrow('REDIS_URL is required');
     });
 
     it('should reject negative concurrency', () => {
       const invalidConfig = {
-        redis: { url: 'redis://localhost:6379' },
+        redis: { url: 'redis://localhost:6379', maxRetries: 3, retryDelay: 1000 },
         workers: {
           screenshot: { enabled: true, concurrency: -1 },
+          replay: { enabled: true, concurrency: 3 },
+          integration: { enabled: true, concurrency: 10 },
+          notification: { enabled: true, concurrency: 5 },
         },
+        jobs: { maxRetries: 3, backoffDelay: 5000, retentionDays: 7, timeout: 300000 },
+        replay: { chunkDurationSeconds: 30, maxReplaySizeMB: 50 },
+        screenshot: { quality: 85, thumbnailWidth: 320, thumbnailHeight: 240 },
       } as any;
 
-      expect(() => validateQueueConfig(invalidConfig)).toThrow('concurrency must be positive');
+      expect(() => validateQueueConfig(invalidConfig)).toThrow(
+        'SCREENSHOT_CONCURRENCY must be between 1 and 100'
+      );
     });
 
     it('should reject zero concurrency', () => {
       const invalidConfig = {
-        redis: { url: 'redis://localhost:6379' },
+        redis: { url: 'redis://localhost:6379', maxRetries: 3, retryDelay: 1000 },
         workers: {
           screenshot: { enabled: true, concurrency: 0 },
+          replay: { enabled: true, concurrency: 3 },
+          integration: { enabled: true, concurrency: 10 },
+          notification: { enabled: true, concurrency: 5 },
         },
+        jobs: { maxRetries: 3, backoffDelay: 5000, retentionDays: 7, timeout: 300000 },
+        replay: { chunkDurationSeconds: 30, maxReplaySizeMB: 50 },
+        screenshot: { quality: 85, thumbnailWidth: 320, thumbnailHeight: 240 },
       } as any;
 
-      expect(() => validateQueueConfig(invalidConfig)).toThrow('concurrency must be positive');
+      expect(() => validateQueueConfig(invalidConfig)).toThrow(
+        'SCREENSHOT_CONCURRENCY must be between 1 and 100'
+      );
     });
 
     it('should reject invalid screenshot quality', () => {
       const invalidConfig = {
-        redis: { url: 'redis://localhost:6379' },
-        screenshot: {
-          quality: 150, // > 100
+        redis: { url: 'redis://localhost:6379', maxRetries: 3, retryDelay: 1000 },
+        workers: {
+          screenshot: { enabled: true, concurrency: 5 },
+          replay: { enabled: true, concurrency: 3 },
+          integration: { enabled: true, concurrency: 10 },
+          notification: { enabled: true, concurrency: 5 },
         },
+        jobs: { maxRetries: 3, backoffDelay: 5000, retentionDays: 7, timeout: 300000 },
+        replay: { chunkDurationSeconds: 30, maxReplaySizeMB: 50 },
+        screenshot: { quality: 150, thumbnailWidth: 320, thumbnailHeight: 240 },
       } as any;
 
-      expect(() => validateQueueConfig(invalidConfig)).toThrow('quality must be between 1 and 100');
+      expect(() => validateQueueConfig(invalidConfig)).toThrow(
+        'SCREENSHOT_QUALITY must be between 1 and 100'
+      );
     });
 
     it('should reject negative retention days', () => {
       const invalidConfig = {
-        redis: { url: 'redis://localhost:6379' },
-        jobs: {
-          retentionDays: -1,
+        redis: { url: 'redis://localhost:6379', maxRetries: 3, retryDelay: 1000 },
+        workers: {
+          screenshot: { enabled: true, concurrency: 5 },
+          replay: { enabled: true, concurrency: 3 },
+          integration: { enabled: true, concurrency: 10 },
+          notification: { enabled: true, concurrency: 5 },
         },
+        jobs: { maxRetries: 3, backoffDelay: 5000, retentionDays: -1, timeout: 300000 },
+        replay: { chunkDurationSeconds: 30, maxReplaySizeMB: 50 },
+        screenshot: { quality: 85, thumbnailWidth: 320, thumbnailHeight: 240 },
       } as any;
 
-      expect(() => validateQueueConfig(invalidConfig)).toThrow('retentionDays must be positive');
+      expect(() => validateQueueConfig(invalidConfig)).toThrow(
+        'JOB_RETENTION_DAYS must be between 1 and 365'
+      );
     });
   });
 
@@ -214,6 +255,12 @@ describe('Queue Configuration', () => {
     });
 
     it('should have all workers enabled by default', () => {
+      // Clear environment variables to test true defaults
+      delete process.env.WORKER_SCREENSHOT_ENABLED;
+      delete process.env.WORKER_REPLAY_ENABLED;
+      delete process.env.WORKER_INTEGRATION_ENABLED;
+      delete process.env.WORKER_NOTIFICATION_ENABLED;
+
       const config = loadQueueConfig();
 
       expect(config.workers.screenshot.enabled).toBe(true);
@@ -252,8 +299,8 @@ describe('Queue Configuration', () => {
     });
 
     it('should handle numeric string values', () => {
-      process.env.WORKER_SCREENSHOT_CONCURRENCY = '15';
-      process.env.JOB_MAX_RETRIES = '5';
+      process.env.SCREENSHOT_CONCURRENCY = '15';
+      process.env.MAX_JOB_RETRIES = '5';
       const config = loadQueueConfig();
 
       expect(config.workers.screenshot.concurrency).toBe(15);

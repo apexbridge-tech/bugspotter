@@ -157,4 +157,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 // Export for programmatic use
 export { WorkerManager } from './queue/worker-manager.js';
-export { getQueueManager } from './queue/queue.manager.js';
+export { getQueueManager } from './queue/queue-manager.js';
