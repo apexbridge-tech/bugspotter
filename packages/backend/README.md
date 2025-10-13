@@ -514,18 +514,24 @@ pnpm test:coverage
 # Specific test suites
 pnpm test:unit              # Unit tests only
 pnpm test:integration       # Integration tests
+pnpm test:queue             # Queue integration tests
 pnpm test:load              # Load/performance tests
 ```
 
-**869 tests** total (32 test files):
+**150+ tests** across 6 comprehensive test suites:
 
-- 734 unit tests (database, API, storage, retention, utilities)
-- 104 integration tests (API + DB + storage)
-- 25 storage integration tests (local + S3)
+- Unit tests (database, API, storage, queue, retention, utilities)
+- Integration tests (API + DB + storage)
+- Queue integration tests (22 tests - BullMQ with real Redis)
+- Load tests (performance, concurrency, memory)
+- E2E scenarios (complete workflows)
 
 Uses [Testcontainers](https://testcontainers.com/) - **no manual database setup required!**
 
-See [TESTING.md](./TESTING.md) for comprehensive guide.
+**Documentation:**
+
+- [TESTING.md](./TESTING.md) - Testing guide and best practices
+- [E2E_TEST_SCENARIOS.md](./E2E_TEST_SCENARIOS.md) - Complete test scenario documentation
 
 ## Security
 

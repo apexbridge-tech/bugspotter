@@ -16,9 +16,16 @@ pnpm test:watch
 
 # Run tests with coverage
 pnpm test:coverage
+
+# Run specific test suites
+pnpm test:queue             # Queue integration tests (requires Redis)
+pnpm test:integration       # API + DB + storage integration
+pnpm test:load              # Performance and load tests
 ```
 
 **That's it!** No database setup required. Testcontainers handles everything automatically.
+
+📚 **See [E2E_TEST_SCENARIOS.md](./E2E_TEST_SCENARIOS.md) for detailed test scenario documentation.**
 
 ## How It Works
 
@@ -37,7 +44,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 
 ### What Gets Tested
 
-#### Unit Tests (640 tests)
+#### Unit Tests
 
 - ✅ Database connection, pooling, query builder
 - ✅ CRUD operations for all entities
@@ -50,8 +57,9 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ API routes and middleware
 - ✅ Authentication and authorization
 - ✅ Data retention lifecycle management
+- ✅ Queue configuration and job definitions
 
-#### Integration Tests (123 tests)
+#### Integration Tests
 
 - ✅ Full API endpoints with authentication
 - ✅ Database transactions and concurrency
@@ -61,9 +69,10 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Role-based access control
 - ✅ Storage operations (local + S3)
 - ✅ Cross-project access prevention
-- ✅ RetentionRepository with PostgreSQL (19 tests)
+- ✅ RetentionRepository with PostgreSQL
+- ✅ Queue system with Redis (22 tests - BullMQ end-to-end)
 
-#### Load Tests (25 tests)
+#### Load Tests
 
 - ✅ 100+ concurrent operations
 - ✅ Connection pool management
@@ -72,19 +81,22 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-**Total: 869 tests across 32 test files**
+**Total: 150+ tests across comprehensive test suites**
+
+See [E2E_TEST_SCENARIOS.md](./E2E_TEST_SCENARIOS.md) for detailed documentation of all test scenarios.
 
 ## Test Commands
 
 ### All Tests
 
 ```bash
-# Run all tests (unit + integration + load + storage)
+# Run all tests (unit + integration + load + storage + queue)
 pnpm test
 
 # Run specific test suites
 pnpm test:unit              # Unit tests only (database layer, storage mocks)
 pnpm test:integration       # Integration tests (API + DB + storage)
+pnpm test:queue             # Queue integration tests (Redis + workers)
 pnpm test:load              # Load/performance tests
 
 # Watch modes
@@ -94,9 +106,10 @@ pnpm test:integration:watch # Watch integration tests
 # Coverage
 pnpm test:coverage          # Generate coverage report
 
-# Storage-specific tests
+# Specific test files
 pnpm vitest run tests/storage.test.ts                              # Storage unit tests
 pnpm vitest run tests/integration/storage.integration.test.ts     # Storage integration tests
+pnpm vitest run tests/integration/queue-integration.test.ts        # Queue integration tests
 TEST_MINIO=true pnpm test:integration                              # Include MinIO tests
 ```
 
@@ -247,19 +260,21 @@ docker container prune
 
 ## Test Coverage Summary
 
-### Overall Test Suite (457 tests)
+### Overall Test Suite (150+ tests)
 
 | Category              | Tests   | Description                                   |
 | --------------------- | ------- | --------------------------------------------- |
-| **Unit Tests**        | **340** | Database, API, storage, utilities             |
-| - Database            | 244     | CRUD, queries, transactions, pooling          |
-| - API                 | 38      | Routes, middleware, validation                |
-| - Storage             | 37      | Local/S3 uploads, image processing            |
-| - Utilities           | 21      | Retry logic, path utils, stream utils         |
-| **Integration Tests** | **104** | End-to-end workflows                          |
-| - API + DB            | 79      | Full request/response cycles                  |
-| - Storage             | 25      | Real backend operations                       |
-| **Load Tests**        | **13**  | Performance, concurrency, resource management |
+| **Unit Tests**        | **70+** | Database, API, storage, queue, utilities      |
+| - Database            | 25      | CRUD, queries, transactions, pooling          |
+| - API                 | 30+     | Routes, middleware, validation                |
+| - Storage             | 15+     | Local/S3 uploads, image processing            |
+| **Integration Tests** | **65+** | End-to-end workflows                          |
+| - API + DB            | 30+     | Full request/response cycles                  |
+| - Queue System        | 22      | BullMQ with Redis (100% passing)              |
+| - Storage             | 15+     | Real backend operations                       |
+| **Load Tests**        | **15**  | Performance, concurrency, resource management |
+
+📚 **Detailed test scenarios**: See [E2E_TEST_SCENARIOS.md](./E2E_TEST_SCENARIOS.md) for comprehensive documentation of all 150+ test scenarios with setup, assertions, and validation logic.
 
 ### Test Structure
 
@@ -269,11 +284,13 @@ tests/
 ├── repositories.test.ts           # Repository-specific methods
 ├── storage.test.ts                # Storage unit tests
 ├── api/                           # API unit tests
+├── queue/                         # Queue system unit tests
 ├── integration/                   # Integration tests
 │   ├── api.integration.test.ts
 │   ├── db.integration.test.ts
 │   ├── auth.integration.test.ts
 │   ├── storage.integration.test.ts
+│   ├── queue-integration.test.ts  # Queue E2E tests (22 tests)
 │   └── load.test.ts
 └── utils/                         # Test utilities
 ```
@@ -298,12 +315,16 @@ describe('Your Feature', () => {
 
 ## Performance
 
-- **Container Start**: ~5 seconds
+- **Container Start**: ~5 seconds (PostgreSQL), ~3 seconds (Redis)
 - **Migration Run**: ~1 second
-- **Test Execution**: ~350ms (repository tests), ~38s (all tests)
+- **Test Execution**: Varies by suite
+  - Unit tests: <10 seconds
+  - Integration tests: ~30 seconds
+  - Queue integration: ~50 seconds (includes Redis + worker startup)
+  - Load tests: ~2 minutes
 - **Container Stop**: ~1 second
 
-Total test run: **~45 seconds** for all 869 tests including container lifecycle
+Total test run: **~5 minutes** for all 150+ tests including container lifecycle
 
 ## Test Data Cleanup
 

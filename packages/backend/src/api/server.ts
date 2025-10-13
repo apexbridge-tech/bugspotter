@@ -19,13 +19,16 @@ import { bugReportRoutes } from './routes/reports.js';
 import { projectRoutes } from './routes/projects.js';
 import { authRoutes } from './routes/auth.js';
 import { retentionRoutes } from './routes/retention.js';
+import { jobRoutes } from './routes/jobs.js';
 import type { RetentionService } from '../retention/retention-service.js';
 import type { RetentionScheduler } from '../retention/retention-scheduler.js';
+import type { QueueManager } from '../queue/queue.manager.js';
 
 export interface ServerOptions {
   db: DatabaseClient;
   retentionService?: RetentionService;
   retentionScheduler?: RetentionScheduler;
+  queueManager?: QueueManager;
 }
 
 /**
@@ -145,9 +148,14 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
 
   // Register routes
   await healthRoutes(fastify, db);
-  await bugReportRoutes(fastify, db);
+  bugReportRoutes(fastify, db, options.queueManager);
   await projectRoutes(fastify, db);
   await authRoutes(fastify, db);
+
+  // Register job/queue routes if queue manager is provided
+  if (options.queueManager) {
+    jobRoutes(fastify, db, options.queueManager);
+  }
 
   // Register retention routes if services are provided
   if (options.retentionService && options.retentionScheduler) {
@@ -198,7 +206,11 @@ export async function startServer(fastify: FastifyInstance): Promise<void> {
 /**
  * Gracefully shutdown the server
  */
-export async function shutdownServer(fastify: FastifyInstance, db: DatabaseClient): Promise<void> {
+export async function shutdownServer(
+  fastify: FastifyInstance,
+  db: DatabaseClient,
+  queueManager?: QueueManager
+): Promise<void> {
   const logger = getLogger();
 
   logger.info('Shutting down server...');
@@ -207,6 +219,12 @@ export async function shutdownServer(fastify: FastifyInstance, db: DatabaseClien
     // Stop accepting new requests
     await fastify.close();
     logger.info('Server closed');
+
+    // Shutdown queue manager
+    if (queueManager) {
+      await queueManager.shutdown();
+      logger.info('Queue manager shut down');
+    }
 
     // Close database connections
     await db.close();

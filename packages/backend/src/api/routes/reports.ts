@@ -17,6 +17,10 @@ import { sendSuccess, sendCreated, sendPaginated } from '../utils/response.js';
 import { findOrThrow, checkProjectAccess } from '../utils/resource.js';
 import { resolveAccessibleProjectId } from '../utils/access-control.js';
 import { buildPagination, buildSort } from '../utils/query-builder.js';
+import type { QueueManager } from '../../queue/queue.manager.js';
+import { getLogger } from '../../logger.js';
+
+const logger = getLogger();
 
 interface CreateReportBody {
   title: string;
@@ -50,7 +54,11 @@ interface ListReportsQuery {
   order?: 'asc' | 'desc';
 }
 
-export function bugReportRoutes(fastify: FastifyInstance, db: DatabaseClient) {
+export function bugReportRoutes(
+  fastify: FastifyInstance,
+  db: DatabaseClient,
+  queueManager?: QueueManager
+) {
   /**
    * POST /api/v1/reports
    * Create a new bug report
@@ -83,13 +91,55 @@ export function bugReportRoutes(fastify: FastifyInstance, db: DatabaseClient) {
         replay_url: null, // Will be populated if session replay is enabled
       });
 
+      // Queue screenshot processing if provided and queue system is available
+      if (report.screenshot && queueManager) {
+        try {
+          await queueManager.addJob('screenshots', `screenshot-${bugReport.id}`, {
+            bugReportId: bugReport.id,
+            projectId,
+            screenshotUrl: report.screenshot,
+          });
+          logger.info('Screenshot job queued', {
+            bugReportId: bugReport.id,
+            projectId,
+          });
+        } catch (error) {
+          // Log error but don't fail the request - screenshot is optional
+          logger.error('Failed to queue screenshot job', {
+            error: error instanceof Error ? error.message : String(error),
+            bugReportId: bugReport.id,
+          });
+        }
+      }
+
       // Store session replay data if provided
       if (report.sessionReplay && report.sessionReplay.events.length > 0) {
-        await db.sessions.createSession(
+        const session = await db.sessions.createSession(
           bugReport.id,
           { events: report.sessionReplay.events },
           report.sessionReplay.duration
         );
+
+        // Queue replay processing if queue system is available
+        if (queueManager) {
+          try {
+            await queueManager.addJob('replays', `replay-${bugReport.id}`, {
+              bugReportId: bugReport.id,
+              projectId,
+              sessionId: session.id,
+              events: report.sessionReplay.events,
+            });
+            logger.info('Replay job queued', {
+              bugReportId: bugReport.id,
+              sessionId: session.id,
+            });
+          } catch (error) {
+            logger.error('Failed to queue replay job', {
+              error: error instanceof Error ? error.message : String(error),
+              bugReportId: bugReport.id,
+            });
+          }
+        }
       }
 
       return sendCreated(reply, bugReport);
