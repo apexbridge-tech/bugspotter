@@ -518,11 +518,11 @@ pnpm test:queue             # Queue integration tests
 pnpm test:load              # Load/performance tests
 ```
 
-**150+ tests** across 6 comprehensive test suites:
+**1,202 tests** across 6 comprehensive test suites:
 
 - Unit tests (database, API, storage, queue, retention, utilities)
-- Integration tests (API + DB + storage)
-- Queue integration tests (22 tests - BullMQ with real Redis)
+- Queue tests (267 tests - BullMQ workers, managers, job definitions)
+- Integration tests (API + DB + storage + queue - 22 tests with real Redis)
 - Load tests (performance, concurrency, memory)
 - E2E scenarios (complete workflows)
 

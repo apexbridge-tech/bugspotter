@@ -2,7 +2,7 @@
 
 **Complete Test Coverage Documentation**  
 **Date**: October 13, 2025  
-**Total Tests**: 150+ integration and E2E tests  
+**Total Tests**: 1,202 tests (267 queue tests + 869 backend core tests + 66 SDK tests)  
 **Test Infrastructure**: Testcontainers (PostgreSQL 16 + Redis 7)
 
 ---

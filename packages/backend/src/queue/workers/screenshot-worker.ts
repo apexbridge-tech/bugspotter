@@ -11,6 +11,7 @@ import { getQueueConfig } from '../../config/queue.config.js';
 import type { DatabaseClient } from '../../db/client.js';
 import type { IStorageService } from '../../storage/types.js';
 import type { ScreenshotJobData, ScreenshotJobResult } from '../types.js';
+import { QUEUE_NAMES } from '../types.js';
 import { validateScreenshotJobData, createScreenshotJobResult } from '../jobs/screenshot-job.js';
 import type { BaseWorker } from './base-worker.js';
 import { createBaseWorkerWrapper } from './base-worker.js';
@@ -27,7 +28,7 @@ export function createScreenshotWorker(
   db: DatabaseClient,
   storage: IStorageService,
   connection: Redis
-): BaseWorker<ScreenshotJobData, ScreenshotJobResult, 'screenshot'> {
+): BaseWorker<ScreenshotJobData, ScreenshotJobResult, 'screenshots'> {
   /**
    * Process screenshot job
    */
@@ -148,11 +149,15 @@ export function createScreenshotWorker(
   }
 
   // Create worker using factory with custom rate limiting
-  const worker = createWorker<ScreenshotJobData, ScreenshotJobResult, 'screenshot'>({
-    name: 'screenshot' as const,
+  const worker = createWorker<
+    ScreenshotJobData,
+    ScreenshotJobResult,
+    typeof QUEUE_NAMES.SCREENSHOTS
+  >({
+    name: QUEUE_NAMES.SCREENSHOTS,
     processor: processScreenshot,
     connection,
-    workerType: 'screenshot',
+    workerType: QUEUE_NAMES.SCREENSHOTS,
     customOptions: {
       limiter: {
         max: 10,

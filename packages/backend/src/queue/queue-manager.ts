@@ -7,7 +7,14 @@ import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
 import { getLogger } from '../logger.js';
 import { getQueueConfig } from '../config/queue.config.js';
-import type { QueueName, JobOptions, JobStatus, QueueMetrics, QueueStats } from './types.js';
+import type {
+  QueueName,
+  JobOptions,
+  JobStatus,
+  JobState,
+  QueueMetrics,
+  QueueStats,
+} from './types.js';
 
 const logger = getLogger();
 
@@ -194,11 +201,8 @@ export class QueueManager {
       return null;
     }
 
-    const state = await job.getState();
-    const validStates = ['waiting', 'active', 'completed', 'failed', 'delayed'] as const;
-    const jobState = validStates.includes(state as any)
-      ? (state as (typeof validStates)[number])
-      : 'waiting';
+    // BullMQ's getState() already returns JobState | 'unknown', so no validation needed
+    const state = (await job.getState()) as JobState;
 
     return {
       id: job.id!,
@@ -212,7 +216,7 @@ export class QueueManager {
       timestamp: job.timestamp,
       processedOn: job.processedOn ?? null,
       finishedOn: job.finishedOn ?? null,
-      state: jobState,
+      state,
     };
   }
 

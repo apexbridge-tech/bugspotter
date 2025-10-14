@@ -29,6 +29,7 @@ import {
   createNotificationJobResult,
 } from '../jobs/notification-job.js';
 import type { NotificationJobData, NotificationJobResult } from '../types.js';
+import { QUEUE_NAMES } from '../types.js';
 import type { BaseWorker } from './base-worker.js';
 import { createBaseWorkerWrapper } from './base-worker.js';
 import { attachStandardEventHandlers } from './worker-events.js';
@@ -358,12 +359,16 @@ export function createNotificationWorker(
   db: DatabaseClient,
   _storage: IStorageService,
   connection: Redis
-): BaseWorker<NotificationJobData, NotificationJobResult> {
-  const worker = createWorker<NotificationJobData, NotificationJobResult>({
+): BaseWorker<NotificationJobData, NotificationJobResult, 'notifications'> {
+  const worker = createWorker<
+    NotificationJobData,
+    NotificationJobResult,
+    typeof QUEUE_NAMES.NOTIFICATIONS
+  >({
     name: NOTIFICATION_JOB_NAME,
     processor: async (job) => processNotificationJob(job, db),
     connection,
-    workerType: 'notification',
+    workerType: QUEUE_NAMES.NOTIFICATIONS,
   });
 
   // Attach standard event handlers with job-specific context

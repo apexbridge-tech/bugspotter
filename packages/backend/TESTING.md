@@ -81,7 +81,7 @@ The backend uses [Testcontainers](https://testcontainers.com/) to automatically 
 - ✅ Response time measurements
 - ✅ Resource cleanup verification
 
-**Total: 150+ tests across comprehensive test suites**
+**Total: 1,202 tests across comprehensive test suites (267 queue tests, 869 backend core tests)**
 
 See [E2E_TEST_SCENARIOS.md](./E2E_TEST_SCENARIOS.md) for detailed documentation of all test scenarios.
 

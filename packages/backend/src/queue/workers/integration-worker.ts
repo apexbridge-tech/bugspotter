@@ -28,6 +28,7 @@ import {
   createIntegrationJobResult,
 } from '../jobs/integration-job.js';
 import type { IntegrationJobData, IntegrationJobResult } from '../types.js';
+import { QUEUE_NAMES } from '../types.js';
 import type { BaseWorker } from './base-worker.js';
 import { createBaseWorkerWrapper } from './base-worker.js';
 import { attachStandardEventHandlers } from './worker-events.js';
@@ -319,12 +320,16 @@ export function createIntegrationWorker(
   db: DatabaseClient,
   _storage: IStorageService,
   connection: Redis
-): BaseWorker<IntegrationJobData, IntegrationJobResult> {
-  const worker = createWorker<IntegrationJobData, IntegrationJobResult>({
+): BaseWorker<IntegrationJobData, IntegrationJobResult, 'integrations'> {
+  const worker = createWorker<
+    IntegrationJobData,
+    IntegrationJobResult,
+    typeof QUEUE_NAMES.INTEGRATIONS
+  >({
     name: INTEGRATION_JOB_NAME,
     processor: async (job) => processIntegrationJob(job, db),
     connection,
-    workerType: 'integration',
+    workerType: QUEUE_NAMES.INTEGRATIONS,
   });
 
   // Attach standard event handlers with job-specific context

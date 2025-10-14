@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WorkerManager } from '../../src/queue/worker-manager.js';
 import { getQueueManager } from '../../src/queue/queue-manager.js';
 import type { DatabaseClient } from '../../src/db/client.js';
-import type { BaseStorageService } from '../../src/storage/base-storage-service.js';
+import type { IStorageService } from '../../src/storage/types.js';
 
 // Mock dependencies
 vi.mock('../../src/queue/queue-manager.js');
@@ -45,14 +45,6 @@ vi.mock('../../src/queue/workers/screenshot-worker.js', () => ({
   createScreenshotWorker: vi.fn(),
 }));
 
-vi.mock('../src/db/client.js', () => ({
-  DatabaseClient: class {
-    static create() {
-      return {};
-    }
-  },
-}));
-
 vi.mock('../../src/queue/workers/replay-worker.js', () => ({
   createReplayWorker: vi.fn(),
 }));
@@ -74,7 +66,7 @@ import { createNotificationWorker } from '../../src/queue/workers/notification-w
 describe('WorkerManager', () => {
   let workerManager: WorkerManager;
   let mockDb: DatabaseClient;
-  let mockStorage: BaseStorageService;
+  let mockStorage: IStorageService;
   let mockQueueManager: any;
   let mockWorker: any;
 

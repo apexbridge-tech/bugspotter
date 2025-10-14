@@ -442,13 +442,19 @@ describe('Queue System Integration', () => {
       expect(body.success).toBe(true);
       expect(Array.isArray(body.data.queues)).toBe(true);
     });
+  });
 
+  describe('API Integration', () => {
     it('should queue jobs when creating bug report with screenshot', async () => {
       // Create a test project
       const project = await db.projects.create({
-        name: 'API Test Project',
+        name: 'API Integration Test Project',
         api_key: 'bgs_api_test_key',
       });
+
+      // Create base64-encoded test image (API expects base64 data, not storage key)
+      const testImage = await createTestImage(800, 600);
+      const base64Screenshot = `data:image/png;base64,${testImage.toString('base64')}`;
 
       const response = await server.inject({
         method: 'POST',
@@ -465,7 +471,7 @@ describe('Queue System Integration', () => {
             consoleLogs: [{ level: 'info', message: 'test', timestamp: Date.now() }],
             networkRequests: [],
             browserMetadata: { userAgent: 'Test Browser' },
-            screenshot: testImages.screenshot1,
+            screenshot: base64Screenshot,
           },
         },
       });
@@ -476,7 +482,7 @@ describe('Queue System Integration', () => {
       expect(body.data.id).toBeDefined();
 
       // Wait a bit for job to be queued
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Check that screenshot job was queued
       const metrics = await queueManager.getQueueMetrics('screenshots');

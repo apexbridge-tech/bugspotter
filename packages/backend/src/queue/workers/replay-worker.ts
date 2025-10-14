@@ -35,6 +35,7 @@ import {
   createReplayJobResult,
 } from '../jobs/replay-job.js';
 import type { ReplayJobData, ReplayJobResult } from '../types.js';
+import { QUEUE_NAMES } from '../types.js';
 import type { BaseWorker } from './base-worker.js';
 import { createBaseWorkerWrapper } from './base-worker.js';
 import { attachStandardEventHandlers } from './worker-events.js';
@@ -353,12 +354,12 @@ export function createReplayWorker(
   db: DatabaseClient,
   storage: IStorageService,
   connection: Redis
-): BaseWorker<ReplayJobData, ReplayJobResult> {
-  const worker = createWorker<ReplayJobData, ReplayJobResult>({
+): BaseWorker<ReplayJobData, ReplayJobResult, 'replays'> {
+  const worker = createWorker<ReplayJobData, ReplayJobResult, typeof QUEUE_NAMES.REPLAYS>({
     name: REPLAY_JOB_NAME,
     processor: async (job) => processReplayJob(job, db, storage),
     connection,
-    workerType: 'replay',
+    workerType: QUEUE_NAMES.REPLAYS,
   });
 
   // Attach standard event handlers with job-specific context

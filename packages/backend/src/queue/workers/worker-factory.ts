@@ -14,14 +14,30 @@ import { Worker, type Job, type WorkerOptions } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
 import { getQueueConfig } from '../../config/queue.config.js';
+import type { QueueName } from '../types.js';
+import { QUEUE_NAMES } from '../types.js';
 
 const logger = getLogger();
+
+/**
+ * Map queue names (plural) to worker config keys (singular)
+ * Queue names are used by BullMQ, config keys are internal naming
+ */
+const QUEUE_TO_WORKER_CONFIG: Record<
+  QueueName,
+  'screenshot' | 'replay' | 'integration' | 'notification'
+> = {
+  [QUEUE_NAMES.SCREENSHOTS]: 'screenshot',
+  [QUEUE_NAMES.REPLAYS]: 'replay',
+  [QUEUE_NAMES.INTEGRATIONS]: 'integration',
+  [QUEUE_NAMES.NOTIFICATIONS]: 'notification',
+};
 
 /**
  * Worker creation options
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic defaults for flexible worker types
-interface CreateWorkerOptions<D = any, R = any> {
+interface CreateWorkerOptions<D = any, R = any, N extends QueueName = QueueName> {
   /** Queue name (must match job name) */
   name: string;
 
@@ -31,8 +47,8 @@ interface CreateWorkerOptions<D = any, R = any> {
   /** Redis connection */
   connection: Redis;
 
-  /** Worker type for config lookup */
-  workerType: 'screenshot' | 'replay' | 'integration' | 'notification';
+  /** Worker type for config lookup - uses QueueName type */
+  workerType: N;
 
   /** Optional custom worker options (overrides defaults) */
   customOptions?: Partial<WorkerOptions>;
@@ -50,15 +66,16 @@ interface CreateWorkerOptions<D = any, R = any> {
  *   name: REPLAY_JOB_NAME,
  *   processor: async (job) => processReplayJob(job, db, storage),
  *   connection,
- *   workerType: 'replay',
+ *   workerType: QUEUE_NAMES.REPLAYS,
  * });
  * ```
  */
-export function createWorker<D = any, R = any, N extends string = string>(
-  options: CreateWorkerOptions<D, R>
+export function createWorker<D = any, R = any, N extends QueueName = QueueName>(
+  options: CreateWorkerOptions<D, R, N>
 ): Worker<D, R, N> {
   const config = getQueueConfig();
-  const concurrency = config.workers[options.workerType].concurrency;
+  const workerConfigKey = QUEUE_TO_WORKER_CONFIG[options.workerType];
+  const concurrency = config.workers[workerConfigKey].concurrency;
 
   const workerOptions: WorkerOptions = {
     connection: options.connection,

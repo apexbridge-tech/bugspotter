@@ -116,6 +116,23 @@ export interface NotificationJobResult {
 // Job Status and Progress
 // ============================================================================
 
+/**
+ * BullMQ Job States
+ * All possible states a job can be in during its lifecycle.
+ * Matches BullMQ's JobState type exactly.
+ *
+ * Note: 'paused' is a QUEUE state, not a JOB state in BullMQ.
+ */
+export type JobState =
+  | 'waiting' // Job is waiting to be processed
+  | 'active' // Job is currently being processed
+  | 'completed' // Job has completed successfully
+  | 'failed' // Job has failed
+  | 'delayed' // Job is delayed (scheduled for future)
+  | 'waiting-children' // Job is waiting for child jobs to complete
+  | 'prioritized' // Job has been prioritized
+  | 'unknown'; // Job state is unknown (returned by BullMQ when state cannot be determined)
+
 export interface JobProgress {
   current: number;
   total: number;
@@ -135,7 +152,7 @@ export interface JobStatus<TData = unknown, TResult = unknown> {
   timestamp: number;
   processedOn: number | null;
   finishedOn: number | null;
-  state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
+  state: JobState;
 }
 
 // ============================================================================
