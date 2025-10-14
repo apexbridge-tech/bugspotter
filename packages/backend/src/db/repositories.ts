@@ -300,6 +300,64 @@ export class BugReportRepository extends BaseRepository<
   }
 
   /**
+   * Update bug report metadata with thumbnail URL
+   * Used by Screenshot worker after processing
+   */
+  async updateThumbnailUrl(bugReportId: string, thumbnailUrl: string): Promise<void> {
+    const query = `
+      UPDATE ${this.tableName}
+      SET metadata = jsonb_set(
+        COALESCE(metadata, '{}'::jsonb),
+        '{thumbnailUrl}',
+        $1::jsonb,
+        true
+      )
+      WHERE id = $2
+    `;
+
+    await this.getClient().query(query, [JSON.stringify(thumbnailUrl), bugReportId]);
+  }
+
+  /**
+   * Update bug report metadata with replay manifest URL
+   * Used by Replay worker after processing chunks
+   */
+  async updateReplayManifestUrl(bugReportId: string, manifestUrl: string): Promise<void> {
+    const query = `
+      UPDATE ${this.tableName}
+      SET metadata = jsonb_set(
+        COALESCE(metadata, '{}'::jsonb),
+        '{replayManifestUrl}',
+        $1::jsonb,
+        true
+      )
+      WHERE id = $2
+    `;
+
+    await this.getClient().query(query, [JSON.stringify(manifestUrl), bugReportId]);
+  }
+
+  /**
+   * Update bug report metadata with external integration IDs
+   * Used by Integration worker after creating issues on external platforms
+   */
+  async updateExternalIntegration(
+    bugReportId: string,
+    externalId: string,
+    externalUrl: string
+  ): Promise<void> {
+    // Use PostgreSQL's || operator for cleaner JSON merging
+    // This atomically merges the new keys into existing metadata
+    const query = `
+      UPDATE ${this.tableName}
+      SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
+      WHERE id = $2
+    `;
+
+    await this.getClient().query(query, [JSON.stringify({ externalId, externalUrl }), bugReportId]);
+  }
+
+  /**
    * Restore soft-deleted bug reports
    */
   async restore(reportIds: string[]): Promise<number> {

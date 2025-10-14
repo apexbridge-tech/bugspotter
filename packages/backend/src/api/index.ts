@@ -8,6 +8,8 @@ import { createDatabaseClient } from '../db/client.js';
 import { config, validateConfig } from '../config.js';
 import { getLogger } from '../logger.js';
 import { createServer, startServer, shutdownServer } from './server.js';
+import { getQueueManager } from '../queue/queue-manager.js';
+import { getQueueConfig } from '../config/queue.config.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -37,9 +39,35 @@ async function main() {
     }
     logger.info('Database connection established');
 
+    // Initialize queue manager if Redis is configured
+    let queueManager: ReturnType<typeof getQueueManager> | undefined;
+    const queueConfig = getQueueConfig();
+    if (queueConfig.redis.url) {
+      try {
+        logger.info('Initializing queue manager...');
+        queueManager = getQueueManager();
+        await queueManager.initialize();
+
+        // Test queue health
+        const queueHealthy = await queueManager.healthCheck();
+        if (queueHealthy) {
+          logger.info('Queue manager initialized successfully');
+        } else {
+          logger.warn('Queue manager initialized but health check failed');
+        }
+      } catch (error) {
+        logger.error('Failed to initialize queue manager, continuing without queues', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        queueManager = undefined;
+      }
+    } else {
+      logger.info('Redis not configured, queue system disabled');
+    }
+
     // Create Fastify server
     logger.info('Creating Fastify server...');
-    const server = await createServer({ db });
+    const server = await createServer({ db, queueManager });
     logger.info('Server created successfully');
 
     // Start listening for requests
@@ -49,7 +77,7 @@ async function main() {
     const shutdown = async (signal: string) => {
       logger.info(`Received ${signal}, starting graceful shutdown...`);
       try {
-        await shutdownServer(server, db);
+        await shutdownServer(server, db, queueManager);
         process.exit(0);
       } catch (error) {
         logger.error('Error during shutdown', { error });

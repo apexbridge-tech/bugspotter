@@ -26,6 +26,13 @@ import {
   validateS3Endpoint,
   validateS3ForcePathStyle,
   validateLocalStorageConfig,
+  assertNonNegative,
+  assertPositive,
+  assertRange,
+  assertMinimum,
+  assertMaximum,
+  assertInteger,
+  assertIntegerRange,
 } from '../../src/config/validators.js';
 
 describe('Configuration Validators', () => {
@@ -476,6 +483,131 @@ describe('Configuration Validators', () => {
 
       const allErrors = [...credErrors, ...bucketErrors, ...regionErrors, ...endpointErrors];
       expect(allErrors.length).toBeGreaterThan(5);
+    });
+  });
+
+  describe('Throw-based validators', () => {
+    describe('assertNonNegative', () => {
+      it('should accept non-negative values', () => {
+        expect(() => assertNonNegative(0, 'test')).not.toThrow();
+        expect(() => assertNonNegative(1, 'test')).not.toThrow();
+        expect(() => assertNonNegative(100, 'test')).not.toThrow();
+      });
+
+      it('should throw for negative values', () => {
+        expect(() => assertNonNegative(-1, 'test')).toThrow('test must be >= 0 (got -1)');
+        expect(() => assertNonNegative(-100, 'test')).toThrow('test must be >= 0 (got -100)');
+      });
+    });
+
+    describe('assertPositive', () => {
+      it('should accept positive values', () => {
+        expect(() => assertPositive(1, 'test')).not.toThrow();
+        expect(() => assertPositive(0.1, 'test')).not.toThrow();
+        expect(() => assertPositive(100, 'test')).not.toThrow();
+      });
+
+      it('should throw for zero', () => {
+        expect(() => assertPositive(0, 'test')).toThrow('test must be > 0 (got 0)');
+      });
+
+      it('should throw for negative values', () => {
+        expect(() => assertPositive(-1, 'test')).toThrow('test must be > 0 (got -1)');
+        expect(() => assertPositive(-100, 'test')).toThrow('test must be > 0 (got -100)');
+      });
+    });
+
+    describe('assertRange', () => {
+      it('should accept values within range', () => {
+        expect(() => assertRange(5, 'test', 1, 10)).not.toThrow();
+        expect(() => assertRange(1, 'test', 1, 10)).not.toThrow();
+        expect(() => assertRange(10, 'test', 1, 10)).not.toThrow();
+      });
+
+      it('should throw for values below range', () => {
+        expect(() => assertRange(0, 'test', 1, 10)).toThrow(
+          'test must be between 1 and 10 (got 0)'
+        );
+      });
+
+      it('should throw for values above range', () => {
+        expect(() => assertRange(11, 'test', 1, 10)).toThrow(
+          'test must be between 1 and 10 (got 11)'
+        );
+      });
+    });
+
+    describe('assertMinimum', () => {
+      it('should accept values meeting minimum', () => {
+        expect(() => assertMinimum(5, 'test', 5)).not.toThrow();
+        expect(() => assertMinimum(10, 'test', 5)).not.toThrow();
+        expect(() => assertMinimum(100, 'test', 5)).not.toThrow();
+      });
+
+      it('should throw for values below minimum', () => {
+        expect(() => assertMinimum(4, 'test', 5)).toThrow('test must be >= 5 (got 4)');
+        expect(() => assertMinimum(0, 'test', 5)).toThrow('test must be >= 5 (got 0)');
+      });
+    });
+
+    describe('assertMaximum', () => {
+      it('should accept values at or below maximum', () => {
+        expect(() => assertMaximum(5, 'test', 10)).not.toThrow();
+        expect(() => assertMaximum(10, 'test', 10)).not.toThrow();
+        expect(() => assertMaximum(0, 'test', 10)).not.toThrow();
+      });
+
+      it('should throw for values above maximum', () => {
+        expect(() => assertMaximum(11, 'test', 10)).toThrow('test must be <= 10 (got 11)');
+        expect(() => assertMaximum(100, 'test', 10)).toThrow('test must be <= 10 (got 100)');
+      });
+    });
+
+    describe('assertInteger', () => {
+      it('should accept integer values', () => {
+        expect(() => assertInteger(0, 'test')).not.toThrow();
+        expect(() => assertInteger(1, 'test')).not.toThrow();
+        expect(() => assertInteger(-5, 'test')).not.toThrow();
+        expect(() => assertInteger(100, 'test')).not.toThrow();
+      });
+
+      it('should throw for decimal values', () => {
+        expect(() => assertInteger(1.5, 'test')).toThrow('test must be an integer (got 1.5)');
+        expect(() => assertInteger(0.1, 'test')).toThrow('test must be an integer (got 0.1)');
+      });
+
+      it('should throw for NaN', () => {
+        expect(() => assertInteger(NaN, 'test')).toThrow('test must be an integer (got NaN)');
+      });
+
+      it('should throw for Infinity', () => {
+        expect(() => assertInteger(Infinity, 'test')).toThrow(
+          'test must be an integer (got Infinity)'
+        );
+      });
+    });
+
+    describe('assertIntegerRange', () => {
+      it('should accept integer values within range', () => {
+        expect(() => assertIntegerRange(5, 'test', 1, 10)).not.toThrow();
+        expect(() => assertIntegerRange(1, 'test', 1, 10)).not.toThrow();
+        expect(() => assertIntegerRange(10, 'test', 1, 10)).not.toThrow();
+      });
+
+      it('should throw for non-integer values', () => {
+        expect(() => assertIntegerRange(5.5, 'test', 1, 10)).toThrow(
+          'test must be an integer (got 5.5)'
+        );
+      });
+
+      it('should throw for values outside range', () => {
+        expect(() => assertIntegerRange(0, 'test', 1, 10)).toThrow(
+          'test must be between 1 and 10 (got 0)'
+        );
+        expect(() => assertIntegerRange(11, 'test', 1, 10)).toThrow(
+          'test must be between 1 and 10 (got 11)'
+        );
+      });
     });
   });
 });

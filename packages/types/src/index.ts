@@ -9,15 +9,15 @@
 // Capture types
 export type { ConsoleLog, NetworkRequest, BrowserMetadata, CapturedReport } from './capture.js';
 
-// API Contract types
-export type {
+// API Contract types and constants
+export {
   BugPriority,
   BugStatus,
-  CreateBugReportRequest,
-  BugReportData,
-  CreateBugReportResponse,
-  ApiErrorResponse,
-  ApiResponse,
-  PaginatedResponse,
-  ListBugReportsQuery,
+  type CreateBugReportRequest,
+  type BugReportData,
+  type CreateBugReportResponse,
+  type ApiErrorResponse,
+  type ApiResponse,
+  type PaginatedResponse,
+  type ListBugReportsQuery,
 } from './api-contract.js';

@@ -4,6 +4,9 @@
 
 import { paginationSchema, paginationResponseSchema, sortOrderSchema } from './common-schema.js';
 
+// Re-export constants from @bugspotter/types for backward compatibility
+export { BugStatus, BugPriority } from '@bugspotter/types';
+
 export const bugStatusEnum = ['open', 'in-progress', 'resolved', 'closed'] as const;
 export const bugPriorityEnum = ['low', 'medium', 'high', 'critical'] as const;
 

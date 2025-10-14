@@ -77,6 +77,79 @@ export function validateNumber(
   return null;
 }
 
+// ============================================================================
+// THROW-BASED VALIDATORS (Runtime Validation)
+// ============================================================================
+
+/**
+ * Assert value is non-negative (>= 0)
+ * @throws Error if value is negative
+ */
+export function assertNonNegative(value: number, name: string): void {
+  if (value < 0) {
+    throw new Error(`${name} must be >= 0 (got ${value})`);
+  }
+}
+
+/**
+ * Assert value is positive (> 0)
+ * @throws Error if value is zero or negative
+ */
+export function assertPositive(value: number, name: string): void {
+  if (value <= 0) {
+    throw new Error(`${name} must be > 0 (got ${value})`);
+  }
+}
+
+/**
+ * Assert value is within range [min, max]
+ * @throws Error if value is outside range
+ */
+export function assertRange(value: number, name: string, min: number, max: number): void {
+  if (value < min || value > max) {
+    throw new Error(`${name} must be between ${min} and ${max} (got ${value})`);
+  }
+}
+
+/**
+ * Assert value meets minimum threshold
+ * @throws Error if value is below minimum
+ */
+export function assertMinimum(value: number, name: string, min: number): void {
+  if (value < min) {
+    throw new Error(`${name} must be >= ${min} (got ${value})`);
+  }
+}
+
+/**
+ * Assert value does not exceed maximum threshold
+ * @throws Error if value exceeds maximum
+ */
+export function assertMaximum(value: number, name: string, max: number): void {
+  if (value > max) {
+    throw new Error(`${name} must be <= ${max} (got ${value})`);
+  }
+}
+
+/**
+ * Assert value is an integer
+ * @throws Error if value is not an integer
+ */
+export function assertInteger(value: number, name: string): void {
+  if (!Number.isInteger(value)) {
+    throw new Error(`${name} must be an integer (got ${value})`);
+  }
+}
+
+/**
+ * Assert value is an integer within range
+ * @throws Error if value is not an integer or outside range
+ */
+export function assertIntegerRange(value: number, name: string, min: number, max: number): void {
+  assertInteger(value, name);
+  assertRange(value, name, min, max);
+}
+
 /**
  * Check if hostname is localhost variation
  */

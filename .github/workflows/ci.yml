@@ -68,6 +68,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build types package
+        run: |
+          # Build @bugspotter/types first (required by SDK)
+          pnpm --filter @bugspotter/types run build
+
       - name: Verify monorepo structure
         run: |
           echo "Verifying monorepo structure..."
@@ -126,6 +131,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build types package
+        run: |
+          # Build @bugspotter/types first (required by backend)
+          pnpm --filter @bugspotter/types run build
+
       - name: Run backend tests
         run: |
           # Testcontainers will automatically start PostgreSQL
@@ -155,6 +165,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build dependencies
+        run: |
+          # Build @bugspotter/types first (required by SDK)
+          pnpm --filter @bugspotter/types run build
+
       - name: Build SDK for browser tests
         run: |
           # Playwright tests require built SDK bundle
@@ -174,8 +189,6 @@ jobs:
           pnpm --filter @bugspotter/sdk exec playwright install --with-deps chromium
 
       - name: Run Playwright browser tests
-        # Continue on error to not block CI if browser tests fail
-        continue-on-error: true
         run: |
           # Run browser tests in Chromium only
           pnpm --filter @bugspotter/sdk run test:playwright --project=chromium
@@ -223,9 +236,10 @@ jobs:
 
       - name: Build packages
         run: |
-          # Build all packages that have a build script
-          # This respects the dependency order defined in pnpm-workspace.yaml
-          pnpm --recursive --filter "./packages/**" run build
+          # Build types first, then other packages
+          # This ensures @bugspotter/types is available for backend and SDK
+          pnpm --filter @bugspotter/types run build
+          pnpm --recursive --filter "./packages/**" --filter "!@bugspotter/types" run build
 
       - name: Upload SDK build artifacts
         uses: actions/upload-artifact@v4
@@ -256,6 +270,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build types package
+        run: |
+          # Build @bugspotter/types first (required by SDK and backend)
+          pnpm --filter @bugspotter/types run build
 
       - name: Run SDK tests with coverage
         run: |

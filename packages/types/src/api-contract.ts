@@ -11,9 +11,29 @@ import { CapturedReport } from './capture.js';
 export type BugPriority = 'low' | 'medium' | 'high' | 'critical';
 
 /**
+ * Bug priority constants for convenient access
+ */
+export const BugPriority = {
+  LOW: 'low' as const,
+  MEDIUM: 'medium' as const,
+  HIGH: 'high' as const,
+  CRITICAL: 'critical' as const,
+};
+
+/**
  * Status of a bug report
  */
 export type BugStatus = 'open' | 'in-progress' | 'resolved' | 'closed';
+
+/**
+ * Bug status constants for convenient access
+ */
+export const BugStatus = {
+  OPEN: 'open' as const,
+  IN_PROGRESS: 'in-progress' as const,
+  RESOLVED: 'resolved' as const,
+  CLOSED: 'closed' as const,
+};
 
 /**
  * Request payload for creating a bug report

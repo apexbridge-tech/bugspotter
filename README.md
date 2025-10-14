@@ -4,7 +4,7 @@
 
 Capture screenshots, console logs, network requests, **session replays**, and metadata - helping developers reproduce bugs faster.
 
-[![Tests](https://img.shields.io/badge/tests-1095%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
+[![Tests](https://img.shields.io/badge/tests-1547%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
 
 ## ✨ Features
 
@@ -117,8 +117,8 @@ customPatterns: [
 ## 🧪 Testing
 
 **SDK:** 345 tests (unit + E2E + Playwright)  
-**Backend:** 750 tests (unit + integration + load + storage)  
-**Total:** 1,095 tests - all passing ✅
+**Backend:** 1,202 tests (unit + integration + queue + load + storage)  
+**Total:** 1,547 tests - all passing ✅
 
 ```bash
 pnpm test              # All tests (requires Docker)
@@ -138,7 +138,7 @@ pnpm test:coverage     # Coverage report
 - **Bundle:** ~99 KB minified
 - **Load:** <100ms
 - **Memory:** <15 MB (30s buffer)
-- **Tests:** 1,095 total (100% passing ✅)
+- **Tests:** 1,547 total (100% passing ✅)
 
 ## 🛣️ Roadmap
 
@@ -147,7 +147,7 @@ pnpm test:coverage     # Coverage report
 - Core SDK with session replay (rrweb)
 - PII sanitization (10+ patterns)
 - Backend API with PostgreSQL & S3 storage
-- Comprehensive testing (1,095 tests)
+- Comprehensive testing (1,547 tests)
 
 🚧 **In Progress (Pre-Release):**
 
