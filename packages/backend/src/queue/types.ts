@@ -16,12 +16,6 @@ export const QUEUE_NAMES = {
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
-/**
- * Array of all queue names for iteration
- * Derived from QUEUE_NAMES object to maintain single source of truth
- */
-export const QUEUE_NAMES_ARRAY: readonly QueueName[] = Object.values(QUEUE_NAMES);
-
 // Job ID prefixes for different queue types
 export const JOB_ID_PREFIXES = {
   SCREENSHOT: 'screenshot-',

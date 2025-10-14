@@ -15,7 +15,7 @@ import type {
   QueueMetrics,
   QueueStats,
 } from './types.js';
-import { QUEUE_NAMES_ARRAY } from './types.js';
+import { QUEUE_NAMES } from './types.js';
 
 const logger = getLogger();
 
@@ -72,7 +72,7 @@ export class QueueManager {
       return;
     }
 
-    for (const queueName of QUEUE_NAMES_ARRAY) {
+    for (const queueName of Object.values(QUEUE_NAMES)) {
       await this.createQueue(queueName);
     }
 
