@@ -346,23 +346,16 @@ export class BugReportRepository extends BaseRepository<
     externalId: string,
     externalUrl: string
   ): Promise<void> {
+    // Use PostgreSQL's || operator for cleaner JSON merging
+    // This atomically merges the new keys into existing metadata
     const query = `
       UPDATE ${this.tableName}
-      SET metadata = jsonb_set(
-        jsonb_set(
-          COALESCE(metadata, '{}'::jsonb),
-          '{externalId}',
-          $1::jsonb
-        ),
-        '{externalUrl}',
-        $2::jsonb
-      )
-      WHERE id = $3
+      SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb
+      WHERE id = $2
     `;
 
     await this.getClient().query(query, [
-      JSON.stringify(externalId),
-      JSON.stringify(externalUrl),
+      JSON.stringify({ externalId, externalUrl }),
       bugReportId,
     ]);
   }
