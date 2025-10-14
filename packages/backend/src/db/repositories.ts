@@ -354,10 +354,7 @@ export class BugReportRepository extends BaseRepository<
       WHERE id = $2
     `;
 
-    await this.getClient().query(query, [
-      JSON.stringify({ externalId, externalUrl }),
-      bugReportId,
-    ]);
+    await this.getClient().query(query, [JSON.stringify({ externalId, externalUrl }), bugReportId]);
   }
 
   /**
