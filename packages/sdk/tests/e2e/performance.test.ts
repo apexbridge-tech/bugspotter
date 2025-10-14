@@ -326,10 +326,8 @@ describe('E2E Performance Benchmarks', () => {
   });
 
   describe('Sanitization Performance', () => {
-    it(
-      'should sanitize console logs with minimal overhead (<500ms in JSDOM)',
-      async () => {
-        const bugspotter = BugSpotter.init({
+    it('should sanitize console logs with minimal overhead (<500ms in JSDOM)', async () => {
+      const bugspotter = BugSpotter.init({
         showWidget: false,
         sanitize: { enabled: true, patterns: 'all' },
       });
@@ -383,9 +381,7 @@ describe('E2E Performance Benchmarks', () => {
       console.log(
         `  - Without sanitization: ${(endTimeWithoutSanitization - startTimeWithoutSanitization).toFixed(2)}ms`
       );
-      },
-      15000 // Increased timeout for slow JSDOM environment
-    );
+    }, 15000); // Increased timeout for slow JSDOM environment
   });
 
   describe('Memory Usage', () => {
