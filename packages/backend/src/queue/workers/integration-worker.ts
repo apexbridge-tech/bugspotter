@@ -34,24 +34,9 @@ import { createBaseWorkerWrapper } from './base-worker.js';
 import { attachStandardEventHandlers } from './worker-events.js';
 import { ProgressTracker } from './progress-tracker.js';
 import { createWorker } from './worker-factory.js';
+import { IntegrationServiceRegistry } from '../../integrations/integration-registry.js';
 
 const logger = getLogger();
-
-/**
- * Bug report data for integration
- */
-interface BugReportData {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority?: string;
-  metadata?: Record<string, unknown>;
-  screenshotUrl?: string;
-  replayUrl?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 /**
  * Platform-specific integration result
@@ -63,197 +48,44 @@ interface PlatformIntegrationResult {
   metadata?: Record<string, unknown>;
 }
 
-/**
- * Fetch bug report from database
- */
-async function fetchBugReport(db: DatabaseClient, bugReportId: string): Promise<BugReportData> {
-  const result = await db.query<BugReportData>(
-    `SELECT 
-      id, 
-      title, 
-      description, 
-      status, 
-      priority,
-      metadata,
-      created_at as "createdAt",
-      updated_at as "updatedAt"
-    FROM bug_reports 
-    WHERE id = $1`,
-    [bugReportId]
-  );
 
-  if (!result.rows || result.rows.length === 0) {
-    throw new Error(`Bug report not found: ${bugReportId}`);
-  }
-
-  const report = result.rows[0];
-
-  // Extract URLs from metadata
-  const metadata = (report.metadata || {}) as Record<string, unknown>;
-  const screenshotUrl = metadata.screenshotUrl as string | undefined;
-  const replayUrl = metadata.replayManifestUrl as string | undefined;
-
-  return {
-    ...report,
-    screenshotUrl,
-    replayUrl,
-  };
-}
 
 /**
- * Process Jira integration (placeholder - requires Jira SDK)
- */
-async function processJiraIntegration(
-  report: BugReportData,
-  _credentials: Record<string, unknown>,
-  config: Record<string, unknown>
-): Promise<PlatformIntegrationResult> {
-  logger.info('Processing Jira integration', { reportId: report.id });
-
-  // TODO: Implement Jira API integration
-  // - Authenticate with Jira using credentials (apiToken, domain, email)
-  // - Create issue using Jira REST API v3
-  // - Upload attachments (screenshot, replay link)
-  // - Set priority, labels, assignee from config
-  // - Handle rate limiting (10 requests/second for Jira Cloud)
-
-  // Placeholder implementation
-  const externalId = `JIRA-${Math.floor(Math.random() * 10000)}`;
-  const externalUrl = `https://example.atlassian.net/browse/${externalId}`;
-
-  return {
-    externalId,
-    externalUrl,
-    status: 'created',
-    metadata: {
-      platform: 'jira',
-      projectKey: config.projectKey || 'BUG',
-      issueType: config.issueType || 'Bug',
-    },
-  };
-}
-
-/**
- * Process GitHub integration (placeholder - requires GitHub SDK)
- */
-async function processGitHubIntegration(
-  report: BugReportData,
-  _credentials: Record<string, unknown>,
-  config: Record<string, unknown>
-): Promise<PlatformIntegrationResult> {
-  logger.info('Processing GitHub integration', { reportId: report.id });
-
-  // TODO: Implement GitHub API integration
-  // - Authenticate with GitHub using credentials (token, owner, repo)
-  // - Create issue using GitHub REST API v3
-  // - Add labels from config (bug, priority-high, etc.)
-  // - Upload attachments as issue comments
-  // - Handle rate limiting (5000 requests/hour for authenticated users)
-
-  // Placeholder implementation
-  const issueNumber = Math.floor(Math.random() * 10000);
-  const externalId = `#${issueNumber}`;
-  const externalUrl = `https://github.com/${config.owner}/${config.repo}/issues/${issueNumber}`;
-
-  return {
-    externalId,
-    externalUrl,
-    status: 'created',
-    metadata: {
-      platform: 'github',
-      repository: `${config.owner}/${config.repo}`,
-      issueNumber,
-    },
-  };
-}
-
-/**
- * Process Linear integration (placeholder - requires Linear SDK)
- */
-async function processLinearIntegration(
-  report: BugReportData,
-  _credentials: Record<string, unknown>,
-  config: Record<string, unknown>
-): Promise<PlatformIntegrationResult> {
-  logger.info('Processing Linear integration', { reportId: report.id });
-
-  // TODO: Implement Linear SDK integration
-  // - Authenticate with Linear using credentials (apiKey)
-  // - Create issue using Linear GraphQL API
-  // - Set team, priority, labels from config
-  // - Upload attachments (screenshot, replay link in description)
-  // - Handle rate limiting (1000 requests/hour)
-
-  // Placeholder implementation
-  const externalId = `BUG-${Math.floor(Math.random() * 10000)}`;
-  const externalUrl = `https://linear.app/team/issue/${externalId}`;
-
-  return {
-    externalId,
-    externalUrl,
-    status: 'created',
-    metadata: {
-      platform: 'linear',
-      teamId: config.teamId || 'default',
-    },
-  };
-}
-
-/**
- * Process Slack integration (placeholder - requires Slack SDK)
- */
-async function processSlackIntegration(
-  report: BugReportData,
-  _credentials: Record<string, unknown>,
-  config: Record<string, unknown>
-): Promise<PlatformIntegrationResult> {
-  logger.info('Processing Slack integration', { reportId: report.id });
-
-  // TODO: Implement Slack Web API integration
-  // - Authenticate with Slack using credentials (token, channel)
-  // - Post message to channel with bug report details
-  // - Include screenshot and replay links
-  // - Add action buttons (view, assign, close)
-  // - Handle rate limiting (Tier 3: 50+ requests/minute)
-
-  // Placeholder implementation
-  const timestamp = Date.now().toString();
-  const externalId = `slack-${timestamp}`;
-  const externalUrl = `https://slack.com/app_redirect?channel=${config.channel}&message=${timestamp}`;
-
-  return {
-    externalId,
-    externalUrl,
-    status: 'created',
-    metadata: {
-      platform: 'slack',
-      channel: config.channel || 'bugs',
-      threadTs: timestamp,
-    },
-  };
-}
-
-/**
- * Route integration to platform-specific handler
+ * Route integration to platform-specific handler using registry
  */
 async function routeToPlatform(
   platform: string,
-  report: BugReportData,
-  credentials: Record<string, unknown>,
-  config: Record<string, unknown>
+  bugReportId: string,
+  projectId: string,
+  db: DatabaseClient,
+  storage: IStorageService
 ): Promise<PlatformIntegrationResult> {
-  switch (platform.toLowerCase()) {
-    case 'jira':
-      return processJiraIntegration(report, credentials, config);
-    case 'github':
-      return processGitHubIntegration(report, credentials, config);
-    case 'linear':
-      return processLinearIntegration(report, credentials, config);
-    case 'slack':
-      return processSlackIntegration(report, credentials, config);
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
+  // Create integration service registry
+  const registry = new IntegrationServiceRegistry(db, storage);
+
+  // Get service for platform
+  const service = registry.get(platform);
+  if (!service) {
+    // List supported platforms for better error message
+    const supported = registry.getSupportedPlatforms().join(', ');
+    throw new Error(`Integration platform '${platform}' not supported. Supported: ${supported}`);
   }
+
+  // Fetch bug report
+  const bugReport = await db.bugReports.findById(bugReportId);
+  if (!bugReport) {
+    throw new Error(`Bug report not found: ${bugReportId}`);
+  }
+
+  // Create issue on external platform
+  const result = await service.createFromBugReport(bugReport, projectId);
+
+  return {
+    externalId: result.externalId,
+    externalUrl: result.externalUrl,
+    status: 'created',
+    metadata: result.metadata,
+  };
 }
 
 /**
@@ -261,13 +93,14 @@ async function routeToPlatform(
  */
 async function processIntegrationJob(
   job: Job<IntegrationJobData, IntegrationJobResult>,
-  db: DatabaseClient
+  db: DatabaseClient,
+  storage: IStorageService
 ): Promise<IntegrationJobResult> {
   const startTime = Date.now();
 
   // Validate job data
   validateIntegrationJobData(job.data);
-  const { bugReportId, projectId, platform, credentials, config } = job.data;
+  const { bugReportId, projectId, platform } = job.data;
 
   logger.info('Processing integration job', {
     jobId: job.id,
@@ -276,15 +109,11 @@ async function processIntegrationJob(
     platform,
   });
 
-  const progress = new ProgressTracker(job, 3);
+  const progress = new ProgressTracker(job, 2);
 
-  // Step 1: Fetch bug report
-  await progress.update(1, 'Fetching bug report');
-  const report = await fetchBugReport(db, bugReportId);
-
-  // Step 2: Route to platform handler
-  await progress.update(2, `Creating ${platform} issue`);
-  const result = await routeToPlatform(platform, report, credentials, config);
+  // Step 1: Route to platform handler
+  await progress.update(1, `Creating ${platform} issue`);
+  const result = await routeToPlatform(platform, bugReportId, projectId, db, storage);
 
   // Step 3: Store external ID in database
   await progress.update(3, 'Updating database');
@@ -318,7 +147,7 @@ async function processIntegrationJob(
  */
 export function createIntegrationWorker(
   db: DatabaseClient,
-  _storage: IStorageService,
+  storage: IStorageService,
   connection: Redis
 ): BaseWorker<IntegrationJobData, IntegrationJobResult, 'integrations'> {
   const worker = createWorker<
@@ -327,7 +156,7 @@ export function createIntegrationWorker(
     typeof QUEUE_NAMES.INTEGRATIONS
   >({
     name: INTEGRATION_JOB_NAME,
-    processor: async (job) => processIntegrationJob(job, db),
+    processor: async (job) => processIntegrationJob(job, db, storage),
     connection,
     workerType: QUEUE_NAMES.INTEGRATIONS,
   });

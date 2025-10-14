@@ -1,0 +1,376 @@
+/**
+ * Jira Client
+ * Handles communication with Jira REST API v3
+ * Uses native Node.js https module (no external dependencies)
+ */
+
+import { request as httpsRequest } from 'https';
+import { URL } from 'url';
+import { getLogger } from '../../logger.js';
+import type {
+  JiraConfig,
+  JiraIssueFields,
+  JiraIssue,
+  JiraAttachment,
+  JiraError,
+  JiraConnectionTestResult,
+} from './types.js';
+
+const logger = getLogger();
+
+/**
+ * Jira API endpoints
+ */
+const JIRA_API_BASE = '/rest/api/3';
+const JIRA_ENDPOINTS = {
+  CREATE_ISSUE: `${JIRA_API_BASE}/issue`,
+  GET_ISSUE: (issueKey: string) => `${JIRA_API_BASE}/issue/${issueKey}`,
+  ADD_ATTACHMENT: (issueKey: string) => `${JIRA_API_BASE}/issue/${issueKey}/attachments`,
+  GET_PROJECT: (projectKey: string) => `${JIRA_API_BASE}/project/${projectKey}`,
+  GET_MYSELF: `${JIRA_API_BASE}/myself`,
+} as const;
+
+/**
+ * HTTP request options
+ */
+interface RequestOptions {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  headers: Record<string, string>;
+  body?: string | Buffer;
+}
+
+/**
+ * Jira Client
+ * Handles all Jira REST API v3 operations
+ */
+export class JiraClient {
+  private host: string;
+  private email: string;
+  private apiToken: string;
+  private baseUrl: URL;
+
+  constructor(config: JiraConfig) {
+    // Validate configuration
+    if (!config.host || !config.email || !config.apiToken) {
+      throw new Error('Jira configuration incomplete: host, email, and apiToken are required');
+    }
+
+    this.host = config.host.replace(/\/$/, ''); // Remove trailing slash
+    this.email = config.email;
+    this.apiToken = config.apiToken;
+
+    try {
+      this.baseUrl = new URL(this.host);
+    } catch {
+      throw new Error(`Invalid Jira host URL: ${config.host}`);
+    }
+
+    logger.debug('Jira client initialized', {
+      host: this.host,
+      email: this.email,
+    });
+  }
+
+  /**
+   * Make authenticated HTTP request to Jira API
+   */
+  private async request<T = unknown>(options: RequestOptions): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const auth = Buffer.from(`${this.email}:${this.apiToken}`).toString('base64');
+
+      const requestOptions = {
+        hostname: this.baseUrl.hostname,
+        port: this.baseUrl.port || 443,
+        path: options.path,
+        method: options.method,
+        headers: {
+          ...options.headers,
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      };
+
+      const req = httpsRequest(requestOptions, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          const statusCode = res.statusCode || 0;
+
+          // Handle error status codes
+          if (statusCode >= 400) {
+            let errorMessage = `Jira API error: ${statusCode}`;
+            try {
+              const errorData: JiraError = JSON.parse(data);
+              if (errorData.errorMessages && errorData.errorMessages.length > 0) {
+                errorMessage = errorData.errorMessages.join(', ');
+              } else if (errorData.errors) {
+                errorMessage = Object.values(errorData.errors).join(', ');
+              }
+            } catch {
+              errorMessage = data || errorMessage;
+            }
+
+            logger.error('Jira API request failed', {
+              statusCode,
+              path: options.path,
+              method: options.method,
+              error: errorMessage,
+            });
+
+            return reject(new Error(errorMessage));
+          }
+
+          // Parse response
+          try {
+            const result = data ? JSON.parse(data) : null;
+            resolve(result as T);
+          } catch (error) {
+            logger.error('Failed to parse Jira response', {
+              path: options.path,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            reject(new Error('Invalid JSON response from Jira'));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        logger.error('Jira API request error', {
+          path: options.path,
+          error: error.message,
+        });
+        reject(new Error(`Failed to connect to Jira: ${error.message}`));
+      });
+
+      // Set timeout
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error('Jira API request timeout'));
+      });
+
+      // Send request body if present
+      if (options.body) {
+        req.write(options.body);
+      }
+
+      req.end();
+    });
+  }
+
+  /**
+   * Test connection to Jira
+   * Validates credentials and project access
+   */
+  async testConnection(projectKey?: string): Promise<JiraConnectionTestResult> {
+    try {
+      // Test 1: Verify authentication by getting current user
+      logger.debug('Testing Jira connection', { host: this.host, projectKey });
+
+      await this.request({
+        method: 'GET',
+        path: JIRA_ENDPOINTS.GET_MYSELF,
+        headers: {},
+      });
+
+      // Test 2: Verify project exists and user has access (if projectKey provided)
+      let projectExists = true;
+      let userHasAccess = true;
+
+      if (projectKey) {
+        try {
+          await this.request({
+            method: 'GET',
+            path: JIRA_ENDPOINTS.GET_PROJECT(projectKey),
+            headers: {},
+          });
+        } catch (error) {
+          projectExists = false;
+          userHasAccess = false;
+          logger.warn('Project not found or access denied', { projectKey, error });
+        }
+      }
+
+      logger.info('Jira connection test successful', {
+        host: this.host,
+        projectKey,
+        projectExists,
+      });
+
+      return {
+        valid: true,
+        details: {
+          host: this.host,
+          projectExists,
+          userHasAccess,
+        },
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Jira connection test failed', {
+        host: this.host,
+        error: errorMessage,
+      });
+
+      return {
+        valid: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Create Jira issue
+   */
+  async createIssue(fields: JiraIssueFields): Promise<JiraIssue> {
+    logger.info('Creating Jira issue', {
+      projectKey: fields.project.key,
+      issueType: fields.issuetype.name,
+      summary: fields.summary,
+    });
+
+    const body = JSON.stringify({ fields });
+
+    const response = await this.request<JiraIssue>({
+      method: 'POST',
+      path: JIRA_ENDPOINTS.CREATE_ISSUE,
+      headers: {},
+      body,
+    });
+
+    logger.info('Jira issue created', {
+      issueKey: response.key,
+      issueId: response.id,
+      issueUrl: `${this.host}/browse/${response.key}`,
+    });
+
+    return response;
+  }
+
+  /**
+   * Get Jira issue by key
+   */
+  async getIssue(issueKey: string): Promise<JiraIssue> {
+    logger.debug('Fetching Jira issue', { issueKey });
+
+    return this.request<JiraIssue>({
+      method: 'GET',
+      path: JIRA_ENDPOINTS.GET_ISSUE(issueKey),
+      headers: {},
+    });
+  }
+
+  /**
+   * Upload attachment to Jira issue
+   * Uses multipart/form-data encoding
+   */
+  async uploadAttachment(
+    issueKey: string,
+    file: Buffer,
+    filename: string
+  ): Promise<JiraAttachment> {
+    logger.info('Uploading attachment to Jira', {
+      issueKey,
+      filename,
+      size: file.length,
+    });
+
+    return new Promise((resolve, reject) => {
+      const boundary = `----WebKitFormBoundary${Date.now()}`;
+      const auth = Buffer.from(`${this.email}:${this.apiToken}`).toString('base64');
+
+      // Build multipart form data
+      const formData: Buffer[] = [];
+
+      // Add file field
+      formData.push(Buffer.from(`--${boundary}\r\n`));
+      formData.push(
+        Buffer.from(`Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`)
+      );
+      formData.push(Buffer.from('Content-Type: application/octet-stream\r\n\r\n'));
+      formData.push(file);
+      formData.push(Buffer.from('\r\n'));
+      formData.push(Buffer.from(`--${boundary}--\r\n`));
+
+      const body = Buffer.concat(formData);
+
+      const requestOptions = {
+        hostname: this.baseUrl.hostname,
+        port: this.baseUrl.port || 443,
+        path: JIRA_ENDPOINTS.ADD_ATTACHMENT(issueKey),
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'X-Atlassian-Token': 'no-check', // Required by Jira
+          'Content-Length': body.length,
+        },
+      };
+
+      const req = httpsRequest(requestOptions, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          const statusCode = res.statusCode || 0;
+
+          if (statusCode >= 400) {
+            logger.error('Failed to upload attachment to Jira', {
+              statusCode,
+              issueKey,
+              filename,
+            });
+            return reject(new Error(`Failed to upload attachment: ${statusCode}`));
+          }
+
+          try {
+            const attachments = JSON.parse(data) as JiraAttachment[];
+            const attachment = attachments[0];
+
+            logger.info('Attachment uploaded to Jira', {
+              issueKey,
+              filename,
+              attachmentId: attachment.id,
+            });
+
+            resolve(attachment);
+          } catch {
+            reject(new Error('Failed to parse attachment response'));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        logger.error('Attachment upload error', {
+          issueKey,
+          filename,
+          error: error.message,
+        });
+        reject(new Error(`Failed to upload attachment: ${error.message}`));
+      });
+
+      req.setTimeout(60000, () => {
+        req.destroy();
+        reject(new Error('Attachment upload timeout'));
+      });
+
+      req.write(body);
+      req.end();
+    });
+  }
+
+  /**
+   * Get Jira issue URL
+   */
+  getIssueUrl(issueKey: string): string {
+    return `${this.host}/browse/${issueKey}`;
+  }
+}
