@@ -15,23 +15,9 @@ import type {
   QueueMetrics,
   QueueStats,
 } from './types.js';
+import { QUEUE_NAMES_ARRAY } from './types.js';
 
 const logger = getLogger();
-
-/**
- * Queue Names Registry - Single source of truth for all queues
- *
- * Adding a new queue:
- * 1. Add queue name to this array
- * 2. Define corresponding types in types.ts
- * 3. Update worker-manager if needed
- */
-export const QUEUE_NAMES: readonly QueueName[] = [
-  'screenshots',
-  'replays',
-  'integrations',
-  'notifications',
-] as const;
 
 export class QueueManager {
   private connection: Redis;
@@ -86,7 +72,7 @@ export class QueueManager {
       return;
     }
 
-    for (const queueName of QUEUE_NAMES) {
+    for (const queueName of QUEUE_NAMES_ARRAY) {
       await this.createQueue(queueName);
     }
 
