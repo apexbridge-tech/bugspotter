@@ -267,49 +267,51 @@ export class JiraClient {
 
   /**
    * Upload attachment to Jira issue
-   * Uses multipart/form-data encoding
+   * Uses multipart/form-data encoding with streaming to prevent memory issues
+   * Implements proper backpressure handling for streams
    */
   async uploadAttachment(
     issueKey: string,
-    file: Buffer,
+    file: Buffer | NodeJS.ReadableStream,
     filename: string
   ): Promise<JiraAttachment> {
+    const isStream = !Buffer.isBuffer(file);
+    const buffer = isStream ? null : (file as Buffer);
+
     logger.info('Uploading attachment to Jira', {
       issueKey,
       filename,
-      size: file.length,
+      size: isStream ? 'streaming' : buffer!.length,
     });
 
     return new Promise((resolve, reject) => {
       const boundary = `----WebKitFormBoundary${Date.now()}`;
       const auth = Buffer.from(`${this.email}:${this.apiToken}`).toString('base64');
 
-      // Build multipart form data
-      const formData: Buffer[] = [];
+      // Build headers with optional Content-Length for buffers
+      const headers: Record<string, string> = {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'X-Atlassian-Token': 'no-check', // Required by Jira
+      };
 
-      // Add file field
-      formData.push(Buffer.from(`--${boundary}\r\n`));
-      formData.push(
-        Buffer.from(`Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`)
-      );
-      formData.push(Buffer.from('Content-Type: application/octet-stream\r\n\r\n'));
-      formData.push(file);
-      formData.push(Buffer.from('\r\n'));
-      formData.push(Buffer.from(`--${boundary}--\r\n`));
-
-      const body = Buffer.concat(formData);
+      // For buffers, calculate exact content length (better performance)
+      if (!isStream && buffer) {
+        const preamble = Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+            `Content-Type: application/octet-stream\r\n\r\n`
+        );
+        const epilogue = Buffer.from(`\r\n--${boundary}--\r\n`);
+        headers['Content-Length'] = String(preamble.length + buffer.length + epilogue.length);
+      }
 
       const requestOptions = {
         hostname: this.baseUrl.hostname,
         port: this.baseUrl.port || 443,
         path: JIRA_ENDPOINTS.ADD_ATTACHMENT(issueKey),
         method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': `multipart/form-data; boundary=${boundary}`,
-          'X-Atlassian-Token': 'no-check', // Required by Jira
-          'Content-Length': body.length,
-        },
+        headers,
       };
 
       const req = httpsRequest(requestOptions, (res) => {
@@ -327,13 +329,18 @@ export class JiraClient {
               statusCode,
               issueKey,
               filename,
+              response: data,
             });
-            return reject(new Error(`Failed to upload attachment: ${statusCode}`));
+            return reject(new Error(`Failed to upload attachment: HTTP ${statusCode}`));
           }
 
           try {
             const attachments = JSON.parse(data) as JiraAttachment[];
             const attachment = attachments[0];
+
+            if (!attachment) {
+              return reject(new Error('No attachment returned from Jira'));
+            }
 
             logger.info('Attachment uploaded to Jira', {
               issueKey,
@@ -342,8 +349,12 @@ export class JiraClient {
             });
 
             resolve(attachment);
-          } catch {
-            reject(new Error('Failed to parse attachment response'));
+          } catch (error) {
+            reject(
+              new Error(
+                `Failed to parse attachment response: ${error instanceof Error ? error.message : String(error)}`
+              )
+            );
           }
         });
       });
@@ -359,11 +370,56 @@ export class JiraClient {
 
       req.setTimeout(60000, () => {
         req.destroy();
-        reject(new Error('Attachment upload timeout'));
+        reject(new Error('Attachment upload timeout (60s)'));
       });
 
-      req.write(body);
-      req.end();
+      // Write multipart form data
+      const preamble =
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+        `Content-Type: application/octet-stream\r\n\r\n`;
+
+      const epilogue = `\r\n--${boundary}--\r\n`;
+
+      // Write preamble
+      req.write(preamble);
+
+      if (isStream) {
+        // Stream with proper backpressure handling
+        const stream = file as NodeJS.ReadableStream;
+        let streamEnded = false;
+
+        stream.on('data', (chunk: Buffer) => {
+          // Respect backpressure - pause stream if request buffer is full
+          if (!req.write(chunk)) {
+            stream.pause();
+          }
+        });
+
+        // Resume stream when request buffer drains
+        req.on('drain', () => {
+          if (!streamEnded) {
+            stream.resume();
+          }
+        });
+
+        stream.on('end', () => {
+          streamEnded = true;
+          req.write(epilogue);
+          req.end();
+        });
+
+        stream.on('error', (error) => {
+          streamEnded = true;
+          req.destroy();
+          reject(new Error(`Stream error: ${error.message}`));
+        });
+      } else {
+        // Write buffer directly
+        req.write(buffer!);
+        req.write(epilogue);
+        req.end();
+      }
     });
   }
 

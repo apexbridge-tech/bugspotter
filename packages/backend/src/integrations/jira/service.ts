@@ -160,6 +160,7 @@ export class JiraIntegrationService implements IntegrationService {
 
   /**
    * Upload screenshot to Jira as attachment
+   * Uses streaming to prevent memory issues with large files
    */
   private async uploadScreenshotToJira(
     client: JiraClient,
@@ -173,17 +174,14 @@ export class JiraIntegrationService implements IntegrationService {
     // or S3: https://bucket.s3.region.amazonaws.com/screenshots/proj-id/bug-id/filename.png
     const key = this.extractStorageKey(screenshotUrl);
 
-    // Download screenshot from storage
+    // Get screenshot stream from storage (memory-efficient)
     const stream = await this.storage.getObject(key);
-
-    // Convert stream to buffer
-    const buffer = await this.streamToBuffer(stream);
 
     // Extract filename from key
     const filename = key.split('/').pop() || DEFAULT_SCREENSHOT_FILENAME;
 
-    // Upload to Jira
-    return await client.uploadAttachment(issueKey, buffer, filename);
+    // Upload to Jira using streaming (prevents buffering entire file in memory)
+    return await client.uploadAttachment(issueKey, stream, filename);
   }
 
   /**
@@ -210,27 +208,6 @@ export class JiraIntegrationService implements IntegrationService {
   }
 
   /**
-   * Convert readable stream to buffer
-   */
-  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
-    const chunks: Buffer[] = [];
-
-    return new Promise((resolve, reject) => {
-      stream.on('data', (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-
-      stream.on('end', () => {
-        resolve(Buffer.concat(chunks));
-      });
-
-      stream.on('error', (error) => {
-        reject(error);
-      });
-    });
-  }
-
-  /**
    * Save ticket reference to database
    * Atomically saves to both tickets table (for queries) and bug_reports metadata (for fast access)
    * Uses transaction to ensure both writes succeed or fail together
@@ -253,7 +230,8 @@ export class JiraIntegrationService implements IntegrationService {
         externalUrl,
       });
     });
-  } /**
+  }
+  /**
    * Test Jira connection for project (implements IntegrationService interface)
    */
   async testConnection(projectId: string): Promise<boolean> {
@@ -263,6 +241,15 @@ export class JiraIntegrationService implements IntegrationService {
     }
     const result = await JiraConfigManager.validate(config);
     return result.valid;
+  }
+
+  /**
+   * Validate configuration object (implements IntegrationService interface)
+   */
+  async validateConfig(
+    config: Record<string, unknown>
+  ): Promise<{ valid: boolean; error?: string; details?: Record<string, unknown> }> {
+    return JiraConfigManager.validate(config as unknown as JiraConfig);
   }
 
   /**

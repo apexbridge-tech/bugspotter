@@ -7,7 +7,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { DatabaseClient } from '../../db/client.js';
 import type { IStorageService } from '../../storage/types.js';
-import type { JiraConfig } from '../../integrations/jira/types.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
 import { checkProjectAccess } from '../utils/resource.js';
 import { AppError } from '../middleware/error.js';
@@ -17,16 +16,6 @@ import { getEncryptionService } from '../../utils/encryption.js';
 import { getLogger } from '../../logger.js';
 
 const logger = getLogger();
-
-/**
- * Generic configuration validator
- * Each platform should implement its own validation logic
- */
-interface ConfigValidationResult {
-  valid: boolean;
-  error?: string;
-  details?: Record<string, unknown>;
-}
 
 /**
  * Register integration routes
@@ -79,10 +68,13 @@ export async function registerIntegrationRoutes(
         userId: request.authUser.id,
       });
 
-      // Platform-specific validation logic
-      // For now, we'll delegate to platform-specific validation
-      // TODO: Add generic validation through plugin interface
-      const result = await validatePlatformConfig(platform, config);
+      // Get plugin and validate through its interface
+      const service = registry.get(platform);
+      if (!service) {
+        throw new AppError(`Integration platform '${platform}' not found`, 404, 'NotFound');
+      }
+
+      const result = await service.validateConfig(config);
 
       return sendSuccess(reply, result);
     }
@@ -254,28 +246,6 @@ export async function registerIntegrationRoutes(
       });
     }
   );
-
-  /**
-   * Helper: Validate platform-specific configuration
-   */
-  async function validatePlatformConfig(
-    platform: string,
-    config: Record<string, unknown>
-  ): Promise<ConfigValidationResult> {
-    // Import platform-specific validation dynamically
-    if (platform === 'jira') {
-      const { JiraConfigManager } = await import('../../integrations/jira/index.js');
-      // Validate config shape matches JiraConfig interface
-      return await JiraConfigManager.validate(config as unknown as JiraConfig);
-    }
-
-    // For other platforms, basic validation
-    logger.warn('No validation logic for platform', { platform });
-    return {
-      valid: true,
-      details: { message: 'Platform validation not implemented yet' },
-    };
-  }
 
   logger.info('Integration routes registered', {
     supportedPlatforms: registry.listPlugins().map((p: { platform: string }) => p.platform),

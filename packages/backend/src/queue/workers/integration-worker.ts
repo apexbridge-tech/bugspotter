@@ -115,8 +115,8 @@ async function processIntegrationJob(
   await progress.update(1, `Creating ${platform} issue`);
   const result = await routeToPlatform(platform, bugReportId, projectId, db, storage);
 
-  // Step 3: Store external ID in database
-  await progress.update(3, 'Updating database');
+  // Step 2: Store external ID in database
+  await progress.update(2, 'Updating database');
   await db.bugReports.updateExternalIntegration(bugReportId, result.externalId, result.externalUrl);
 
   await progress.complete('Done');

@@ -39,4 +39,15 @@ export interface IntegrationService {
    * @returns True if connection successful, false otherwise
    */
   testConnection(projectId: string): Promise<boolean>;
+
+  /**
+   * Validate configuration object
+   * @param config - Configuration object to validate
+   * @returns Validation result with error details if invalid
+   */
+  validateConfig(config: Record<string, unknown>): Promise<{
+    valid: boolean;
+    error?: string;
+    details?: Record<string, unknown>;
+  }>;
 }
