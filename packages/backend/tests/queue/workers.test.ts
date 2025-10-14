@@ -12,7 +12,8 @@ describe('Screenshot Worker', () => {
       const validData = {
         bugReportId: 'bug-123',
         projectId: 'proj-456',
-        screenshotUrl: 'https://example.com/screenshot.png',
+        screenshotData:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       };
 
       expect(validateScreenshotJobData(validData)).toBe(true);
@@ -21,7 +22,7 @@ describe('Screenshot Worker', () => {
     it('should reject invalid screenshot job data', () => {
       const invalidData = {
         bugReportId: 'bug-123',
-        // missing projectId and screenshotUrl
+        // missing projectId and screenshotData
       };
 
       expect(validateScreenshotJobData(invalidData)).toBe(false);

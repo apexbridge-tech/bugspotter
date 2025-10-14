@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { getLogger } from '../../logger.js';
 import { getQueueConfig } from '../../config/queue.config.js';
 import type { DatabaseClient } from '../../db/client.js';
-import type { BaseStorageService } from '../../storage/base-storage-service.js';
+import type { IStorageService } from '../../storage/types.js';
 import type { ScreenshotJobData, ScreenshotJobResult } from '../types.js';
 import { validateScreenshotJobData, createScreenshotJobResult } from '../jobs/screenshot-job.js';
 import type { BaseWorker } from './base-worker.js';
@@ -25,7 +25,7 @@ const logger = getLogger();
  */
 export function createScreenshotWorker(
   db: DatabaseClient,
-  storage: BaseStorageService,
+  storage: IStorageService,
   connection: Redis
 ): BaseWorker<ScreenshotJobData, ScreenshotJobResult, 'screenshot'> {
   /**
@@ -33,7 +33,7 @@ export function createScreenshotWorker(
    */
   async function processScreenshot(job: Job<ScreenshotJobData>): Promise<ScreenshotJobResult> {
     const startTime = Date.now();
-    const { bugReportId, projectId, screenshotUrl } = job.data;
+    const { bugReportId, projectId, screenshotData } = job.data;
 
     // Validate job data
     if (!validateScreenshotJobData(job.data)) {
@@ -44,15 +44,15 @@ export function createScreenshotWorker(
       jobId: job.id,
       bugReportId,
       projectId,
-      screenshotUrl,
     });
 
     try {
       const progress = new ProgressTracker(job, 4);
 
-      // Step 1: Download
-      await progress.update(1, 'Downloading original');
-      const originalBuffer = await downloadScreenshot(screenshotUrl);
+      // Step 1: Decode base64 data URL
+      await progress.update(1, 'Decoding screenshot');
+      const base64Data = screenshotData.replace(/^data:image\/\w+;base64,/, '');
+      const originalBuffer = Buffer.from(base64Data, 'base64');
 
       // Get image metadata
       const metadata = await getImageMetadata(originalBuffer);
@@ -145,25 +145,6 @@ export function createScreenshotWorker(
       })
       .jpeg({ quality: 80 })
       .toBuffer();
-  }
-
-  /**
-   * Download screenshot from storage
-   */
-  async function downloadScreenshot(url: string): Promise<Buffer> {
-    // Extract key from URL
-    const key = url.includes('://') ? new URL(url).pathname.substring(1) : url;
-
-    // Download from storage
-    const stream = await storage.getObject(key);
-
-    // Convert stream to buffer
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-
-    return Buffer.concat(chunks);
   }
 
   // Create worker using factory with custom rate limiting

@@ -28,7 +28,7 @@ import { buildReplayChunkUrl, buildReplayManifestUrl } from '../../storage/stora
 
 const logger = getLogger();
 import { DatabaseClient } from '../../db/client.js';
-import type { BaseStorageService } from '../../storage/base-storage-service.js';
+import type { IStorageService } from '../../storage/types.js';
 import {
   REPLAY_JOB_NAME,
   validateReplayJobData,
@@ -199,7 +199,7 @@ async function processAndUploadChunks(
   eventChunks: Array<Array<{ timestamp: number; [key: string]: unknown }>>,
   projectId: string,
   bugReportId: string,
-  storage: BaseStorageService,
+  storage: IStorageService,
   jobId: string | undefined
 ): Promise<Array<ReplayChunk>> {
   const chunks: Array<ReplayChunk> = [];
@@ -261,7 +261,7 @@ function buildReplayManifest(
 async function processReplayJob(
   job: Job<ReplayJobData, ReplayJobResult>,
   db: DatabaseClient,
-  storage: BaseStorageService
+  storage: IStorageService
 ): Promise<ReplayJobResult> {
   const startTime = Date.now();
 
@@ -351,7 +351,7 @@ async function processReplayJob(
  */
 export function createReplayWorker(
   db: DatabaseClient,
-  storage: BaseStorageService,
+  storage: IStorageService,
   connection: Redis
 ): BaseWorker<ReplayJobData, ReplayJobResult> {
   const worker = createWorker<ReplayJobData, ReplayJobResult>({

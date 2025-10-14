@@ -21,7 +21,7 @@ import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
 import type { DatabaseClient } from '../../db/client.js';
-import type { BaseStorageService } from '../../storage/base-storage-service.js';
+import type { IStorageService } from '../../storage/types.js';
 import {
   INTEGRATION_JOB_NAME,
   validateIntegrationJobData,
@@ -317,7 +317,7 @@ async function processIntegrationJob(
  */
 export function createIntegrationWorker(
   db: DatabaseClient,
-  _storage: BaseStorageService,
+  _storage: IStorageService,
   connection: Redis
 ): BaseWorker<IntegrationJobData, IntegrationJobResult> {
   const worker = createWorker<IntegrationJobData, IntegrationJobResult>({

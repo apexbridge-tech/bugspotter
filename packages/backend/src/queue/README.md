@@ -130,12 +130,12 @@ Redis-based job queue system using BullMQ for asynchronous processing of screens
 
     ```typescript
     // POST /api/v1/reports
-    // After saving report to DB, queue jobs:
-    if (screenshotBuffer) {
+    // After saving report to DB, queue processing job with raw screenshot data
+    if (screenshotData) {
       const jobId = await queueManager.addJob('screenshots', 'process-screenshot', {
         bugReportId: report.id,
         projectId: report.project_id,
-        screenshotUrl: uploadResult.url,
+        screenshotData: screenshotData, // Base64 data URL from SDK
       });
     }
 
@@ -238,10 +238,10 @@ WORKER_REPLAY_ENABLED=true
 WORKER_INTEGRATION_ENABLED=true
 WORKER_NOTIFICATION_ENABLED=true
 
-SCREENSHOT_CONCURRENCY=5
-REPLAY_CONCURRENCY=3
-INTEGRATION_CONCURRENCY=10
-NOTIFICATION_CONCURRENCY=5
+WORKER_SCREENSHOT_CONCURRENCY=5
+WORKER_REPLAY_CONCURRENCY=3
+WORKER_INTEGRATION_CONCURRENCY=10
+WORKER_NOTIFICATION_CONCURRENCY=5
 
 # Job Configuration
 JOB_RETENTION_DAYS=7
@@ -284,7 +284,7 @@ await queueManager.initialize();
 const jobId = await queueManager.addJob('screenshots', 'process-screenshot', {
   bugReportId: 'bug-123',
   projectId: 'proj-456',
-  screenshotUrl: 's3://bucket/path/to/screenshot.png',
+  screenshotData: 'data:image/png;base64,...', // Base64 from SDK
 });
 
 // Check job status

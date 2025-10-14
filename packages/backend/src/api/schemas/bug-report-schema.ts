@@ -7,6 +7,21 @@ import { paginationSchema, paginationResponseSchema, sortOrderSchema } from './c
 export const bugStatusEnum = ['open', 'in-progress', 'resolved', 'closed'] as const;
 export const bugPriorityEnum = ['low', 'medium', 'high', 'critical'] as const;
 
+// Named constants for commonly used enum values
+export const BugStatus = {
+  OPEN: 'open' as const,
+  IN_PROGRESS: 'in-progress' as const,
+  RESOLVED: 'resolved' as const,
+  CLOSED: 'closed' as const,
+};
+
+export const BugPriority = {
+  LOW: 'low' as const,
+  MEDIUM: 'medium' as const,
+  HIGH: 'high' as const,
+  CRITICAL: 'critical' as const,
+};
+
 export const bugReportSchema = {
   type: 'object',
   required: ['id', 'project_id', 'title', 'status', 'priority', 'created_at', 'updated_at'],

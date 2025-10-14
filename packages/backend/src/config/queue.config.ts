@@ -49,7 +49,7 @@ function loadWorkerConfig(workerName: WorkerName, defaultConcurrency: number): W
   const upperName = workerName.toUpperCase();
   return {
     enabled: getEnvBool(`WORKER_${upperName}_ENABLED`),
-    concurrency: getEnvInt(`${upperName}_CONCURRENCY`, defaultConcurrency),
+    concurrency: getEnvInt(`WORKER_${upperName}_CONCURRENCY`, defaultConcurrency),
   };
 }
 
@@ -134,7 +134,7 @@ export function validateQueueConfig(config: QueueConfig): void {
 
   // Worker configuration
   for (const [workerName, workerConfig] of Object.entries(config.workers)) {
-    assertRange(workerConfig.concurrency, `${workerName.toUpperCase()}_CONCURRENCY`, 1, 100);
+    assertRange(workerConfig.concurrency, `WORKER_${workerName.toUpperCase()}_CONCURRENCY`, 1, 100);
   }
 
   // Job configuration

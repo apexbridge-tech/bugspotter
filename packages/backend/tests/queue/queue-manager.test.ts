@@ -114,7 +114,8 @@ describe('QueueManager', () => {
       const jobData: ScreenshotJobData = {
         bugReportId: 'bug-123',
         projectId: 'proj-456',
-        screenshotUrl: 'https://example.com/screenshot.png',
+        screenshotData:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       };
 
       const jobId = await queueManager.addJob('screenshots', 'process-screenshot', jobData);
@@ -128,7 +129,8 @@ describe('QueueManager', () => {
       const jobData: ScreenshotJobData = {
         bugReportId: 'bug-123',
         projectId: 'proj-456',
-        screenshotUrl: 'https://example.com/screenshot.png',
+        screenshotData:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       };
 
       const jobId = await queueManager.addJob('screenshots', 'process-screenshot', jobData, {

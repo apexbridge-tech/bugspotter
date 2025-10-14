@@ -22,7 +22,7 @@ import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
 import type { DatabaseClient } from '../../db/client.js';
-import type { BaseStorageService } from '../../storage/base-storage-service.js';
+import type { IStorageService } from '../../storage/types.js';
 import {
   NOTIFICATION_JOB_NAME,
   validateNotificationJobData,
@@ -356,7 +356,7 @@ async function processNotificationJob(
  */
 export function createNotificationWorker(
   db: DatabaseClient,
-  _storage: BaseStorageService,
+  _storage: IStorageService,
   connection: Redis
 ): BaseWorker<NotificationJobData, NotificationJobResult> {
   const worker = createWorker<NotificationJobData, NotificationJobResult>({

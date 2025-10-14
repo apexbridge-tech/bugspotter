@@ -52,7 +52,7 @@ async function main() {
 
     // Create and start worker manager
     logger.info('Creating worker manager...');
-    const workerManager = new WorkerManager(db, storage as any); // Cast needed due to interface/class mismatch
+    const workerManager = new WorkerManager(db, storage);
 
     logger.info('Starting workers...');
     await workerManager.start();

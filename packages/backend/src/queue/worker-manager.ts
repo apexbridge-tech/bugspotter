@@ -22,7 +22,7 @@
 import { getLogger } from '../logger.js';
 import type { Redis } from 'ioredis';
 import { DatabaseClient } from '../db/client.js';
-import type { BaseStorageService } from '../storage/base-storage-service.js';
+import type { IStorageService } from '../storage/types.js';
 import { getQueueConfig } from '../config/queue.config.js';
 import { getQueueManager } from './queue-manager.js';
 import { createScreenshotWorker } from './workers/screenshot-worker.js';
@@ -39,7 +39,7 @@ const logger = getLogger();
  */
 type WorkerFactory = (
   db: DatabaseClient,
-  storage: BaseStorageService,
+  storage: IStorageService,
   connection: Redis
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BaseWorker needs generic flexibility for different job types
 ) => BaseWorker<any, any, any>;
@@ -106,11 +106,11 @@ export class WorkerManager {
   private workers: Map<string, BaseWorker<any, any, any>>;
   private workerMetrics: Map<string, WorkerMetrics>;
   private db: DatabaseClient;
-  private storage: BaseStorageService;
+  private storage: IStorageService;
   private startTime: Date | null = null;
   private isShuttingDown = false;
 
-  constructor(db: DatabaseClient, storage: BaseStorageService) {
+  constructor(db: DatabaseClient, storage: IStorageService) {
     this.db = db;
     this.storage = storage;
     this.workers = new Map();
@@ -445,10 +445,7 @@ let workerManagerInstance: WorkerManager | null = null;
 /**
  * Create and return singleton WorkerManager instance
  */
-export function createWorkerManager(
-  db: DatabaseClient,
-  storage: BaseStorageService
-): WorkerManager {
+export function createWorkerManager(db: DatabaseClient, storage: IStorageService): WorkerManager {
   if (!workerManagerInstance) {
     workerManagerInstance = new WorkerManager(db, storage);
   }

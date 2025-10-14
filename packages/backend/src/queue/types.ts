@@ -16,6 +16,14 @@ export const QUEUE_NAMES = {
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 
+// Job ID prefixes for different queue types
+export const JOB_ID_PREFIXES = {
+  SCREENSHOT: 'screenshot-',
+  REPLAY: 'replay-',
+  INTEGRATION: 'integration-',
+  NOTIFICATION: 'notification-',
+} as const;
+
 // ============================================================================
 // Job Data Interfaces
 // ============================================================================
@@ -23,7 +31,7 @@ export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
 export interface ScreenshotJobData {
   bugReportId: string;
   projectId: string;
-  screenshotUrl: string;
+  screenshotData: string; // Base64 data URL from SDK
   originalFilename?: string;
 }
 

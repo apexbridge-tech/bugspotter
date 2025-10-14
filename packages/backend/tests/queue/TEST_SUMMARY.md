@@ -36,7 +36,6 @@
 
 **Known Issues:**
 
-- Environment variable names don't match (e.g., `WORKER_SCREENSHOT_CONCURRENCY` vs `SCREENSHOT_CONCURRENCY`)
 - Validation tests need complete config objects with all required properties
 - Some config properties were renamed (e.g., `processing.screenshotQuality` → `screenshot.quality`)
 
@@ -80,7 +79,6 @@
    - Notification job name: `'send-notification'` not `'process-notification'`
 
 2. **Fix config tests**: Update environment variable names
-   - Use `SCREENSHOT_CONCURRENCY` not `WORKER_SCREENSHOT_CONCURRENCY`
    - Add all required config properties to validation tests
 
 ### Medium Effort (30-60 minutes)

@@ -27,8 +27,8 @@ export function validateScreenshotJobData(data: unknown): data is ScreenshotJobD
     typeof d.bugReportId === 'string' &&
     d.projectId &&
     typeof d.projectId === 'string' &&
-    d.screenshotUrl &&
-    typeof d.screenshotUrl === 'string'
+    d.screenshotData &&
+    typeof d.screenshotData === 'string'
   );
 }
 

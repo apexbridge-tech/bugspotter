@@ -49,8 +49,8 @@ describe('Queue Configuration', () => {
     });
 
     it('should parse worker concurrency from environment', () => {
-      process.env.SCREENSHOT_CONCURRENCY = '10';
-      process.env.REPLAY_CONCURRENCY = '5';
+      process.env.WORKER_SCREENSHOT_CONCURRENCY = '10';
+      process.env.WORKER_REPLAY_CONCURRENCY = '5';
       const config = loadQueueConfig();
 
       expect(config.workers.screenshot.concurrency).toBe(10);
@@ -58,7 +58,7 @@ describe('Queue Configuration', () => {
     });
 
     it('should use default concurrency if not provided', () => {
-      delete process.env.SCREENSHOT_CONCURRENCY;
+      delete process.env.WORKER_SCREENSHOT_CONCURRENCY;
       const config = loadQueueConfig();
 
       expect(config.workers.screenshot.concurrency).toBe(5);
@@ -158,7 +158,7 @@ describe('Queue Configuration', () => {
       } as any;
 
       expect(() => validateQueueConfig(invalidConfig)).toThrow(
-        'SCREENSHOT_CONCURRENCY must be between 1 and 100'
+        'WORKER_SCREENSHOT_CONCURRENCY must be between 1 and 100'
       );
     });
 
@@ -177,7 +177,7 @@ describe('Queue Configuration', () => {
       } as any;
 
       expect(() => validateQueueConfig(invalidConfig)).toThrow(
-        'SCREENSHOT_CONCURRENCY must be between 1 and 100'
+        'WORKER_SCREENSHOT_CONCURRENCY must be between 1 and 100'
       );
     });
 
@@ -299,7 +299,7 @@ describe('Queue Configuration', () => {
     });
 
     it('should handle numeric string values', () => {
-      process.env.SCREENSHOT_CONCURRENCY = '15';
+      process.env.WORKER_SCREENSHOT_CONCURRENCY = '15';
       process.env.MAX_JOB_RETRIES = '5';
       const config = loadQueueConfig();
 
