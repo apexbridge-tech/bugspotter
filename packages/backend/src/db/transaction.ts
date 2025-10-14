@@ -11,6 +11,7 @@ import {
   SessionRepository,
   TicketRepository,
 } from './repositories.js';
+import { ProjectIntegrationRepository } from './project-integration.repository.js';
 
 export interface RepositoryRegistry {
   projects: ProjectRepository;
@@ -19,6 +20,7 @@ export interface RepositoryRegistry {
   users: UserRepository;
   sessions: SessionRepository;
   tickets: TicketRepository;
+  projectIntegrations: ProjectIntegrationRepository;
   retention: BugReportRepository;
 }
 
@@ -36,6 +38,7 @@ export function createRepositories(pool: Pool | PoolClient): RepositoryRegistry 
     users: new UserRepository(pool),
     sessions: new SessionRepository(pool),
     tickets: new TicketRepository(pool),
+    projectIntegrations: new ProjectIntegrationRepository(pool),
     // Retention operations consolidated into BugReportRepository
     retention: bugReports,
   };

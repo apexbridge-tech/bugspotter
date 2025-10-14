@@ -34,7 +34,8 @@ import { createBaseWorkerWrapper } from './base-worker.js';
 import { attachStandardEventHandlers } from './worker-events.js';
 import { ProgressTracker } from './progress-tracker.js';
 import { createWorker } from './worker-factory.js';
-import { IntegrationServiceRegistry } from '../../integrations/integration-registry.js';
+import { PluginRegistry } from '../../integrations/plugin-registry.js';
+import { loadIntegrationPlugins } from '../../integrations/plugin-loader.js';
 
 const logger = getLogger();
 
@@ -48,8 +49,6 @@ interface PlatformIntegrationResult {
   metadata?: Record<string, unknown>;
 }
 
-
-
 /**
  * Route integration to platform-specific handler using registry
  */
@@ -61,7 +60,8 @@ async function routeToPlatform(
   storage: IStorageService
 ): Promise<PlatformIntegrationResult> {
   // Create integration service registry
-  const registry = new IntegrationServiceRegistry(db, storage);
+  const registry = new PluginRegistry(db, storage);
+  await loadIntegrationPlugins(registry);
 
   // Get service for platform
   const service = registry.get(platform);

@@ -310,9 +310,8 @@ export class JiraBugReportMapper {
    */
   toJiraIssue(bugReport: BugReport): JiraIssueFields {
     // Truncate title to Jira's 255 character limit
-    const summary = bugReport.title.length > 255 
-      ? bugReport.title.substring(0, 252) + '...'
-      : bugReport.title;
+    const summary =
+      bugReport.title.length > 255 ? bugReport.title.substring(0, 252) + '...' : bugReport.title;
 
     const issueFields: JiraIssueFields = {
       project: {
@@ -338,8 +337,6 @@ export class JiraBugReportMapper {
    * Format description for Jira (convenience method)
    */
   formatDescription(bugReport: BugReport): string | JiraDescription {
-    return this.useADF
-      ? createADFDescription(bugReport)
-      : createPlainTextDescription(bugReport);
+    return this.useADF ? createADFDescription(bugReport) : createPlainTextDescription(bugReport);
   }
 }

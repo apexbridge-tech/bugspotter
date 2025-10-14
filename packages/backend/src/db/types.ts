@@ -57,12 +57,17 @@ export interface Session {
   created_at: Date;
 }
 
+/**
+ * Ticket status values
+ */
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'reopened';
+
 export interface Ticket {
   id: string;
   bug_report_id: string;
   external_id: string;
   platform: string;
-  status: string | null;
+  status: TicketStatus | null;
   created_at: Date;
 }
 

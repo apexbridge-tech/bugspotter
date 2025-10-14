@@ -1,18 +1,32 @@
 /**
  * Integration routes
- * API endpoints for external platform integrations (Jira, GitHub, etc.)
+ * Generic API endpoints for external platform integrations (Jira, GitHub, etc.)
+ * Works with any integration plugin through the plugin registry
  */
 
 import type { FastifyInstance } from 'fastify';
 import type { DatabaseClient } from '../../db/client.js';
 import type { IStorageService } from '../../storage/types.js';
+import type { JiraConfig } from '../../integrations/jira/types.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
 import { checkProjectAccess } from '../utils/resource.js';
 import { AppError } from '../middleware/error.js';
-import { JiraIntegrationService, type JiraConfig } from '../../integrations/jira/index.js';
+import { PluginRegistry } from '../../integrations/plugin-registry.js';
+import { loadIntegrationPlugins } from '../../integrations/plugin-loader.js';
+import { getEncryptionService } from '../../utils/encryption.js';
 import { getLogger } from '../../logger.js';
 
 const logger = getLogger();
+
+/**
+ * Generic configuration validator
+ * Each platform should implement its own validation logic
+ */
+interface ConfigValidationResult {
+  valid: boolean;
+  error?: string;
+  details?: Record<string, unknown>;
+}
 
 /**
  * Register integration routes
@@ -22,185 +36,248 @@ export async function registerIntegrationRoutes(
   db: DatabaseClient,
   storage: IStorageService
 ): Promise<void> {
-  const jiraService = new JiraIntegrationService(db, storage);
+  // Initialize plugin registry
+  const registry = new PluginRegistry(db, storage);
+  await loadIntegrationPlugins(registry);
+
+  const encryptionService = getEncryptionService();
 
   /**
-   * Test Jira connection
-   * POST /api/integrations/jira/test
+   * List available integration platforms
+   * GET /api/integrations/platforms
    */
-  server.post(
-    '/api/integrations/jira/test',
+  server.get('/api/integrations/platforms', async (request, reply) => {
+    if (!request.authUser) {
+      throw new AppError('Authentication required', 401, 'Unauthorized');
+    }
+
+    const platforms = registry.listPlugins();
+    return sendSuccess(reply, platforms);
+  });
+
+  /**
+   * Test integration connection with provided config
+   * POST /api/integrations/:platform/test
+   */
+  server.post<{ Params: { platform: string }; Body: Record<string, unknown> }>(
+    '/api/integrations/:platform/test',
     async (request, reply) => {
       if (!request.authUser) {
         throw new AppError('Authentication required', 401, 'Unauthorized');
       }
 
-      const { host, email, apiToken, projectKey, issueType } = request.body as {
-        host: string;
-        email: string;
-        apiToken: string;
-        projectKey: string;
-        issueType?: string;
-      };
+      const { platform } = request.params;
+      const config = request.body;
 
-      logger.info('Testing Jira connection', {
-        host,
-        projectKey,
+      // Check if platform is supported
+      if (!registry.isSupported(platform)) {
+        throw new AppError(`Integration platform '${platform}' not supported`, 400, 'BadRequest');
+      }
+
+      logger.info('Testing integration connection', {
+        platform,
         userId: request.authUser.id,
       });
 
-      const config: JiraConfig = {
-        host,
-        email,
-        apiToken,
-        projectKey,
-        issueType: issueType || 'Bug',
-        enabled: true,
-      };
-
-      const result = await jiraService.testConnectionWithConfig(config);
+      // Platform-specific validation logic
+      // For now, we'll delegate to platform-specific validation
+      // TODO: Add generic validation through plugin interface
+      const result = await validatePlatformConfig(platform, config);
 
       return sendSuccess(reply, result);
     }
   );
 
   /**
-   * Save Jira configuration for project
-   * POST /api/integrations/jira
+   * Save integration configuration for project
+   * POST /api/integrations/:platform/:projectId
    */
-  server.post(
-    '/api/integrations/jira',
-    async (request, reply) => {
-      if (!request.authUser) {
-        throw new AppError('Authentication required', 401, 'Unauthorized');
-      }
-
-      const { projectId, host, email, apiToken, projectKey, issueType, enabled } = request.body as {
-        projectId: string;
-        host: string;
-        email: string;
-        apiToken: string;
-        projectKey: string;
-        issueType?: string;
-        enabled?: boolean;
-      };
-
-      // Check project access
-      await checkProjectAccess(projectId, request.authUser, request.authProject, db, 'Project');
-
-      logger.info('Saving Jira configuration', {
-        projectId,
-        host,
-        projectKey,
-        userId: request.authUser.id,
-      });
-
-      const config: JiraConfig = {
-        host,
-        email,
-        apiToken,
-        projectKey,
-        issueType: issueType || 'Bug',
-        enabled: enabled !== false,
-      };
-
-      await jiraService.saveConfiguration(projectId, config);
-
-      return sendCreated(reply, { message: 'Jira configuration saved successfully' });
+  server.post<{
+    Params: { platform: string; projectId: string };
+    Body: {
+      config: Record<string, unknown>;
+      credentials: Record<string, unknown>;
+      enabled?: boolean;
+    };
+  }>('/api/integrations/:platform/:projectId', async (request, reply) => {
+    if (!request.authUser) {
+      throw new AppError('Authentication required', 401, 'Unauthorized');
     }
-  );
+
+    const { platform, projectId } = request.params;
+    const { config, credentials, enabled = true } = request.body;
+
+    // Check if platform is supported
+    if (!registry.isSupported(platform)) {
+      throw new AppError(`Integration platform '${platform}' not supported`, 400, 'BadRequest');
+    }
+
+    // Check project access
+    await checkProjectAccess(projectId, request.authUser, request.authProject, db, 'Project');
+
+    logger.info('Saving integration configuration', {
+      platform,
+      projectId,
+      userId: request.authUser.id,
+    });
+
+    // Encrypt credentials
+    const encryptedCredentials = encryptionService.encrypt(JSON.stringify(credentials));
+
+    // Save to database using repository
+    await db.projectIntegrations.upsert(projectId, platform, {
+      enabled,
+      config,
+      encrypted_credentials: encryptedCredentials,
+    });
+
+    return sendCreated(reply, { message: `${platform} configuration saved successfully` });
+  });
 
   /**
-   * Get Jira configuration for project
-   * GET /api/integrations/jira/:projectId
+   * Get integration configuration for project
+   * GET /api/integrations/:platform/:projectId
    */
-  server.get<{ Params: { projectId: string } }>(
-    '/api/integrations/jira/:projectId',
+  server.get<{ Params: { platform: string; projectId: string } }>(
+    '/api/integrations/:platform/:projectId',
     async (request, reply) => {
       if (!request.authUser) {
         throw new AppError('Authentication required', 401, 'Unauthorized');
       }
 
-      const { projectId } = request.params;
+      const { platform, projectId } = request.params;
+
+      // Check if platform is supported
+      if (!registry.isSupported(platform)) {
+        throw new AppError(`Integration platform '${platform}' not supported`, 400, 'BadRequest');
+      }
 
       // Check project access
       await checkProjectAccess(projectId, request.authUser, request.authProject, db, 'Project');
 
-      const config = await jiraService.getConfiguration(projectId);
+      // Load from database
+      const integration = await db.projectIntegrations.findByProjectAndPlatform(
+        projectId,
+        platform
+      );
 
-      if (!config) {
+      if (!integration) {
         return sendSuccess(reply, null);
       }
 
       // Return config without sensitive credentials
       return sendSuccess(reply, {
-        host: config.host,
-        projectKey: config.projectKey,
-        issueType: config.issueType,
-        enabled: config.enabled,
+        platform: integration.platform,
+        enabled: integration.enabled,
+        config: integration.config,
+        // Do NOT return encrypted_credentials
       });
     }
   );
 
   /**
-   * Update Jira integration status (enable/disable)
-   * PATCH /api/integrations/jira/:projectId
+   * Update integration status (enable/disable)
+   * PATCH /api/integrations/:platform/:projectId
    */
-  server.patch<{ Params: { projectId: string }; Body: { enabled: boolean } }>(
-    '/api/integrations/jira/:projectId',
+  server.patch<{ Params: { platform: string; projectId: string }; Body: { enabled: boolean } }>(
+    '/api/integrations/:platform/:projectId',
     async (request, reply) => {
       if (!request.authUser) {
         throw new AppError('Authentication required', 401, 'Unauthorized');
       }
 
-      const { projectId } = request.params;
+      const { platform, projectId } = request.params;
       const { enabled } = request.body;
+
+      // Check if platform is supported
+      if (!registry.isSupported(platform)) {
+        throw new AppError(`Integration platform '${platform}' not supported`, 400, 'BadRequest');
+      }
 
       // Check project access
       await checkProjectAccess(projectId, request.authUser, request.authProject, db, 'Project');
 
-      logger.info('Updating Jira integration status', {
+      logger.info('Updating integration status', {
+        platform,
         projectId,
         enabled,
         userId: request.authUser.id,
       });
 
-      await jiraService.setEnabled(projectId, enabled);
+      const updated = await db.projectIntegrations.setEnabled(projectId, platform, enabled);
+
+      if (!updated) {
+        throw new AppError(`${platform} integration not found for project`, 404, 'NotFound');
+      }
 
       return sendSuccess(reply, {
-        message: `Jira integration ${enabled ? 'enabled' : 'disabled'} successfully`,
+        message: `${platform} integration ${enabled ? 'enabled' : 'disabled'} successfully`,
       });
     }
   );
 
   /**
-   * Delete Jira configuration
-   * DELETE /api/integrations/jira/:projectId
+   * Delete integration configuration
+   * DELETE /api/integrations/:platform/:projectId
    */
-  server.delete<{ Params: { projectId: string } }>(
-    '/api/integrations/jira/:projectId',
+  server.delete<{ Params: { platform: string; projectId: string } }>(
+    '/api/integrations/:platform/:projectId',
     async (request, reply) => {
       if (!request.authUser) {
         throw new AppError('Authentication required', 401, 'Unauthorized');
       }
 
-      const { projectId } = request.params;
+      const { platform, projectId } = request.params;
+
+      // Check if platform is supported
+      if (!registry.isSupported(platform)) {
+        throw new AppError(`Integration platform '${platform}' not supported`, 400, 'BadRequest');
+      }
 
       // Check project access
       await checkProjectAccess(projectId, request.authUser, request.authProject, db, 'Project');
 
-      logger.info('Deleting Jira configuration', {
+      logger.info('Deleting integration configuration', {
+        platform,
         projectId,
         userId: request.authUser.id,
       });
 
-      await jiraService.deleteConfiguration(projectId);
+      const deleted = await db.projectIntegrations.deleteByProjectAndPlatform(projectId, platform);
+
+      if (!deleted) {
+        throw new AppError(`${platform} integration not found for project`, 404, 'NotFound');
+      }
 
       return sendSuccess(reply, {
-        message: 'Jira configuration deleted successfully',
+        message: `${platform} configuration deleted successfully`,
       });
     }
   );
 
-  logger.info('Integration routes registered');
+  /**
+   * Helper: Validate platform-specific configuration
+   */
+  async function validatePlatformConfig(
+    platform: string,
+    config: Record<string, unknown>
+  ): Promise<ConfigValidationResult> {
+    // Import platform-specific validation dynamically
+    if (platform === 'jira') {
+      const { JiraConfigManager } = await import('../../integrations/jira/index.js');
+      // Validate config shape matches JiraConfig interface
+      return await JiraConfigManager.validate(config as unknown as JiraConfig);
+    }
+
+    // For other platforms, basic validation
+    logger.warn('No validation logic for platform', { platform });
+    return {
+      valid: true,
+      details: { message: 'Platform validation not implemented yet' },
+    };
+  }
+
+  logger.info('Integration routes registered', {
+    supportedPlatforms: registry.listPlugins().map((p: { platform: string }) => p.platform),
+  });
 }

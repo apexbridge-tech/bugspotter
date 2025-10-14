@@ -4,13 +4,13 @@
 
 Capture screenshots, console logs, network requests, **session replays**, and metadata - helping developers reproduce bugs faster.
 
-[![Tests](https://img.shields.io/badge/tests-1547%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
+[![Tests](https://img.shields.io/badge/tests-1261%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
 
 ## ✨ Features
 
 | Feature                   | Description                                   |
 | ------------------------- | --------------------------------------------- |
-| �� **Session Replay**     | Record and replay user interactions (rrweb)   |
+| 📹 **Session Replay**     | Record and replay user interactions (rrweb)   |
 | 🔒 **PII Sanitization**   | Auto-redact emails, phones, cards, SSNs, etc. |
 | 📸 **Screenshots**        | CSP-safe visual capture                       |
 | 📝 **Console Logs**       | Track all console output                      |
@@ -66,12 +66,16 @@ npx browser-sync start --config bs-config.json
 
 ## 📖 Documentation
 
-| Resource           | Link                                                                         |
-| ------------------ | ---------------------------------------------------------------------------- |
-| **SDK API**        | [packages/sdk/README.md](./packages/sdk/README.md)                           |
-| **Session Replay** | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md) |
-| **Demo Guide**     | [apps/demo/README.md](./apps/demo/README.md)                                 |
-| **Contributing**   | [CONTRIBUTING.md](./CONTRIBUTING.md)                                         |
+| Resource            | Link                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **System Overview** | [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) (comprehensive architecture)                                    |
+| **SDK API**         | [packages/sdk/README.md](./packages/sdk/README.md)                                                         |
+| **Backend API**     | [packages/backend/README.md](./packages/backend/README.md)                                                 |
+| **Session Replay**  | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md)                               |
+| **Plugin System**   | [packages/backend/src/integrations/PLUGIN_SYSTEM.md](./packages/backend/src/integrations/PLUGIN_SYSTEM.md) |
+| **Security**        | [packages/backend/SECURITY.md](./packages/backend/SECURITY.md)                                             |
+| **Testing**         | [packages/backend/TESTING.md](./packages/backend/TESTING.md)                                               |
+| **Contributing**    | [CONTRIBUTING.md](./CONTRIBUTING.md)                                                                       |
 
 ## 🎬 Session Replay
 

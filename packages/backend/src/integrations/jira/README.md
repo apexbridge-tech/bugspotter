@@ -71,6 +71,7 @@ openssl rand -base64 32
 ```
 
 Add to `.env`:
+
 ```bash
 ENCRYPTION_KEY=your-generated-key-here
 ```
@@ -121,6 +122,7 @@ Authorization: Bearer <jwt-token>
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -162,6 +164,7 @@ X-Project-ID: <project-id>
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -187,10 +190,12 @@ X-Project-ID: <project-id>
 ### Automatic Integration (Queue-Based)
 
 When a bug report is created, the integration worker automatically creates a Jira ticket if:
+
 1. Jira integration is configured for the project
 2. Integration is enabled
 
 The worker:
+
 1. Fetches bug report from database
 2. Loads Jira configuration
 3. Creates Jira issue with mapped fields
@@ -227,6 +232,7 @@ console.log(`View at: ${result.issueUrl}`);
 ### Credential Storage
 
 Credentials are stored in the `project_integrations` table:
+
 - `config` (JSONB): Non-sensitive configuration (host, projectKey, issueType)
 - `encrypted_credentials` (TEXT): Encrypted JSON with `{email, apiToken}`
 
@@ -289,11 +295,13 @@ That's it! The integration worker will automatically route jobs to the correct s
 ### "ENCRYPTION_KEY environment variable is required"
 
 Generate encryption key:
+
 ```bash
 openssl rand -base64 32
 ```
 
 Add to `.env`:
+
 ```bash
 ENCRYPTION_KEY=<generated-key>
 ```
@@ -331,12 +339,14 @@ pnpm --filter @bugspotter/backend test:integration
 ## Example Jira Issue
 
 When a bug report is created with:
+
 - Title: "Login button not working"
 - Description: "Users can't log in on mobile"
 - Priority: "high"
 - Screenshot: uploaded
 
 Jira issue will be created with:
+
 - **Summary**: "Login button not working"
 - **Description**: Rich ADF format with bug details, metadata, and attachment links
 - **Priority**: High

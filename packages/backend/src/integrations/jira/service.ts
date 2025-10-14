@@ -3,9 +3,11 @@
  * Orchestrates bug report to Jira ticket creation
  */
 
+import type { BugReportRepository } from '../../db/repositories.js';
+import type { ProjectIntegrationRepository } from '../../db/project-integration.repository.js';
 import type { DatabaseClient } from '../../db/client.js';
 import type { IStorageService } from '../../storage/types.js';
-import type { BugReport } from '../../db/types.js';
+import type { BugReport, TicketStatus } from '../../db/types.js';
 import type { IntegrationService } from '../base-integration.service.js';
 import type { IntegrationResult } from '../base-integration.service.js';
 import { getLogger } from '../../logger.js';
@@ -16,21 +18,33 @@ import type { JiraIntegrationResult, JiraConfig } from './types.js';
 
 const logger = getLogger();
 
+// Constants
+const PLATFORM_NAME = 'jira';
+const DEFAULT_TICKET_STATUS: TicketStatus = 'open';
+const DEFAULT_SCREENSHOT_FILENAME = 'screenshot.png';
+
 /**
  * Jira Integration Service
  * Handles creating Jira issues from bug reports
  */
 export class JiraIntegrationService implements IntegrationService {
-  readonly platform = 'jira';
+  readonly platform = PLATFORM_NAME;
 
+  private bugReportRepo: BugReportRepository;
   private db: DatabaseClient;
   private storage: IStorageService;
   private configManager: JiraConfigManager;
 
-  constructor(db: DatabaseClient, storage: IStorageService) {
+  constructor(
+    bugReportRepo: BugReportRepository,
+    integrationRepo: ProjectIntegrationRepository,
+    db: DatabaseClient,
+    storage: IStorageService
+  ) {
+    this.bugReportRepo = bugReportRepo;
     this.db = db;
     this.storage = storage;
-    this.configManager = new JiraConfigManager(db);
+    this.configManager = new JiraConfigManager(integrationRepo);
   }
 
   /**
@@ -44,7 +58,7 @@ export class JiraIntegrationService implements IntegrationService {
     return {
       externalId: result.issueKey,
       externalUrl: result.issueUrl,
-      platform: 'jira',
+      platform: PLATFORM_NAME,
       metadata: {
         issueId: result.issueId,
         attachments: result.attachments,
@@ -120,11 +134,8 @@ export class JiraIntegrationService implements IntegrationService {
       }
     }
 
-    // Save Jira ticket reference in database
+    // Save ticket reference to both tables atomically
     await this.saveTicketReference(bugReport.id, issue.key, issueUrl);
-
-    // Update bug report metadata with Jira links
-    await this.db.bugReports.updateExternalIntegration(bugReport.id, issue.key, issueUrl);
 
     return {
       issueKey: issue.key,
@@ -138,7 +149,7 @@ export class JiraIntegrationService implements IntegrationService {
    * Fetch bug report from database
    */
   private async fetchBugReport(bugReportId: string): Promise<BugReport> {
-    const bugReport = await this.db.bugReports.findById(bugReportId);
+    const bugReport = await this.bugReportRepo.findById(bugReportId);
 
     if (!bugReport) {
       throw new Error(`Bug report not found: ${bugReportId}`);
@@ -150,7 +161,11 @@ export class JiraIntegrationService implements IntegrationService {
   /**
    * Upload screenshot to Jira as attachment
    */
-  private async uploadScreenshotToJira(client: JiraClient, issueKey: string, screenshotUrl: string) {
+  private async uploadScreenshotToJira(
+    client: JiraClient,
+    issueKey: string,
+    screenshotUrl: string
+  ) {
     logger.debug('Uploading screenshot to Jira', { issueKey, screenshotUrl });
 
     // Extract storage key from URL
@@ -165,7 +180,7 @@ export class JiraIntegrationService implements IntegrationService {
     const buffer = await this.streamToBuffer(stream);
 
     // Extract filename from key
-    const filename = key.split('/').pop() || 'screenshot.png';
+    const filename = key.split('/').pop() || DEFAULT_SCREENSHOT_FILENAME;
 
     // Upload to Jira
     return await client.uploadAttachment(issueKey, buffer, filename);
@@ -217,36 +232,28 @@ export class JiraIntegrationService implements IntegrationService {
 
   /**
    * Save ticket reference to database
+   * Atomically saves to both tickets table (for queries) and bug_reports metadata (for fast access)
+   * Uses transaction to ensure both writes succeed or fail together
    */
   private async saveTicketReference(
     bugReportId: string,
     externalId: string,
     externalUrl: string
   ): Promise<void> {
-    try {
-      await this.db.query(
-        `INSERT INTO tickets (bug_report_id, external_id, platform, status)
-         VALUES ($1, $2, 'jira', 'open')
-         ON CONFLICT (platform, external_id) DO NOTHING`,
-        [bugReportId, externalId]
-      );
+    await this.db.transaction(async (tx) => {
+      // Save to tickets table (queryable, relational)
+      await tx.tickets.createTicket(bugReportId, externalId, PLATFORM_NAME, DEFAULT_TICKET_STATUS);
 
-      logger.debug('Saved Jira ticket reference', {
+      // Save to bug_reports metadata (denormalized, fast access)
+      await tx.bugReports.updateExternalIntegration(bugReportId, externalId, externalUrl);
+
+      logger.debug('Saved Jira ticket reference to both tables', {
         bugReportId,
         externalId,
         externalUrl,
       });
-    } catch (error) {
-      logger.error('Failed to save ticket reference', {
-        bugReportId,
-        externalId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Don't throw - this is not critical
-    }
-  }
-
-  /**
+    });
+  } /**
    * Test Jira connection for project (implements IntegrationService interface)
    */
   async testConnection(projectId: string): Promise<boolean> {

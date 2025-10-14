@@ -3,7 +3,7 @@
  * Handles loading, validation, and encryption of Jira credentials
  */
 
-import type { DatabaseClient } from '../../db/client.js';
+import type { ProjectIntegrationRepository } from '../../db/project-integration.repository.js';
 import { getLogger } from '../../logger.js';
 import { getEncryptionService } from '../../utils/encryption.js';
 import type {
@@ -17,29 +17,15 @@ import { JiraClient } from './client.js';
 const logger = getLogger();
 
 /**
- * Database row for project_integrations table
- */
-interface ProjectIntegrationRow {
-  id: string;
-  project_id: string;
-  platform: string;
-  enabled: boolean;
-  config: Record<string, unknown>;
-  encrypted_credentials: string | null;
-  created_at: Date;
-  updated_at: Date;
-}
-
-/**
  * Jira Configuration Manager
  * Manages Jira configuration storage and retrieval
  */
 export class JiraConfigManager {
-  private db: DatabaseClient;
+  private integrationRepo: ProjectIntegrationRepository;
   private encryptionService = getEncryptionService();
 
-  constructor(db: DatabaseClient) {
-    this.db = db;
+  constructor(integrationRepo: ProjectIntegrationRepository) {
+    this.integrationRepo = integrationRepo;
   }
 
   /**
@@ -86,29 +72,26 @@ export class JiraConfigManager {
    */
   async fromDatabase(projectId: string): Promise<JiraConfig | null> {
     try {
-      const result = await this.db.query<ProjectIntegrationRow>(
-        `SELECT * FROM project_integrations 
-         WHERE project_id = $1 AND platform = 'jira' AND enabled = TRUE
-         LIMIT 1`,
-        [projectId]
+      // Use injected repository
+      const integration = await this.integrationRepo.findEnabledByProjectAndPlatform(
+        projectId,
+        'jira'
       );
 
-      if (!result.rows || result.rows.length === 0) {
+      if (!integration) {
         logger.debug('No Jira integration found for project', { projectId });
         return null;
       }
 
-      const row = result.rows[0];
-
       // Decrypt credentials
-      if (!row.encrypted_credentials) {
+      if (!integration.encrypted_credentials) {
         logger.error('Jira integration missing encrypted credentials', { projectId });
         return null;
       }
 
       let credentials: JiraCredentials;
       try {
-        const decrypted = this.encryptionService.decrypt(row.encrypted_credentials);
+        const decrypted = this.encryptionService.decrypt(integration.encrypted_credentials);
         credentials = JSON.parse(decrypted);
       } catch (error) {
         logger.error('Failed to decrypt Jira credentials', {
@@ -119,7 +102,7 @@ export class JiraConfigManager {
       }
 
       // Extract config
-      const config = row.config as unknown as JiraProjectConfig;
+      const config = integration.config as unknown as JiraProjectConfig;
 
       const jiraConfig: JiraConfig = {
         host: config.host,
@@ -127,7 +110,7 @@ export class JiraConfigManager {
         apiToken: credentials.apiToken,
         projectKey: config.projectKey,
         issueType: config.issueType || 'Bug',
-        enabled: row.enabled,
+        enabled: integration.enabled,
       };
 
       logger.debug('Loaded Jira configuration from database', {
@@ -175,19 +158,12 @@ export class JiraConfigManager {
       // Encrypt credentials
       const encryptedCredentials = this.encryptionService.encrypt(JSON.stringify(credentials));
 
-      // Upsert to database
-      await this.db.query(
-        `INSERT INTO project_integrations 
-         (project_id, platform, enabled, config, encrypted_credentials)
-         VALUES ($1, 'jira', $2, $3, $4)
-         ON CONFLICT (project_id, platform)
-         DO UPDATE SET
-           enabled = EXCLUDED.enabled,
-           config = EXCLUDED.config,
-           encrypted_credentials = EXCLUDED.encrypted_credentials,
-           updated_at = CURRENT_TIMESTAMP`,
-        [projectId, config.enabled, JSON.stringify(projectConfig), encryptedCredentials]
-      );
+      // Upsert using injected repository
+      await this.integrationRepo.upsert(projectId, 'jira', {
+        enabled: config.enabled,
+        config: projectConfig as unknown as Record<string, unknown>,
+        encrypted_credentials: encryptedCredentials,
+      });
 
       logger.info('Saved Jira configuration to database', {
         projectId,
@@ -209,11 +185,11 @@ export class JiraConfigManager {
    */
   async deleteFromDatabase(projectId: string): Promise<void> {
     try {
-      await this.db.query(
-        `DELETE FROM project_integrations 
-         WHERE project_id = $1 AND platform = 'jira'`,
-        [projectId]
-      );
+      const deleted = await this.integrationRepo.deleteByProjectAndPlatform(projectId, 'jira');
+
+      if (!deleted) {
+        logger.warn('No Jira configuration found to delete', { projectId });
+      }
 
       logger.info('Deleted Jira configuration from database', { projectId });
     } catch (error) {
@@ -230,14 +206,9 @@ export class JiraConfigManager {
    */
   async setEnabled(projectId: string, enabled: boolean): Promise<void> {
     try {
-      const result = await this.db.query(
-        `UPDATE project_integrations 
-         SET enabled = $1, updated_at = CURRENT_TIMESTAMP
-         WHERE project_id = $2 AND platform = 'jira'`,
-        [enabled, projectId]
-      );
+      const updated = await this.integrationRepo.setEnabled(projectId, 'jira', enabled);
 
-      if (result.rowCount === 0) {
+      if (!updated) {
         throw new Error('Jira integration not found for project');
       }
 

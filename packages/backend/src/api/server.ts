@@ -20,12 +20,15 @@ import { projectRoutes } from './routes/projects.js';
 import { authRoutes } from './routes/auth.js';
 import { retentionRoutes } from './routes/retention.js';
 import { jobRoutes } from './routes/jobs.js';
+import { registerIntegrationRoutes } from './routes/integrations.js';
 import type { RetentionService } from '../retention/retention-service.js';
 import type { RetentionScheduler } from '../retention/retention-scheduler.js';
 import type { QueueManager } from '../queue/queue-manager.js';
+import type { IStorageService } from '../storage/types.js';
 
 export interface ServerOptions {
   db: DatabaseClient;
+  storage: IStorageService;
   retentionService?: RetentionService;
   retentionScheduler?: RetentionScheduler;
   queueManager?: QueueManager;
@@ -161,6 +164,9 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   if (options.retentionService && options.retentionScheduler) {
     retentionRoutes(fastify, db, options.retentionService, options.retentionScheduler);
   }
+
+  // Register integration routes
+  await registerIntegrationRoutes(fastify, db, options.storage);
 
   // Register error handlers
   fastify.setErrorHandler(errorHandler);
