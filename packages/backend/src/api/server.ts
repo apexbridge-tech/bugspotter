@@ -21,6 +21,8 @@ import { authRoutes } from './routes/auth.js';
 import { retentionRoutes } from './routes/retention.js';
 import { jobRoutes } from './routes/jobs.js';
 import { registerIntegrationRoutes } from './routes/integrations.js';
+import { adminRoutes } from './routes/admin.js';
+import { setupRoutes } from './routes/setup.js';
 import type { RetentionService } from '../retention/retention-service.js';
 import type { RetentionScheduler } from '../retention/retention-scheduler.js';
 import type { QueueManager } from '../queue/queue-manager.js';
@@ -153,6 +155,8 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
 
   // Register routes
   await healthRoutes(fastify, db);
+  await setupRoutes(fastify, db);
+  await adminRoutes(fastify, db);
   bugReportRoutes(fastify, db, options.queueManager);
   await projectRoutes(fastify, db);
   await authRoutes(fastify, db);
