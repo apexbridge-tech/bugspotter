@@ -144,7 +144,7 @@ export function bugReportRoutes(
           networkRequests: report.networkRequests,
           browserMetadata: report.browserMetadata,
         },
-        screenshot_url: report.screenshot || null,
+        screenshot_url: null, // Will be populated by worker after upload to storage
         replay_url: null, // Will be populated if session replay is enabled
       });
 

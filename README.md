@@ -4,7 +4,7 @@
 
 Capture screenshots, console logs, network requests, **session replays**, and metadata - helping developers reproduce bugs faster.
 
-[![Tests](https://img.shields.io/badge/tests-1547%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
+[![Tests](https://img.shields.io/badge/tests-1261%20passing-brightgreen)]() [![Bundle](https://img.shields.io/badge/bundle-99KB-blue)]() [![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)]() [![Status](https://img.shields.io/badge/status-pre--release-orange)]()
 
 ## ✨ Features
 
@@ -35,6 +35,25 @@ pnpm install
 # Build all packages
 pnpm build
 ```
+
+### Docker Deployment (Recommended)
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Generate secure secrets
+echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
+echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
+
+# Start all services (API, worker, PostgreSQL, Redis, MinIO)
+pnpm docker:up
+
+# API available at http://localhost:3000
+# MinIO Console at http://localhost:9001
+```
+
+[Full Docker documentation →](./DOCKER.md)
 
 ### Try the Demo
 
@@ -69,6 +88,7 @@ npx browser-sync start --config bs-config.json
 | Resource           | Link                                                                                                       |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
 | **System Summary** | [SYSTEM_SUMMARY.md](./SYSTEM_SUMMARY.md) (comprehensive 2000-word overview)                                |
+| **Docker Setup**   | [DOCKER.md](./DOCKER.md) (deployment, scaling, troubleshooting)                                            |
 | **SDK API**        | [packages/sdk/README.md](./packages/sdk/README.md)                                                         |
 | **Backend API**    | [packages/backend/README.md](./packages/backend/README.md)                                                 |
 | **Session Replay** | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md)                               |
@@ -121,8 +141,8 @@ customPatterns: [
 ## 🧪 Testing
 
 **SDK:** 345 tests (unit + E2E + Playwright)  
-**Backend:** 1,202 tests (unit + integration + queue + load + storage)  
-**Total:** 1,547 tests - all passing ✅
+**Backend:** 916 tests (unit + integration + queue + load + storage)  
+**Total:** 1,261 tests - all passing ✅
 
 Testing uses Testcontainers for zero-setup database and Redis testing.
 
