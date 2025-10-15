@@ -27,10 +27,20 @@ function getEnvBool(key: string, defaultValue: boolean = true): boolean {
 }
 
 /**
- * Worker names - matches WORKER_REGISTRY in worker-manager.ts
- * Single source of truth for worker configuration
+ * Worker name constants - single source of truth for worker types
+ * Used across worker-manager, queue config, and worker implementations
  */
-type WorkerName = 'screenshot' | 'replay' | 'integration' | 'notification';
+export const WORKER_NAMES = {
+  SCREENSHOT: 'screenshot',
+  REPLAY: 'replay',
+  INTEGRATION: 'integration',
+  NOTIFICATION: 'notification',
+} as const;
+
+/**
+ * Worker names type - derived from constants
+ */
+export type WorkerName = (typeof WORKER_NAMES)[keyof typeof WORKER_NAMES];
 
 /**
  * Worker configuration structure
@@ -88,10 +98,10 @@ export function loadQueueConfig(): QueueConfig {
       retryDelay: getEnvInt('REDIS_RETRY_DELAY', 1000),
     },
     workers: {
-      screenshot: loadWorkerConfig('screenshot', 5),
-      replay: loadWorkerConfig('replay', 3),
-      integration: loadWorkerConfig('integration', 10),
-      notification: loadWorkerConfig('notification', 5),
+      [WORKER_NAMES.SCREENSHOT]: loadWorkerConfig(WORKER_NAMES.SCREENSHOT, 5),
+      [WORKER_NAMES.REPLAY]: loadWorkerConfig(WORKER_NAMES.REPLAY, 3),
+      [WORKER_NAMES.INTEGRATION]: loadWorkerConfig(WORKER_NAMES.INTEGRATION, 10),
+      [WORKER_NAMES.NOTIFICATION]: loadWorkerConfig(WORKER_NAMES.NOTIFICATION, 5),
     },
     jobs: {
       retentionDays: getEnvInt('JOB_RETENTION_DAYS', 7),

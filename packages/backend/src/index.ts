@@ -11,7 +11,7 @@ export {
   SessionRepository,
   TicketRepository,
 } from './db/repositories.js';
-export { BaseRepository } from './db/base-repository.js';
+export { BaseRepository } from './db/repositories.js';
 export * from './db/types.js';
 export { config, validateConfig } from './config.js';
 export { runMigrations } from './db/migrations/migrate.js';

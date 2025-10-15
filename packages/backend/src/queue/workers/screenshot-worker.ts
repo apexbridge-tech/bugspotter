@@ -8,7 +8,7 @@ import type { Redis } from 'ioredis';
 import sharp from 'sharp';
 import { getLogger } from '../../logger.js';
 import { getQueueConfig } from '../../config/queue.config.js';
-import type { DatabaseClient } from '../../db/client.js';
+import type { BugReportRepository } from '../../db/repositories.js';
 import type { IStorageService } from '../../storage/types.js';
 import type { ScreenshotJobData, ScreenshotJobResult } from '../types.js';
 import { QUEUE_NAMES } from '../types.js';
@@ -25,7 +25,7 @@ const logger = getLogger();
  * Create and initialize the Screenshot worker
  */
 export function createScreenshotWorker(
-  db: DatabaseClient,
+  bugReportRepo: BugReportRepository,
   storage: IStorageService,
   connection: Redis
 ): BaseWorker<ScreenshotJobData, ScreenshotJobResult, 'screenshots'> {
@@ -92,7 +92,7 @@ export function createScreenshotWorker(
       );
 
       // Update database with thumbnail URL
-      await db.bugReports.updateThumbnailUrl(bugReportId, thumbnailResult.url);
+      await bugReportRepo.updateThumbnailUrl(bugReportId, thumbnailResult.url);
 
       const processingTimeMs = Date.now() - startTime;
 

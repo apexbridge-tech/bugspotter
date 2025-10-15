@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createScreenshotWorker } from '../../src/queue/workers/screenshot-worker.js';
-import type { DatabaseClient } from '../../src/db/client.js';
+import type { BugReportRepository } from '../../src/db/repositories.js';
 import type { IStorageService } from '../../src/storage/types.js';
 import type { Redis } from 'ioredis';
 import {
@@ -14,13 +14,13 @@ import {
 } from '../../src/queue/jobs/screenshot-job.js';
 
 describe('Screenshot Worker', () => {
-  let mockDb: Partial<DatabaseClient>;
+  let mockBugReportRepo: Partial<BugReportRepository>;
   let mockStorage: Partial<IStorageService>;
   let mockRedis: Partial<Redis>;
 
   beforeEach(() => {
-    mockDb = {
-      query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+    mockBugReportRepo = {
+      updateThumbnailUrl: vi.fn().mockResolvedValue(undefined),
     };
 
     mockStorage = {
@@ -45,7 +45,7 @@ describe('Screenshot Worker', () => {
   describe('Worker Creation', () => {
     it('should create screenshot worker successfully', () => {
       const worker = createScreenshotWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -57,7 +57,7 @@ describe('Screenshot Worker', () => {
 
     it('should create worker with correct configuration', () => {
       const worker = createScreenshotWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -196,7 +196,7 @@ describe('Screenshot Worker', () => {
   describe('Worker Lifecycle', () => {
     it('should allow closing the worker', async () => {
       const worker = createScreenshotWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -206,7 +206,7 @@ describe('Screenshot Worker', () => {
 
     it('should provide access to underlying BullMQ worker', () => {
       const worker = createScreenshotWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -218,7 +218,7 @@ describe('Screenshot Worker', () => {
 
     it('should support pause and resume', async () => {
       const worker = createScreenshotWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );

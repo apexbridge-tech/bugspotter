@@ -57,12 +57,25 @@ export interface Session {
   created_at: Date;
 }
 
+/**
+ * Ticket status values
+ */
+export const TICKET_STATUS = {
+  OPEN: 'open',
+  IN_PROGRESS: 'in_progress',
+  RESOLVED: 'resolved',
+  CLOSED: 'closed',
+  REOPENED: 'reopened',
+} as const;
+
+export type TicketStatus = (typeof TICKET_STATUS)[keyof typeof TICKET_STATUS];
+
 export interface Ticket {
   id: string;
   bug_report_id: string;
   external_id: string;
   platform: string;
-  status: string | null;
+  status: TicketStatus | null;
   created_at: Date;
 }
 

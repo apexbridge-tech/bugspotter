@@ -20,6 +20,7 @@ import {
   SessionRepository,
   TicketRepository,
 } from './repositories.js';
+import { ProjectIntegrationRepository } from './project-integration.repository.js';
 
 const { Pool } = pg;
 
@@ -82,6 +83,7 @@ export class DatabaseClient implements RepositoryRegistry {
   public readonly users: UserRepository;
   public readonly sessions: SessionRepository;
   public readonly tickets: TicketRepository;
+  public readonly projectIntegrations: ProjectIntegrationRepository;
   public readonly retention: BugReportRepository;
 
   /**
@@ -101,6 +103,7 @@ export class DatabaseClient implements RepositoryRegistry {
     this.users = this.wrapWithRetry(repositories.users);
     this.sessions = this.wrapWithRetry(repositories.sessions);
     this.tickets = this.wrapWithRetry(repositories.tickets);
+    this.projectIntegrations = this.wrapWithRetry(new ProjectIntegrationRepository(pool));
   }
 
   /**

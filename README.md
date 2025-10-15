@@ -10,7 +10,7 @@ Capture screenshots, console logs, network requests, **session replays**, and me
 
 | Feature                   | Description                                   |
 | ------------------------- | --------------------------------------------- |
-| �� **Session Replay**     | Record and replay user interactions (rrweb)   |
+| 📹 **Session Replay**     | Record and replay user interactions (rrweb)   |
 | 🔒 **PII Sanitization**   | Auto-redact emails, phones, cards, SSNs, etc. |
 | 📸 **Screenshots**        | CSP-safe visual capture                       |
 | 📝 **Console Logs**       | Track all console output                      |
@@ -66,12 +66,16 @@ npx browser-sync start --config bs-config.json
 
 ## 📖 Documentation
 
-| Resource           | Link                                                                         |
-| ------------------ | ---------------------------------------------------------------------------- |
-| **SDK API**        | [packages/sdk/README.md](./packages/sdk/README.md)                           |
-| **Session Replay** | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md) |
-| **Demo Guide**     | [apps/demo/README.md](./apps/demo/README.md)                                 |
-| **Contributing**   | [CONTRIBUTING.md](./CONTRIBUTING.md)                                         |
+| Resource           | Link                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **System Summary** | [SYSTEM_SUMMARY.md](./SYSTEM_SUMMARY.md) (comprehensive 2000-word overview)                                |
+| **SDK API**        | [packages/sdk/README.md](./packages/sdk/README.md)                                                         |
+| **Backend API**    | [packages/backend/README.md](./packages/backend/README.md)                                                 |
+| **Session Replay** | [packages/sdk/docs/SESSION_REPLAY.md](./packages/sdk/docs/SESSION_REPLAY.md)                               |
+| **Plugin System**  | [packages/backend/src/integrations/PLUGIN_SYSTEM.md](./packages/backend/src/integrations/PLUGIN_SYSTEM.md) |
+| **Security**       | [packages/backend/SECURITY.md](./packages/backend/SECURITY.md)                                             |
+| **Testing**        | [packages/backend/TESTING.md](./packages/backend/TESTING.md)                                               |
+| **Contributing**   | [CONTRIBUTING.md](./CONTRIBUTING.md)                                                                       |
 
 ## 🎬 Session Replay
 
@@ -120,6 +124,8 @@ customPatterns: [
 **Backend:** 1,202 tests (unit + integration + queue + load + storage)  
 **Total:** 1,547 tests - all passing ✅
 
+Testing uses Testcontainers for zero-setup database and Redis testing.
+
 ```bash
 pnpm test              # All tests (requires Docker)
 pnpm test:watch        # Watch mode
@@ -138,6 +144,7 @@ pnpm test:coverage     # Coverage report
 - **Bundle:** ~99 KB minified
 - **Load:** <100ms
 - **Memory:** <15 MB (30s buffer)
+- **API Response:** <200ms (p95)
 - **Tests:** 1,547 total (100% passing ✅)
 
 ## 🛣️ Roadmap
@@ -179,6 +186,35 @@ MIT License - see [LICENSE](./LICENSE)
 - 📧 Email: support@apexbridge.tech
 - 🐛 Issues: [GitHub Issues](https://github.com/apexbridge-tech/bugspotter/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/apexbridge-tech/bugspotter/discussions)
+
+## 📚 Documentation Structure
+
+BugSpotter maintains a clean documentation hierarchy:
+
+**Root Level** (Essential docs only):
+
+- `README.md` - Project overview, quick start, feature highlights
+- `SYSTEM_SUMMARY.md` - Comprehensive 2000-word system documentation
+- `CHANGELOG.md` - Version history and release notes
+- `CONTRIBUTING.md` - Contribution guidelines and workflow
+
+**Package Level**:
+
+- `packages/backend/` - Backend API docs (README, SECURITY, TESTING)
+- `packages/sdk/` - SDK usage guide and session replay docs
+- `packages/types/` - Shared type definitions
+- `packages/backend-mock/` - Mock API server for development
+
+**Module Level**:
+
+- `packages/backend/src/queue/` - Queue system documentation
+- `packages/backend/src/storage/` - Storage layer documentation
+- `packages/backend/src/retention/` - Retention policy documentation
+- `packages/backend/src/integrations/` - Plugin system and integration docs
+
+**Archived** (`.archive/docs/`):
+
+- Historical refactoring notes, architecture decisions, detailed technical guides
 
 ---
 

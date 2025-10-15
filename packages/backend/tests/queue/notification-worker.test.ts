@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createNotificationWorker } from '../../src/queue/workers/notification-worker.js';
-import type { DatabaseClient } from '../../src/db/client.js';
+import type { BugReportRepository } from '../../src/db/repositories.js';
 import type { IStorageService } from '../../src/storage/types.js';
 import type { Redis } from 'ioredis';
 import {
@@ -14,24 +14,20 @@ import {
 } from '../../src/queue/jobs/notification-job.js';
 
 describe('Notification Worker', () => {
-  let mockDb: Partial<DatabaseClient>;
+  let mockBugReportRepo: Partial<BugReportRepository>;
   let mockStorage: Partial<IStorageService>;
   let mockRedis: Partial<Redis>;
 
   beforeEach(() => {
-    mockDb = {
-      query: vi.fn().mockResolvedValue({
-        rows: [
-          {
-            id: 'bug-123',
-            project_id: 'proj-456',
-            title: 'Test Bug',
-            description: 'Test description',
-            status: 'open',
-            priority: 'high',
-            metadata: {},
-          },
-        ],
+    mockBugReportRepo = {
+      findById: vi.fn().mockResolvedValue({
+        id: 'bug-123',
+        project_id: 'proj-456',
+        title: 'Test Bug',
+        description: 'Test description',
+        status: 'open',
+        priority: 'high',
+        metadata: {},
       }),
     };
 
@@ -48,7 +44,7 @@ describe('Notification Worker', () => {
   describe('Worker Creation', () => {
     it('should create notification worker successfully', () => {
       const worker = createNotificationWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -60,7 +56,7 @@ describe('Notification Worker', () => {
 
     it('should create worker with correct configuration', () => {
       const worker = createNotificationWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -231,7 +227,7 @@ describe('Notification Worker', () => {
   describe('Worker Lifecycle', () => {
     it('should allow closing the worker', async () => {
       const worker = createNotificationWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );
@@ -241,7 +237,7 @@ describe('Notification Worker', () => {
 
     it('should provide access to underlying BullMQ worker', () => {
       const worker = createNotificationWorker(
-        mockDb as DatabaseClient,
+        mockBugReportRepo as BugReportRepository,
         mockStorage as IStorageService,
         mockRedis as Redis
       );

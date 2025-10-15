@@ -5,6 +5,16 @@ All notable changes to the BugSpotter project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 📚 Documentation
+
+- Created comprehensive SYSTEM_SUMMARY.md (2000-word overview)
+- Removed outdated SYSTEM_OVERVIEW.md
+- Updated README.md with corrected test counts (1,547 tests)
+- Archived redundant documentation files
+- Consolidated all essential documentation
+
 ## [0.3.0] - 2025-10-05
 
 ### 🔒 PII Detection & Sanitization

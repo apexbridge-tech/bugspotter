@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { WorkerManager } from '../../src/queue/worker-manager.js';
 import { getQueueManager } from '../../src/queue/queue-manager.js';
-import type { DatabaseClient } from '../../src/db/client.js';
+import type { BugReportRepository } from '../../src/db/repositories.js';
 import type { IStorageService } from '../../src/storage/types.js';
 
 // Mock dependencies
@@ -20,6 +20,12 @@ vi.mock('../../src/logger.js', () => ({
   }),
 }));
 vi.mock('../../src/config/queue.config.js', () => ({
+  WORKER_NAMES: {
+    SCREENSHOT: 'screenshot',
+    REPLAY: 'replay',
+    INTEGRATION: 'integration',
+    NOTIFICATION: 'notification',
+  },
   getQueueConfig: () => {
     // Helper to parse boolean from environment variable
     const getEnvBool = (key: string, defaultValue: boolean = true): boolean => {
@@ -65,7 +71,7 @@ import { createNotificationWorker } from '../../src/queue/workers/notification-w
 
 describe('WorkerManager', () => {
   let workerManager: WorkerManager;
-  let mockDb: DatabaseClient;
+  let mockBugReportRepo: BugReportRepository;
   let mockStorage: IStorageService;
   let mockQueueManager: any;
   let mockWorker: any;
@@ -98,16 +104,14 @@ describe('WorkerManager', () => {
     };
     vi.mocked(getQueueManager).mockReturnValue(mockQueueManager);
 
-    // Setup mock database
-    mockDb = {
-      query: vi.fn(),
-      projects: {} as any,
-      bugReports: {} as any,
-      users: {} as any,
-      sessions: {} as any,
-      tickets: {} as any,
-      projectMembers: {} as any,
-    } as unknown as DatabaseClient;
+    // Setup mock bug report repository
+    mockBugReportRepo = {
+      create: vi.fn(),
+      findById: vi.fn(),
+      list: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    } as unknown as BugReportRepository;
 
     // Setup mock storage
     mockStorage = {
@@ -116,7 +120,18 @@ describe('WorkerManager', () => {
       getObject: vi.fn(),
     } as any;
 
-    workerManager = new WorkerManager(mockDb, mockStorage);
+    const mockPluginRegistry = {
+      get: vi.fn().mockReturnValue({
+        createFromBugReport: vi.fn().mockResolvedValue({
+          externalId: 'JIRA-123',
+          externalUrl: 'https://jira.example.com/browse/JIRA-123',
+          platform: 'jira',
+        }),
+      }),
+      getSupportedPlatforms: vi.fn().mockReturnValue(['jira']),
+    } as any;
+
+    workerManager = new WorkerManager(mockBugReportRepo, mockStorage, mockPluginRegistry);
   });
 
   afterEach(async () => {

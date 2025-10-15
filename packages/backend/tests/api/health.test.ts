@@ -8,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import { createServer } from '../../src/api/server.js';
 import { createDatabaseClient } from '../../src/db/client.js';
 import type { DatabaseClient } from '../../src/db/client.js';
+import { createMockPluginRegistry, createMockStorage } from '../test-helpers.js';
 
 describe('Health Routes', () => {
   let server: FastifyInstance;
@@ -16,7 +17,9 @@ describe('Health Routes', () => {
   beforeAll(async () => {
     const testDbUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/bugspotter_test';
     db = createDatabaseClient(testDbUrl);
-    server = await createServer({ db });
+    const pluginRegistry = createMockPluginRegistry();
+    const storage = createMockStorage();
+    server = await createServer({ db, storage, pluginRegistry });
     await server.ready();
   });
 

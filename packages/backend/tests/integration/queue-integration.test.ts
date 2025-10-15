@@ -144,9 +144,16 @@ describe('Queue System Integration', () => {
     expect(queueHealthy).toBe(true);
     console.log('✅ Queue manager initialized');
 
+    // Initialize plugin registry
+    const { PluginRegistry } = await import('../../src/integrations/plugin-registry.js');
+    const { loadIntegrationPlugins } = await import('../../src/integrations/plugin-loader.js');
+    const pluginRegistry = new PluginRegistry(db, storage);
+    await loadIntegrationPlugins(pluginRegistry);
+    console.log('✅ Integration plugins loaded');
+
     // Initialize worker manager
     console.log('🔄 Starting workers...');
-    workerManager = new WorkerManager(db, storage);
+    workerManager = new WorkerManager(db, storage, pluginRegistry);
     await workerManager.start();
     const metrics = workerManager.getMetrics();
     expect(metrics.runningWorkers).toBeGreaterThan(0);
@@ -154,7 +161,7 @@ describe('Queue System Integration', () => {
 
     // Create API server
     console.log('🔄 Creating API server...');
-    server = await createServer({ db, queueManager });
+    server = await createServer({ db, storage, pluginRegistry, queueManager });
     console.log('✅ API server created');
   }, 60000); // 60s timeout for container startup
 

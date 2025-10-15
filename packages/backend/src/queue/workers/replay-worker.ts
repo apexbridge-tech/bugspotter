@@ -27,7 +27,7 @@ import { getLogger } from '../../logger.js';
 import { buildReplayChunkUrl, buildReplayManifestUrl } from '../../storage/storage-url-builder.js';
 
 const logger = getLogger();
-import { DatabaseClient } from '../../db/client.js';
+import type { BugReportRepository } from '../../db/repositories.js';
 import type { IStorageService } from '../../storage/types.js';
 import {
   REPLAY_JOB_NAME,
@@ -261,7 +261,7 @@ function buildReplayManifest(
  */
 async function processReplayJob(
   job: Job<ReplayJobData, ReplayJobResult>,
-  db: DatabaseClient,
+  bugReportRepo: BugReportRepository,
   storage: IStorageService
 ): Promise<ReplayJobResult> {
   const startTime = Date.now();
@@ -315,7 +315,7 @@ async function processReplayJob(
 
   // Step 5: Update bug_reports metadata
   const manifestUrl = buildReplayManifestUrl(projectId, bugReportId);
-  await db.bugReports.updateReplayManifestUrl(bugReportId, manifestUrl);
+  await bugReportRepo.updateReplayManifestUrl(bugReportId, manifestUrl);
 
   await progress.complete('Done');
 
@@ -351,13 +351,13 @@ async function processReplayJob(
  * Returns a BaseWorker wrapper for consistent interface with other workers
  */
 export function createReplayWorker(
-  db: DatabaseClient,
+  bugReportRepo: BugReportRepository,
   storage: IStorageService,
   connection: Redis
 ): BaseWorker<ReplayJobData, ReplayJobResult, 'replays'> {
   const worker = createWorker<ReplayJobData, ReplayJobResult, typeof QUEUE_NAMES.REPLAYS>({
     name: REPLAY_JOB_NAME,
-    processor: async (job) => processReplayJob(job, db, storage),
+    processor: async (job) => processReplayJob(job, bugReportRepo, storage),
     connection,
     workerType: QUEUE_NAMES.REPLAYS,
   });

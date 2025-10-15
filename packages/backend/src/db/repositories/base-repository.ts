@@ -5,8 +5,8 @@
  */
 
 import type { Pool, PoolClient } from 'pg';
-import { getLogger } from '../logger.js';
-import { deserializeRow, serializeJsonField } from './query-builder.js';
+import { getLogger } from '../../logger.js';
+import { deserializeRow, serializeJsonField } from '../query-builder.js';
 
 /**
  * Validate SQL identifier to prevent SQL injection
