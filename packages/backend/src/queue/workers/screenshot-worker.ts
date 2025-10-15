@@ -77,9 +77,11 @@ export function createScreenshotWorker(
         imageMetadata = await getImageMetadata(originalBuffer);
         originalSize = originalBuffer.length;
 
-        // Estimate thumbnail size based on typical compression ratio
-        // (actual file exists in storage but this provides realistic metrics)
-        thumbnailSize = Math.round(originalSize * 0.15);
+        // Fetch actual thumbnail size from storage metadata
+        // The thumbnail was stored with the naming convention: `${bugReportId}-thumb`
+        const thumbnailKey = `screenshots/${projectId}/${bugReportId}-thumb/original.png`;
+        const thumbnailMetadata = await storage.headObject(thumbnailKey);
+        thumbnailSize = thumbnailMetadata?.size ?? Math.round(originalSize * 0.15); // Fallback if metadata not available
       } else {
         // First attempt: Process and upload screenshots
         const progress = new ProgressTracker(job, 4);
