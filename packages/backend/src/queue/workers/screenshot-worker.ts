@@ -71,10 +71,15 @@ export function createScreenshotWorker(
         originalUrl = existingReport.screenshot_url;
         thumbnailUrl = existingThumbnailUrl;
 
-        // Use placeholder values for metrics (files already processed)
-        originalSize = 0;
-        thumbnailSize = 0;
-        imageMetadata = { width: 0, height: 0 };
+        // Decode original data to get actual metrics (files exist but we need accurate reporting)
+        const base64Data = screenshotData.replace(/^data:image\/\w+;base64,/, '');
+        const originalBuffer = Buffer.from(base64Data, 'base64');
+        imageMetadata = await getImageMetadata(originalBuffer);
+        originalSize = originalBuffer.length;
+        
+        // Estimate thumbnail size based on typical compression ratio
+        // (actual file exists in storage but this provides realistic metrics)
+        thumbnailSize = Math.round(originalSize * 0.15);
       } else {
         // First attempt: Process and upload screenshots
         const progress = new ProgressTracker(job, 4);

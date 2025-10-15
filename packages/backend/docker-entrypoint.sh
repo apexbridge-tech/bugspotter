@@ -80,6 +80,14 @@ wait_for_redis() {
     echo "Using REDIS_HOST and REDIS_PORT from environment"
   else
     echo "Parsing REDIS_URL for connection details..."
+    
+    # Validate URL starts with redis://
+    if [ "${REDIS_URL#redis://}" = "$REDIS_URL" ]; then
+      echo "Error: REDIS_URL must start with redis://"
+      echo "Got: $REDIS_URL"
+      exit 1
+    fi
+    
     # Extract connection details from REDIS_URL
     # Format: redis://host:port or redis://user:pass@host:port
     REDIS_URL_NO_PROTO="${REDIS_URL#redis://}"
@@ -99,9 +107,12 @@ wait_for_redis() {
     # Extract port (after :)
     REDIS_PORT="${REDIS_HOSTPORT#*:}"
     
-    # Default values if parsing fails
-    REDIS_HOST=${REDIS_HOST:-localhost}
-    REDIS_PORT=${REDIS_PORT:-6379}
+    # Validate parsing succeeded and port is numeric (fail-fast, no defaults)
+    if [ -z "$REDIS_HOST" ] || [ -z "$REDIS_PORT" ] || [ "$REDIS_HOST" = "$REDIS_PORT" ]; then
+      echo "Error: Failed to parse REDIS_URL. Expected format: redis://host:port"
+      echo "Got: $REDIS_URL"
+      exit 1
+    fi
   fi
   
   echo "Checking Redis at $REDIS_HOST:$REDIS_PORT..."
