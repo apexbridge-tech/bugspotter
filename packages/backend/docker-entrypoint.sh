@@ -24,11 +24,23 @@ wait_for_postgres() {
   
   # Extract connection details from DATABASE_URL
   # Format: postgresql://user:pass@host:port/db
-  DB_HOST=$(echo "$DATABASE_URL" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-  DB_PORT=$(echo "$DATABASE_URL" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+  # Remove protocol prefix
+  DB_URL_NO_PROTO="${DATABASE_URL#postgresql://}"
+  DB_URL_NO_PROTO="${DB_URL_NO_PROTO#postgres://}"
+  
+  # Extract host:port/db part (after @)
+  DB_HOSTPORT="${DB_URL_NO_PROTO#*@}"
+  
+  # Extract host (before :)
+  DB_HOST="${DB_HOSTPORT%%:*}"
+  
+  # Extract port (after : and before /)
+  DB_PORT_DB="${DB_HOSTPORT#*:}"
+  DB_PORT="${DB_PORT_DB%%/*}"
   
   if [ -z "$DB_HOST" ] || [ -z "$DB_PORT" ]; then
     echo "Error: Could not parse DATABASE_URL"
+    echo "Expected format: postgresql://user:pass@host:port/db"
     exit 1
   fi
   
@@ -60,8 +72,23 @@ wait_for_redis() {
   
   # Extract connection details from REDIS_URL
   # Format: redis://host:port or redis://user:pass@host:port
-  REDIS_HOST=$(echo "$REDIS_URL" | sed -n 's/.*@\?\([^:@]*\):[0-9]*.*/\1/p' | sed 's/redis:\/\///')
-  REDIS_PORT=$(echo "$REDIS_URL" | sed -n 's/.*:\([0-9]*\)$/\1/p')
+  # Remove protocol prefix
+  REDIS_URL_NO_PROTO="${REDIS_URL#redis://}"
+  
+  # Handle optional auth (user:pass@)
+  if echo "$REDIS_URL_NO_PROTO" | grep -q '@'; then
+    # Extract host:port part (after @)
+    REDIS_HOSTPORT="${REDIS_URL_NO_PROTO#*@}"
+  else
+    # No auth, entire string is host:port
+    REDIS_HOSTPORT="$REDIS_URL_NO_PROTO"
+  fi
+  
+  # Extract host (before :)
+  REDIS_HOST="${REDIS_HOSTPORT%%:*}"
+  
+  # Extract port (after :)
+  REDIS_PORT="${REDIS_HOSTPORT#*:}"
   
   # Default values if parsing fails
   REDIS_HOST=${REDIS_HOST:-localhost}

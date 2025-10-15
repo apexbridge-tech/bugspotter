@@ -63,8 +63,8 @@ FROM node:20-alpine AS production
 # Install pnpm
 RUN npm install -g pnpm@9.0.0
 
-# Install dumb-init for proper signal handling and netcat for health checks
-RUN apk add --no-cache dumb-init netcat-openbsd
+# Install dumb-init for proper signal handling, curl for health checks, netcat for wait-for scripts
+RUN apk add --no-cache dumb-init curl netcat-openbsd
 
 # Create non-root user
 RUN addgroup -g 1001 -S bugspotter && \
@@ -103,9 +103,9 @@ USER bugspotter
 # Expose API port
 EXPOSE 3000
 
-# Health check
+# Health check - uses /ready endpoint to verify database connectivity
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
+    CMD curl -f http://localhost:3000/ready || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

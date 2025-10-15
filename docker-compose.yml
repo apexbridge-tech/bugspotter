@@ -90,16 +90,16 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin123456}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin12345678901234567890123456}
+      MINIO_BUCKET: ${MINIO_BUCKET:-bugspotter}
+    volumes:
+      - ./scripts/init-minio.sh:/init-minio.sh:ro
     networks:
       - bugspotter
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set minio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin123456} ${MINIO_ROOT_PASSWORD:-minioadmin12345678901234567890123456};
-      mc mb --ignore-existing minio/${MINIO_BUCKET:-bugspotter};
-      mc anonymous set download minio/${MINIO_BUCKET:-bugspotter};
-      echo 'MinIO bucket ${MINIO_BUCKET:-bugspotter} created successfully';
-      exit 0;
-      "
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
 
   # ==========================================================================
   # BugSpotter API Server
@@ -171,7 +171,7 @@ services:
     networks:
       - bugspotter
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/ready"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -240,6 +240,12 @@ services:
       - worker_uploads:/app/data/uploads
     networks:
       - bugspotter
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z redis 6379 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 # ============================================================================
 # Named Volumes
