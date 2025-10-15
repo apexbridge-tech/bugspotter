@@ -21,9 +21,9 @@
 
 import { getLogger } from '../logger.js';
 import type { Redis } from 'ioredis';
-import { DatabaseClient } from '../db/client.js';
+import type { BugReportRepository } from '../db/repositories.js';
 import type { IStorageService } from '../storage/types.js';
-import { getQueueConfig } from '../config/queue.config.js';
+import { getQueueConfig, WORKER_NAMES, type WorkerName } from '../config/queue.config.js';
 import { getQueueManager } from './queue-manager.js';
 import { createScreenshotWorker } from './workers/screenshot-worker.js';
 import { createReplayWorker } from './workers/replay-worker.js';
@@ -34,51 +34,36 @@ import type { PluginRegistry } from '../integrations/plugin-registry.js';
 
 const logger = getLogger();
 
-/**
- * Worker factory function type
- * Accepts various parameters depending on worker needs:
- * - DatabaseClient or specific repositories (BugReportRepository)
- * - Storage (optional)
- * - Redis connection
- * Can be async for workers that need initialization (e.g., plugin loading)
- */
-type WorkerFactory = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Workers have different dependency signatures
-  dbOrRepo: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Storage may be undefined for some workers
-  storage: any,
-  connection: Redis
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BaseWorker needs generic flexibility for different job types
-) => BaseWorker<any, any, any> | Promise<BaseWorker<any, any, any>>;
+/** Base worker type with erased generics for heterogeneous storage */
+type AnyWorker = BaseWorker<unknown, unknown, string>;
 
-/**
- * Worker configuration for registry
- */
+/** Factory function for creating workers (uses unknown for generic parameter types) */
+type WorkerFactory = (bugReportRepo: unknown, storage: unknown, connection: Redis) => AnyWorker;
+
+/** Worker configuration (factory is null for integration workers with special instantiation) */
 interface WorkerConfig {
-  name: string;
-  factory: WorkerFactory;
-  needsStorage: boolean; // Whether factory requires storage parameter
+  name: WorkerName;
+  factory: WorkerFactory | null;
+  needsStorage: boolean;
 }
 
 /**
- * Worker Registry - Single source of truth for all workers
- *
- * Adding a new worker:
- * 1. Create worker factory function (e.g., createMyWorker)
- * 2. Add entry to this registry
- * 3. Add config in queue.config.ts
- *
- * No code changes needed in start() method or elsewhere!
+ * Worker Registry - single source of truth
+ * Type casts required: BaseWorker processFn has contravariant Job<D,R,N> parameter
+ * Safe because WorkerManager only calls start/stop/pause/resume, never processFn
  */
 const WORKER_REGISTRY: WorkerConfig[] = [
-  { name: 'screenshot', factory: createScreenshotWorker, needsStorage: true },
-  { name: 'replay', factory: createReplayWorker, needsStorage: true },
   {
-    name: 'notification',
+    name: WORKER_NAMES.SCREENSHOT,
+    factory: createScreenshotWorker as WorkerFactory,
+    needsStorage: true,
+  },
+  { name: WORKER_NAMES.REPLAY, factory: createReplayWorker as WorkerFactory, needsStorage: true },
+  {
+    name: WORKER_NAMES.NOTIFICATION,
     factory: createNotificationWorker as WorkerFactory,
     needsStorage: false,
   },
-  // Note: 'integration' worker handled specially in startWorker() due to PluginRegistry requirement
 ];
 
 export interface WorkerMetrics {
@@ -87,7 +72,7 @@ export interface WorkerMetrics {
   jobsProcessed: number;
   jobsFailed: number;
   avgProcessingTimeMs: number;
-  totalProcessingTimeMs: number; // Cumulative processing time for accurate average
+  totalProcessingTimeMs: number;
   lastProcessedAt: Date | null;
   lastError: string | null;
 }
@@ -98,33 +83,30 @@ export interface WorkerManagerMetrics {
   totalJobsProcessed: number;
   totalJobsFailed: number;
   workers: WorkerMetrics[];
-  uptime: number; // milliseconds
+  uptime: number;
 }
 
-/**
- * Worker Manager
- * Orchestrates all job queue workers
- */
 export class WorkerManager {
-  private workers: Map<string, BaseWorker<any, any, any>>;
+  private workers: Map<string, AnyWorker>;
   private workerMetrics: Map<string, WorkerMetrics>;
-  private db: DatabaseClient;
+  private bugReportRepo: BugReportRepository;
   private storage: IStorageService;
   private pluginRegistry: PluginRegistry | null;
   private startTime: Date | null = null;
   private isShuttingDown = false;
 
-  constructor(db: DatabaseClient, storage: IStorageService, pluginRegistry?: PluginRegistry) {
-    this.db = db;
+  constructor(
+    bugReportRepo: BugReportRepository,
+    storage: IStorageService,
+    pluginRegistry?: PluginRegistry
+  ) {
+    this.bugReportRepo = bugReportRepo;
     this.storage = storage;
     this.pluginRegistry = pluginRegistry || null;
     this.workers = new Map();
     this.workerMetrics = new Map();
   }
 
-  /**
-   * Start all enabled workers
-   */
   async start(): Promise<void> {
     if (this.startTime) {
       throw new Error('WorkerManager already started');
@@ -144,17 +126,21 @@ export class WorkerManager {
         .map(([name]) => name),
     });
 
-    // Start all enabled workers from registry
     for (const workerConfig of WORKER_REGISTRY) {
-      const workerSettings = (config.workers as any)[workerConfig.name];
+      const workerSettings = (config.workers as Record<string, { enabled: boolean }>)[
+        workerConfig.name
+      ];
       if (workerSettings?.enabled) {
         await this.startWorker(workerConfig);
       }
     }
 
-    // Start integration worker separately (special handling due to PluginRegistry)
     if (config.workers.integration?.enabled) {
-      await this.startWorker({ name: 'integration', factory: null as any, needsStorage: false });
+      await this.startWorker({
+        name: WORKER_NAMES.INTEGRATION,
+        factory: null,
+        needsStorage: false,
+      });
     }
 
     logger.info('WorkerManager started successfully', {
@@ -162,54 +148,49 @@ export class WorkerManager {
     });
   }
 
-  /**
-   * Generic worker startup - handles all workers uniformly
-   * Eliminates 160+ lines of duplication across 4 specific worker methods
-   */
+  private async createWorkerInstance(
+    name: WorkerName,
+    factory: WorkerFactory | null,
+    needsStorage: boolean,
+    connection: Redis
+  ): Promise<AnyWorker> {
+    if (name === WORKER_NAMES.INTEGRATION) {
+      if (!this.pluginRegistry) {
+        throw new Error('PluginRegistry required for integration worker but not provided');
+      }
+      return createIntegrationWorker(
+        this.pluginRegistry,
+        this.bugReportRepo,
+        connection
+      ) as AnyWorker;
+    }
+
+    if (!factory) {
+      throw new Error(`No factory provided for ${name} worker`);
+    }
+
+    return await factory(
+      this.bugReportRepo as unknown,
+      needsStorage ? (this.storage as unknown) : undefined,
+      connection
+    );
+  }
+
   private async startWorker(workerConfig: WorkerConfig): Promise<void> {
     const { name, factory, needsStorage } = workerConfig;
 
     try {
       logger.info(`Starting ${name} worker`);
       const queueManager = getQueueManager();
+      const connection = queueManager.getConnection();
 
-      // Special handling for workers with specific dependencies
-      let worker: BaseWorker<any, any, any>;
-
-      if (name === 'integration') {
-        // Integration worker needs PluginRegistry + BugReportRepository
-        if (!this.pluginRegistry) {
-          throw new Error('PluginRegistry required for integration worker but not provided');
-        }
-        worker = createIntegrationWorker(
-          this.pluginRegistry,
-          this.db.bugReports,
-          queueManager.getConnection()
-        );
-      } else if (name === 'screenshot' || name === 'replay' || name === 'notification') {
-        // Screenshot, Replay, and Notification workers only need BugReportRepository
-        // Storage is passed but may be undefined for notification worker
-        worker = await factory(
-          this.db.bugReports,
-          needsStorage ? this.storage : (undefined as any),
-          queueManager.getConnection()
-        );
-      } else {
-        // Other workers (if any future ones) need full DatabaseClient
-        worker = await factory(
-          this.db,
-          needsStorage ? this.storage : (undefined as any),
-          queueManager.getConnection()
-        );
-      }
+      const worker = await this.createWorkerInstance(name, factory, needsStorage, connection);
 
       this.workers.set(name, worker);
       this.initializeWorkerMetrics(name);
-
-      // Attach standard event handlers for metrics tracking
       this.attachWorkerEventHandlers(worker, name);
 
-      logger.info(`${name.charAt(0).toUpperCase() + name.slice(1)} worker started`);
+      logger.info(`${this.capitalize(name)} worker started`);
     } catch (error) {
       logger.error(`Failed to start ${name} worker`, {
         error: error instanceof Error ? error.message : String(error),
@@ -218,39 +199,36 @@ export class WorkerManager {
     }
   }
 
-  /**
-   * Attach event handlers to track worker metrics
-   * Extracted from duplicated code in all worker startup methods
-   */
-  private attachWorkerEventHandlers(worker: BaseWorker<any, any, any>, workerName: string): void {
-    // Track successful completions
-    worker.on('completed', (job: any) => {
+  private capitalize(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  private attachWorkerEventHandlers(worker: AnyWorker, workerName: string): void {
+    const capitalizedName = this.capitalize(workerName);
+
+    worker.on('completed', (job: unknown) => {
       this.updateWorkerMetrics(workerName, {
         jobsProcessed: 1,
         lastProcessedAt: new Date(),
       });
-      logger.debug(`${workerName.charAt(0).toUpperCase() + workerName.slice(1)} job completed`, {
-        jobId: job.id,
-      });
+      const jobId = (job as { id?: string }).id;
+      logger.debug(`${capitalizedName} job completed`, { jobId });
     });
 
-    // Track failures
-    worker.on('failed', (job: any, error: Error) => {
+    worker.on('failed', (job: unknown, error: Error) => {
       this.updateWorkerMetrics(workerName, {
         jobsFailed: 1,
         lastError: error.message,
         lastProcessedAt: new Date(),
       });
-      logger.error(`${workerName.charAt(0).toUpperCase() + workerName.slice(1)} job failed`, {
-        jobId: job?.id,
+      const jobId = (job as { id?: string } | undefined)?.id;
+      logger.error(`${capitalizedName} job failed`, {
+        jobId,
         error: error.message,
       });
     });
   }
 
-  /**
-   * Initialize metrics for a worker
-   */
   private initializeWorkerMetrics(workerName: string): void {
     this.workerMetrics.set(workerName, {
       workerName,
@@ -264,10 +242,6 @@ export class WorkerManager {
     });
   }
 
-  /**
-   * Helper: Calculate true average processing time
-   * Uses cumulative total divided by job count for accuracy
-   */
   private calculateTrueAverage(
     totalProcessingTimeMs: number,
     processingTimeMs: number,
@@ -281,10 +255,6 @@ export class WorkerManager {
     };
   }
 
-  /**
-   * Update worker metrics
-   * Uses helper functions to reduce duplication and improve maintainability
-   */
   private updateWorkerMetrics(
     workerName: string,
     updates: Partial<
@@ -311,12 +281,10 @@ export class WorkerManager {
       metrics.lastProcessedAt = updates.lastProcessedAt;
     }
 
-    // Update error (can be null to clear)
     if (updates.lastError !== undefined) {
       metrics.lastError = updates.lastError;
     }
 
-    // Calculate true average if processing time provided
     if (updates.processingTimeMs !== undefined) {
       const { avgProcessingTimeMs, totalProcessingTimeMs } = this.calculateTrueAverage(
         metrics.totalProcessingTimeMs,
@@ -328,9 +296,6 @@ export class WorkerManager {
     }
   }
 
-  /**
-   * Get metrics for all workers
-   */
   getMetrics(): WorkerManagerMetrics {
     const workers = Array.from(this.workerMetrics.values());
     const totalJobsProcessed = workers.reduce((sum, w) => sum + w.jobsProcessed, 0);
@@ -347,22 +312,15 @@ export class WorkerManager {
     };
   }
 
-  /**
-   * Get metrics for a specific worker
-   */
   getWorkerMetrics(workerName: string): WorkerMetrics | null {
     return this.workerMetrics.get(workerName) || null;
   }
 
-  /**
-   * Health check for all workers
-   */
   async healthCheck(): Promise<{ healthy: boolean; workers: Record<string, boolean> }> {
     const workerHealth: Record<string, boolean> = {};
 
     for (const [name] of this.workers.entries()) {
       try {
-        // Check if worker is running (has not closed)
         const metrics = this.workerMetrics.get(name);
         workerHealth[name] = metrics?.isRunning ?? false;
       } catch (error) {
@@ -378,9 +336,6 @@ export class WorkerManager {
     return { healthy, workers: workerHealth };
   }
 
-  /**
-   * Pause a specific worker
-   */
   async pauseWorker(workerName: string): Promise<void> {
     const worker = this.workers.get(workerName);
     if (!worker) {
@@ -397,9 +352,6 @@ export class WorkerManager {
     logger.info(`Worker ${workerName} paused`);
   }
 
-  /**
-   * Resume a specific worker
-   */
   async resumeWorker(workerName: string): Promise<void> {
     const worker = this.workers.get(workerName);
     if (!worker) {
@@ -416,9 +368,6 @@ export class WorkerManager {
     logger.info(`Worker ${workerName} resumed`);
   }
 
-  /**
-   * Graceful shutdown - completes current jobs before stopping
-   */
   async shutdown(): Promise<void> {
     if (this.isShuttingDown) {
       logger.warn('WorkerManager shutdown already in progress');
@@ -431,13 +380,11 @@ export class WorkerManager {
       activeWorkers: this.workers.size,
     });
 
-    // Close all workers (they will complete current jobs)
     const shutdownPromises: Promise<void>[] = [];
 
     for (const [name, workerInstance] of this.workers.entries()) {
       logger.info(`Shutting down ${name} worker`);
 
-      // All workers now implement BaseWorker interface with close() method
       shutdownPromises.push(
         workerInstance
           .close()
@@ -458,10 +405,8 @@ export class WorkerManager {
 
     await Promise.allSettled(shutdownPromises);
 
-    // Clear workers
     this.workers.clear();
 
-    // Shutdown queue manager
     const queueManager = getQueueManager();
     await queueManager.shutdown();
 
@@ -469,28 +414,19 @@ export class WorkerManager {
   }
 }
 
-/**
- * Singleton instance
- */
 let workerManagerInstance: WorkerManager | null = null;
 
-/**
- * Create and return singleton WorkerManager instance
- */
 export function createWorkerManager(
-  db: DatabaseClient,
+  bugReportRepo: BugReportRepository,
   storage: IStorageService,
   pluginRegistry?: PluginRegistry
 ): WorkerManager {
   if (!workerManagerInstance) {
-    workerManagerInstance = new WorkerManager(db, storage, pluginRegistry);
+    workerManagerInstance = new WorkerManager(bugReportRepo, storage, pluginRegistry);
   }
   return workerManagerInstance;
 }
 
-/**
- * Get existing WorkerManager instance
- */
 export function getWorkerManager(): WorkerManager {
   if (!workerManagerInstance) {
     throw new Error('WorkerManager not initialized. Call createWorkerManager() first.');

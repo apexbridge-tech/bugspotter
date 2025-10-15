@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createIntegrationWorker } from '../../src/queue/workers/integration-worker.js';
-import type { DatabaseClient } from '../../src/db/client.js';
+import type { BugReportRepository } from '../../src/db/repositories.js';
 import type { Redis } from 'ioredis';
 import {
   validateIntegrationJobData,
@@ -13,37 +13,22 @@ import {
 } from '../../src/queue/jobs/integration-job.js';
 
 describe('Integration Worker', () => {
-  let mockDb: Partial<DatabaseClient>;
+  let mockBugReportRepo: Partial<BugReportRepository>;
   let mockRedis: Partial<Redis>;
   let mockRegistry: any;
 
   beforeEach(() => {
-    mockDb = {
-      bugReports: {
-        findById: vi.fn().mockResolvedValue({
-          id: 'bug-123',
-          project_id: 'proj-456',
-          title: 'Test Bug',
-          description: 'Test description',
-          status: 'open',
-          priority: 'high',
-          metadata: {},
-        }),
-        updateExternalIntegration: vi.fn().mockResolvedValue(undefined),
-      } as any,
-      query: vi.fn().mockResolvedValue({
-        rows: [
-          {
-            id: 'bug-123',
-            project_id: 'proj-456',
-            title: 'Test Bug',
-            description: 'Test description',
-            status: 'open',
-            priority: 'high',
-            metadata: {},
-          },
-        ],
+    mockBugReportRepo = {
+      findById: vi.fn().mockResolvedValue({
+        id: 'bug-123',
+        project_id: 'proj-456',
+        title: 'Test Bug',
+        description: 'Test description',
+        status: 'open',
+        priority: 'high',
+        metadata: {},
       }),
+      updateExternalIntegration: vi.fn().mockResolvedValue(undefined),
     };
 
     mockRegistry = {
@@ -69,7 +54,7 @@ describe('Integration Worker', () => {
     it('should create integration worker successfully', () => {
       const worker = createIntegrationWorker(
         mockRegistry as any,
-        mockDb.bugReports as any,
+        mockBugReportRepo as BugReportRepository,
         mockRedis as Redis
       );
 
@@ -81,7 +66,7 @@ describe('Integration Worker', () => {
     it('should create worker with correct configuration', () => {
       const worker = createIntegrationWorker(
         mockRegistry as any,
-        mockDb.bugReports as any,
+        mockBugReportRepo as BugReportRepository,
         mockRedis as Redis
       );
 
@@ -257,7 +242,7 @@ describe('Integration Worker', () => {
     it('should allow closing the worker', async () => {
       const worker = createIntegrationWorker(
         mockRegistry as any,
-        mockDb.bugReports as any,
+        mockBugReportRepo as BugReportRepository,
         mockRedis as Redis
       );
 
@@ -267,7 +252,7 @@ describe('Integration Worker', () => {
     it('should provide access to underlying BullMQ worker', () => {
       const worker = createIntegrationWorker(
         mockRegistry as any,
-        mockDb.bugReports as any,
+        mockBugReportRepo as BugReportRepository,
         mockRedis as Redis
       );
 
@@ -279,7 +264,7 @@ describe('Integration Worker', () => {
     it('should support pause and resume', async () => {
       const worker = createIntegrationWorker(
         mockRegistry as any,
-        mockDb.bugReports as any,
+        mockBugReportRepo as BugReportRepository,
         mockRedis as Redis
       );
 

@@ -20,6 +20,12 @@ vi.mock('../../src/logger.js', () => ({
   }),
 }));
 vi.mock('../../src/config/queue.config.js', () => ({
+  WORKER_NAMES: {
+    SCREENSHOT: 'screenshot',
+    REPLAY: 'replay',
+    INTEGRATION: 'integration',
+    NOTIFICATION: 'notification',
+  },
   getQueueConfig: () => {
     // Helper to parse boolean from environment variable
     const getEnvBool = (key: string, defaultValue: boolean = true): boolean => {

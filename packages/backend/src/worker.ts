@@ -62,7 +62,7 @@ async function main() {
 
     // Create and start worker manager
     logger.info('Creating worker manager...');
-    const workerManager = new WorkerManager(db, storage, pluginRegistry);
+    const workerManager = new WorkerManager(db.bugReports, storage, pluginRegistry);
 
     logger.info('Starting workers...');
     await workerManager.start();
