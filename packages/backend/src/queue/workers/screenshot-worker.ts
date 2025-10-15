@@ -48,52 +48,87 @@ export function createScreenshotWorker(
     });
 
     try {
-      const progress = new ProgressTracker(job, 4);
+      // Check if files already uploaded from previous retry attempt
+      const existingReport = await bugReportRepo.findById(bugReportId);
 
-      // Step 1: Decode base64 data URL
-      await progress.update(1, 'Decoding screenshot');
-      const base64Data = screenshotData.replace(/^data:image\/\w+;base64,/, '');
-      const originalBuffer = Buffer.from(base64Data, 'base64');
+      let originalUrl: string;
+      let thumbnailUrl: string;
+      let originalSize: number;
+      let thumbnailSize: number;
+      let imageMetadata: { width?: number; height?: number };
 
-      // Get image metadata
-      const metadata = await getImageMetadata(originalBuffer);
-      const originalSize = originalBuffer.length;
+      // Check if both screenshot_url and thumbnailUrl (in metadata) already exist
+      const existingThumbnailUrl = existingReport?.metadata?.thumbnailUrl as string | undefined;
 
-      // Step 2: Optimize
-      await progress.update(2, 'Optimizing image');
-      const config = getQueueConfig();
-      const optimizedBuffer = await optimizeScreenshot(originalBuffer, config.screenshot.quality);
+      if (existingReport?.screenshot_url && existingThumbnailUrl) {
+        // Idempotent retry: Files already uploaded, reuse existing URLs
+        logger.info('Reusing uploaded screenshots from previous retry', {
+          jobId: job.id,
+          bugReportId,
+          attemptNumber: job.attemptsMade,
+        });
 
-      // Step 3: Create thumbnail
-      await progress.update(3, 'Creating thumbnail');
-      const thumbnailBuffer = await createThumbnail(
-        originalBuffer,
-        config.screenshot.thumbnailWidth,
-        config.screenshot.thumbnailHeight
-      );
+        originalUrl = existingReport.screenshot_url;
+        thumbnailUrl = existingThumbnailUrl;
 
-      const thumbnailSize = thumbnailBuffer.length;
+        // Use placeholder values for metrics (files already processed)
+        originalSize = 0;
+        thumbnailSize = 0;
+        imageMetadata = { width: 0, height: 0 };
+      } else {
+        // First attempt: Process and upload screenshots
+        const progress = new ProgressTracker(job, 4);
 
-      // Step 4: Upload
-      await progress.complete('Uploading');
+        // Step 1: Decode base64 data URL
+        await progress.update(1, 'Decoding screenshot');
+        const base64Data = screenshotData.replace(/^data:image\/\w+;base64,/, '');
+        const originalBuffer = Buffer.from(base64Data, 'base64');
 
-      // Upload optimized original
-      const originalResult = await storage.uploadScreenshot(
-        projectId,
-        bugReportId,
-        optimizedBuffer
-      );
+        // Get image metadata
+        imageMetadata = await getImageMetadata(originalBuffer);
+        originalSize = originalBuffer.length;
 
-      // Upload thumbnail (store in metadata for now, could add uploadThumbnail method)
-      const thumbnailResult = await storage.uploadScreenshot(
-        projectId,
-        `${bugReportId}-thumb`,
-        thumbnailBuffer
-      );
+        // Step 2: Optimize
+        await progress.update(2, 'Optimizing image');
+        const config = getQueueConfig();
+        const optimizedBuffer = await optimizeScreenshot(originalBuffer, config.screenshot.quality);
 
-      // Update database with screenshot and thumbnail URLs
-      await bugReportRepo.updateScreenshotUrl(bugReportId, originalResult.url);
-      await bugReportRepo.updateThumbnailUrl(bugReportId, thumbnailResult.url);
+        // Step 3: Create thumbnail
+        await progress.update(3, 'Creating thumbnail');
+        const thumbnailBuffer = await createThumbnail(
+          originalBuffer,
+          config.screenshot.thumbnailWidth,
+          config.screenshot.thumbnailHeight
+        );
+
+        thumbnailSize = thumbnailBuffer.length;
+
+        // Step 4: Upload
+        await progress.complete('Uploading');
+
+        // Upload optimized original
+        const originalResult = await storage.uploadScreenshot(
+          projectId,
+          bugReportId,
+          optimizedBuffer
+        );
+
+        // Upload thumbnail (store in metadata for now, could add uploadThumbnail method)
+        const thumbnailResult = await storage.uploadScreenshot(
+          projectId,
+          `${bugReportId}-thumb`,
+          thumbnailBuffer
+        );
+
+        originalUrl = originalResult.url;
+        thumbnailUrl = thumbnailResult.url;
+
+        // Update database with screenshot and thumbnail URLs
+        // This is the critical operation that might fail - if it does, the next retry
+        // will skip upload and reuse the existing files (idempotent behavior)
+        await bugReportRepo.updateScreenshotUrl(bugReportId, originalUrl);
+        await bugReportRepo.updateThumbnailUrl(bugReportId, thumbnailUrl);
+      }
 
       const processingTimeMs = Date.now() - startTime;
 
@@ -105,11 +140,11 @@ export function createScreenshotWorker(
         processingTimeMs,
       });
 
-      return createScreenshotJobResult(originalResult.url, thumbnailResult.url, {
-        originalSize: optimizedBuffer.length,
+      return createScreenshotJobResult(originalUrl, thumbnailUrl, {
+        originalSize,
         thumbnailSize,
-        width: metadata.width || 0,
-        height: metadata.height || 0,
+        width: imageMetadata.width || 0,
+        height: imageMetadata.height || 0,
         processingTimeMs,
       });
     } catch (error) {

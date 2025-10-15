@@ -10,9 +10,16 @@ set -e  # Exit on any error
 
 # Configuration from environment variables
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://minio:9000}"
-MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin123456}"
-MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-minioadmin12345678901234567890123456}"
+MINIO_ROOT_USER="${MINIO_ROOT_USER}"
+MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD}"
 BUCKET_NAME="${MINIO_BUCKET:-bugspotter}"
+
+# Validate required credentials
+if [ -z "$MINIO_ROOT_USER" ] || [ -z "$MINIO_ROOT_PASSWORD" ]; then
+  echo "Error: MINIO_ROOT_USER and MINIO_ROOT_PASSWORD must be set"
+  echo "Please define these in your .env file"
+  exit 1
+fi
 
 echo "Initializing MinIO bucket: ${BUCKET_NAME}"
 

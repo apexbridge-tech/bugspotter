@@ -110,7 +110,8 @@ wait_for_redis() {
     sleep 2
   done
   
-  echo "Warning: Redis did not become ready in time (continuing anyway)"
+  echo "Error: Redis did not become ready in time"
+  exit 1
 }
 
 # ============================================================================

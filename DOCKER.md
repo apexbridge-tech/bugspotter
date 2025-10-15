@@ -17,13 +17,22 @@ Complete Docker setup for running BugSpotter backend with PostgreSQL, Redis, and
 # Copy environment template
 cp .env.example .env
 
-# Generate secure secrets (REQUIRED for production!)
+# Generate secure secrets (REQUIRED!)
 echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
 echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
 
-# Update other configuration as needed
+# Edit .env and set all required credentials
 nano .env
 ```
+
+**IMPORTANT**: The following variables have NO defaults and MUST be set in `.env`:
+
+- `JWT_SECRET` - Generate with `openssl rand -base64 32`
+- `ENCRYPTION_KEY` - Generate with `openssl rand -base64 32`
+- `MINIO_ROOT_USER` - Already set in `.env.example` (16+ chars)
+- `MINIO_ROOT_PASSWORD` - Already set in `.env.example` (32+ chars)
+
+**Security Note**: Docker Compose will fail to start if these are missing. This is intentional to prevent running with insecure defaults.
 
 ### 3. Start Services
 
@@ -156,8 +165,9 @@ POSTGRES_PASSWORD=your_secure_password
 
 ```bash
 # Generate with: openssl rand -base64 32
-JWT_SECRET=your_jwt_secret_here      # 32+ characters required
-ENCRYPTION_KEY=your_encryption_key_here  # 32+ characters required
+# Example below - DO NOT use in production!
+JWT_SECRET=EXAMPLE_dev_jwt_key_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6      # 32+ characters required
+ENCRYPTION_KEY=EXAMPLE_dev_enc_key_x9y8z7w6v5u4t3s2r1q0p9o8n7m6l5k4  # 32+ characters required
 ```
 
 #### Storage
