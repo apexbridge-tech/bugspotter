@@ -62,7 +62,9 @@ export default function ProjectsPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!projectName.trim()) return;
+    if (!projectName.trim()) {
+      return;
+    }
     createMutation.mutate(projectName);
   };
 
@@ -104,11 +106,7 @@ export default function ProjectsPage() {
               <Button type="submit" isLoading={createMutation.isPending}>
                 Create
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setShowCreateForm(false)}
-              >
+              <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)}>
                 Cancel
               </Button>
             </form>
@@ -144,9 +142,7 @@ export default function ProjectsPage() {
                       <div className="text-gray-600">
                         Created: {new Date(project.created_at).toLocaleDateString()}
                       </div>
-                      <div className="text-gray-600">
-                        Reports: {project.report_count}
-                      </div>
+                      <div className="text-gray-600">Reports: {project.report_count}</div>
                     </div>
                   </div>
                   <div className="flex gap-2">

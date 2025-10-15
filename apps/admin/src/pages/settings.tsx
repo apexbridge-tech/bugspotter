@@ -44,7 +44,10 @@ export default function SettingsPage() {
     e.preventDefault();
     const dataToSend = {
       ...formData,
-      cors_origins: corsInput.split(',').map((s) => s.trim()).filter(Boolean),
+      cors_origins: corsInput
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
     };
     updateMutation.mutate(dataToSend);
   };
@@ -99,9 +102,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Storage Type
-              </label>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Storage Type</label>
               <div className="flex gap-4">
                 <label className="flex items-center">
                   <input

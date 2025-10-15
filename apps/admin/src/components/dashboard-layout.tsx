@@ -24,9 +24,7 @@ export default function DashboardLayout() {
             <Link
               to="/health"
               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                isActive('/health')
-                  ? 'bg-primary text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                isActive('/health') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
               <Activity className="w-5 h-5 mr-3" />
@@ -35,9 +33,7 @@ export default function DashboardLayout() {
             <Link
               to="/projects"
               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                isActive('/projects')
-                  ? 'bg-primary text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                isActive('/projects') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
               <FolderKanban className="w-5 h-5 mr-3" />
@@ -46,9 +42,7 @@ export default function DashboardLayout() {
             <Link
               to="/settings"
               className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                isActive('/settings')
-                  ? 'bg-primary text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                isActive('/settings') ? 'bg-primary text-white' : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
               <Settings className="w-5 h-5 mr-3" />

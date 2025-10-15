@@ -4,7 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Database, HardDrive, Server, CheckCircle, XCircle } from 'lucide-react';
 
 export default function HealthPage() {
-  const { data: health, isLoading, refetch } = useQuery({
+  const {
+    data: health,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['health'],
     queryFn: adminService.getHealth,
     refetchInterval: 30000, // Refresh every 30s
@@ -30,7 +34,9 @@ export default function HealthPage() {
   };
 
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) {
+      return '0 B';
+    }
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -90,7 +96,9 @@ export default function HealthPage() {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getStatusColor(health?.services.database.status || '')}`}>
+            <div
+              className={`text-2xl font-bold ${getStatusColor(health?.services.database.status || '')}`}
+            >
               {health?.services.database.status?.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -105,7 +113,9 @@ export default function HealthPage() {
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getStatusColor(health?.services.redis.status || '')}`}>
+            <div
+              className={`text-2xl font-bold ${getStatusColor(health?.services.redis.status || '')}`}
+            >
               {health?.services.redis.status?.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -120,7 +130,9 @@ export default function HealthPage() {
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getStatusColor(health?.services.storage.status || '')}`}>
+            <div
+              className={`text-2xl font-bold ${getStatusColor(health?.services.storage.status || '')}`}
+            >
               {health?.services.storage.status?.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -153,9 +165,7 @@ export default function HealthPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Uptime</p>
-              <p className="text-2xl font-bold">
-                {formatUptime(health?.system.uptime || 0)}
-              </p>
+              <p className="text-2xl font-bold">{formatUptime(health?.system.uptime || 0)}</p>
             </div>
           </div>
         </CardContent>
