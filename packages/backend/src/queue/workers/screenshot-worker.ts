@@ -76,7 +76,7 @@ export function createScreenshotWorker(
         const originalBuffer = Buffer.from(base64Data, 'base64');
         imageMetadata = await getImageMetadata(originalBuffer);
         originalSize = originalBuffer.length;
-        
+
         // Estimate thumbnail size based on typical compression ratio
         // (actual file exists in storage but this provides realistic metrics)
         thumbnailSize = Math.round(originalSize * 0.15);
