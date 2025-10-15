@@ -4,7 +4,7 @@
  */
 
 import type { Pool, PoolClient } from 'pg';
-import { BaseRepository } from './base-repository.js';
+import { BaseRepository } from './repositories/base-repository.js';
 
 /**
  * Project integration entity

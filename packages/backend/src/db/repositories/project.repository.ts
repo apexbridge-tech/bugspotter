@@ -4,8 +4,8 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { BaseRepository } from './base-repository.js';
-import { SINGLE_ROW_LIMIT } from './constants.js';
-import type { Project, ProjectInsert, ProjectUpdate } from './types.js';
+import { SINGLE_ROW_LIMIT } from '../constants.js';
+import type { Project, ProjectInsert, ProjectUpdate } from '../types.js';
 
 export class ProjectRepository extends BaseRepository<Project, ProjectInsert, ProjectUpdate> {
   constructor(pool: Pool | PoolClient) {

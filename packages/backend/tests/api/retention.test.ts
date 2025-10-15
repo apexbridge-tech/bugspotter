@@ -13,6 +13,7 @@ import { createRetentionService } from '../../src/retention/retention-service.fa
 import { RetentionScheduler } from '../../src/retention/retention-scheduler.js';
 import { LocalStorageService } from '../../src/storage/local-storage.js';
 import { LoggerNotificationService } from '../../src/retention/notification-service.js';
+import { createMockPluginRegistry } from '../test-helpers.js';
 
 describe('Retention Routes', () => {
   let server: FastifyInstance;
@@ -39,8 +40,15 @@ describe('Retention Routes', () => {
     });
     const notificationService = new LoggerNotificationService();
     const retentionScheduler = new RetentionScheduler(retentionService, notificationService);
+    const pluginRegistry = createMockPluginRegistry();
 
-    server = await createServer({ db, retentionService, retentionScheduler });
+    server = await createServer({
+      db,
+      storage,
+      pluginRegistry,
+      retentionService,
+      retentionScheduler,
+    });
     await server.ready();
 
     // Create test users once to avoid rate limiting

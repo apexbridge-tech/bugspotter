@@ -8,12 +8,25 @@ import { DatabaseClient } from '../src/db/client.js';
 import { createStorage } from '../src/storage/index.js';
 
 // ============================================================================
+// Setup: Database and Storage Configuration
+// ============================================================================
+
+const CONNECTION_STRING = process.env.DATABASE_URL || 'postgresql://localhost:5432/bugspotter';
+const STORAGE_CONFIG = {
+  backend: 'local' as const,
+  local: {
+    baseDirectory: './storage',
+    baseUrl: 'http://localhost:3000/storage',
+  },
+};
+
+// ============================================================================
 // EXAMPLE 1: Auto-load all plugins
 // ============================================================================
 
 async function example1_autoLoad() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   // Load all available plugins
@@ -33,8 +46,8 @@ async function example1_autoLoad() {
 // ============================================================================
 
 async function example2_manualRegistration() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   // Import specific plugin
@@ -52,8 +65,8 @@ async function example2_manualRegistration() {
 // ============================================================================
 
 async function example3_createIssue() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   await loadIntegrationPlugins(registry);
@@ -80,8 +93,8 @@ async function example3_createIssue() {
 // ============================================================================
 
 async function example4_testAllPlugins() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   await loadIntegrationPlugins(registry);
@@ -103,8 +116,8 @@ async function example4_testAllPlugins() {
 // ============================================================================
 
 async function example5_checkSupport() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   await loadIntegrationPlugins(registry);
@@ -119,8 +132,8 @@ async function example5_checkSupport() {
 // ============================================================================
 
 async function example6_errorHandling() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   try {
@@ -141,8 +154,8 @@ async function example6_errorHandling() {
 // ============================================================================
 
 async function example7_unregister() {
-  const db = DatabaseClient.create();
-  const storage = createStorage();
+  const db = DatabaseClient.create({ connectionString: CONNECTION_STRING });
+  const storage = createStorage(STORAGE_CONFIG);
   const registry = new PluginRegistry(db, storage);
 
   await loadIntegrationPlugins(registry);
@@ -176,11 +189,11 @@ async function main() {
 }
 
 // Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
-}
+// Uncomment the line below to run the examples:
+// main().catch(console.error);
 
 export {
+  main,
   example1_autoLoad,
   example2_manualRegistration,
   example3_createIssue,

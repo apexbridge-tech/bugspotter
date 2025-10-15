@@ -6,7 +6,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createIntegrationWorker } from '../../src/queue/workers/integration-worker.js';
 import type { DatabaseClient } from '../../src/db/client.js';
-import type { IStorageService } from '../../src/storage/types.js';
 import type { Redis } from 'ioredis';
 import {
   validateIntegrationJobData,
@@ -15,11 +14,23 @@ import {
 
 describe('Integration Worker', () => {
   let mockDb: Partial<DatabaseClient>;
-  let mockStorage: Partial<IStorageService>;
   let mockRedis: Partial<Redis>;
+  let mockRegistry: any;
 
   beforeEach(() => {
     mockDb = {
+      bugReports: {
+        findById: vi.fn().mockResolvedValue({
+          id: 'bug-123',
+          project_id: 'proj-456',
+          title: 'Test Bug',
+          description: 'Test description',
+          status: 'open',
+          priority: 'high',
+          metadata: {},
+        }),
+        updateExternalIntegration: vi.fn().mockResolvedValue(undefined),
+      } as any,
       query: vi.fn().mockResolvedValue({
         rows: [
           {
@@ -35,7 +46,16 @@ describe('Integration Worker', () => {
       }),
     };
 
-    mockStorage = {};
+    mockRegistry = {
+      get: vi.fn().mockReturnValue({
+        createFromBugReport: vi.fn().mockResolvedValue({
+          externalId: 'JIRA-123',
+          externalUrl: 'https://jira.example.com/browse/JIRA-123',
+          platform: 'jira',
+        }),
+      }),
+      getSupportedPlatforms: vi.fn().mockReturnValue(['jira']),
+    };
 
     mockRedis = {
       ping: vi.fn().mockResolvedValue('PONG'),
@@ -48,8 +68,8 @@ describe('Integration Worker', () => {
   describe('Worker Creation', () => {
     it('should create integration worker successfully', () => {
       const worker = createIntegrationWorker(
-        mockDb as DatabaseClient,
-        mockStorage as IStorageService,
+        mockRegistry as any,
+        mockDb.bugReports as any,
         mockRedis as Redis
       );
 
@@ -60,8 +80,8 @@ describe('Integration Worker', () => {
 
     it('should create worker with correct configuration', () => {
       const worker = createIntegrationWorker(
-        mockDb as DatabaseClient,
-        mockStorage as IStorageService,
+        mockRegistry as any,
+        mockDb.bugReports as any,
         mockRedis as Redis
       );
 
@@ -236,8 +256,8 @@ describe('Integration Worker', () => {
   describe('Worker Lifecycle', () => {
     it('should allow closing the worker', async () => {
       const worker = createIntegrationWorker(
-        mockDb as DatabaseClient,
-        mockStorage as IStorageService,
+        mockRegistry as any,
+        mockDb.bugReports as any,
         mockRedis as Redis
       );
 
@@ -246,8 +266,8 @@ describe('Integration Worker', () => {
 
     it('should provide access to underlying BullMQ worker', () => {
       const worker = createIntegrationWorker(
-        mockDb as DatabaseClient,
-        mockStorage as IStorageService,
+        mockRegistry as any,
+        mockDb.bugReports as any,
         mockRedis as Redis
       );
 
@@ -258,8 +278,8 @@ describe('Integration Worker', () => {
 
     it('should support pause and resume', async () => {
       const worker = createIntegrationWorker(
-        mockDb as DatabaseClient,
-        mockStorage as IStorageService,
+        mockRegistry as any,
+        mockDb.bugReports as any,
         mockRedis as Redis
       );
 

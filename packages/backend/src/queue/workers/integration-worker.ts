@@ -20,8 +20,6 @@
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
-import type { DatabaseClient } from '../../db/client.js';
-import type { IStorageService } from '../../storage/types.js';
 import {
   INTEGRATION_JOB_NAME,
   validateIntegrationJobData,
@@ -34,8 +32,8 @@ import { createBaseWorkerWrapper } from './base-worker.js';
 import { attachStandardEventHandlers } from './worker-events.js';
 import { ProgressTracker } from './progress-tracker.js';
 import { createWorker } from './worker-factory.js';
-import { PluginRegistry } from '../../integrations/plugin-registry.js';
-import { loadIntegrationPlugins } from '../../integrations/plugin-loader.js';
+import type { PluginRegistry } from '../../integrations/plugin-registry.js';
+import type { BugReportRepository } from '../../db/repositories.js';
 
 const logger = getLogger();
 
@@ -53,16 +51,12 @@ interface PlatformIntegrationResult {
  * Route integration to platform-specific handler using registry
  */
 async function routeToPlatform(
+  registry: PluginRegistry,
   platform: string,
   bugReportId: string,
   projectId: string,
-  db: DatabaseClient,
-  storage: IStorageService
+  bugReportRepo: BugReportRepository
 ): Promise<PlatformIntegrationResult> {
-  // Create integration service registry
-  const registry = new PluginRegistry(db, storage);
-  await loadIntegrationPlugins(registry);
-
   // Get service for platform
   const service = registry.get(platform);
   if (!service) {
@@ -72,7 +66,7 @@ async function routeToPlatform(
   }
 
   // Fetch bug report
-  const bugReport = await db.bugReports.findById(bugReportId);
+  const bugReport = await bugReportRepo.findById(bugReportId);
   if (!bugReport) {
     throw new Error(`Bug report not found: ${bugReportId}`);
   }
@@ -93,8 +87,8 @@ async function routeToPlatform(
  */
 async function processIntegrationJob(
   job: Job<IntegrationJobData, IntegrationJobResult>,
-  db: DatabaseClient,
-  storage: IStorageService
+  bugReportRepo: BugReportRepository,
+  registry: PluginRegistry
 ): Promise<IntegrationJobResult> {
   const startTime = Date.now();
 
@@ -113,11 +107,11 @@ async function processIntegrationJob(
 
   // Step 1: Route to platform handler
   await progress.update(1, `Creating ${platform} issue`);
-  const result = await routeToPlatform(platform, bugReportId, projectId, db, storage);
+  const result = await routeToPlatform(registry, platform, bugReportId, projectId, bugReportRepo);
 
   // Step 2: Store external ID in database
   await progress.update(2, 'Updating database');
-  await db.bugReports.updateExternalIntegration(bugReportId, result.externalId, result.externalUrl);
+  await bugReportRepo.updateExternalIntegration(bugReportId, result.externalId, result.externalUrl);
 
   await progress.complete('Done');
 
@@ -144,19 +138,27 @@ async function processIntegrationJob(
 /**
  * Create integration worker with concurrency and event handlers
  * Returns a BaseWorker wrapper for consistent interface with other workers
+ *
+ * @param registry - Shared PluginRegistry instance (initialized at application startup)
+ * @param bugReportRepo - BugReportRepository for fetching and updating bug reports
+ * @param connection - Redis connection for BullMQ
  */
 export function createIntegrationWorker(
-  db: DatabaseClient,
-  storage: IStorageService,
+  registry: PluginRegistry,
+  bugReportRepo: BugReportRepository,
   connection: Redis
 ): BaseWorker<IntegrationJobData, IntegrationJobResult, 'integrations'> {
+  logger.info('Creating integration worker', {
+    supportedPlatforms: registry.getSupportedPlatforms(),
+  });
+
   const worker = createWorker<
     IntegrationJobData,
     IntegrationJobResult,
     typeof QUEUE_NAMES.INTEGRATIONS
   >({
     name: INTEGRATION_JOB_NAME,
-    processor: async (job) => processIntegrationJob(job, db, storage),
+    processor: async (job) => processIntegrationJob(job, bugReportRepo, registry),
     connection,
     workerType: QUEUE_NAMES.INTEGRATIONS,
   });

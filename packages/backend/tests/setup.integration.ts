@@ -111,6 +111,19 @@ export function createTestDatabase(): DatabaseClient {
 }
 
 /**
+ * Create test storage service
+ */
+export async function createTestStorage() {
+  const { LocalStorageService } = await import('../src/storage/local-storage.js');
+  const storage = new LocalStorageService({
+    baseDirectory: './test-storage',
+    baseUrl: 'http://localhost:3000/storage',
+  });
+  await storage.initialize();
+  return storage;
+}
+
+/**
  * Create a test server with database
  * Returns both server and database for cleanup
  */
@@ -124,9 +137,17 @@ export async function createTestServerWithDb() {
 
   // Lazy import to avoid loading Fastify until needed after env vars are set
   const { createServer } = await import('../src/api/server.js');
+  const { PluginRegistry } = await import('../src/integrations/plugin-registry.js');
+  const { loadIntegrationPlugins } = await import('../src/integrations/plugin-loader.js');
 
   const db = createTestDatabase();
-  const server = await createServer({ db });
+
+  // Initialize plugin registry
+  const storage = await createTestStorage();
+  const pluginRegistry = new PluginRegistry(db, storage);
+  await loadIntegrationPlugins(pluginRegistry);
+
+  const server = await createServer({ db, storage, pluginRegistry });
 
   return { server, db };
 }

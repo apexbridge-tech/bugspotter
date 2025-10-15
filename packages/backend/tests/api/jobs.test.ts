@@ -9,6 +9,7 @@ import { createServer } from '../../src/api/server.js';
 import type { FastifyInstance } from 'fastify';
 import type { QueueManager } from '../../src/queue/queue-manager.js';
 import type { Queue } from 'bullmq';
+import { createMockPluginRegistry, createMockStorage } from '../test-helpers.js';
 
 describe('Jobs API Routes', () => {
   let db: DatabaseClient;
@@ -60,8 +61,11 @@ describe('Jobs API Routes', () => {
       close: vi.fn().mockResolvedValue(undefined),
     } as unknown as QueueManager;
 
+    const pluginRegistry = createMockPluginRegistry();
+    const storage = createMockStorage();
+
     // Create server with mock queue manager
-    server = await createServer({ db, queueManager: mockQueueManager });
+    server = await createServer({ db, storage, pluginRegistry, queueManager: mockQueueManager });
   });
 
   afterAll(async () => {

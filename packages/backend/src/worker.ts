@@ -50,9 +50,19 @@ async function main() {
     const storage = await createStorageFromEnv();
     logger.info('Storage service initialized');
 
+    // Initialize integration plugin registry
+    logger.info('Initializing integration plugins...');
+    const { PluginRegistry } = await import('./integrations/plugin-registry.js');
+    const { loadIntegrationPlugins } = await import('./integrations/plugin-loader.js');
+    const pluginRegistry = new PluginRegistry(db, storage);
+    await loadIntegrationPlugins(pluginRegistry);
+    logger.info('Integration plugins loaded', {
+      platforms: pluginRegistry.getSupportedPlatforms(),
+    });
+
     // Create and start worker manager
     logger.info('Creating worker manager...');
-    const workerManager = new WorkerManager(db, storage);
+    const workerManager = new WorkerManager(db, storage, pluginRegistry);
 
     logger.info('Starting workers...');
     await workerManager.start();

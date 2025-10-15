@@ -7,7 +7,7 @@ import type { BugReportRepository } from '../../db/repositories.js';
 import type { ProjectIntegrationRepository } from '../../db/project-integration.repository.js';
 import type { DatabaseClient } from '../../db/client.js';
 import type { IStorageService } from '../../storage/types.js';
-import type { BugReport, TicketStatus } from '../../db/types.js';
+import { TICKET_STATUS, type BugReport, type TicketStatus } from '../../db/types.js';
 import type { IntegrationService } from '../base-integration.service.js';
 import type { IntegrationResult } from '../base-integration.service.js';
 import { getLogger } from '../../logger.js';
@@ -20,7 +20,7 @@ const logger = getLogger();
 
 // Constants
 const PLATFORM_NAME = 'jira';
-const DEFAULT_TICKET_STATUS: TicketStatus = 'open';
+const DEFAULT_TICKET_STATUS: TicketStatus = TICKET_STATUS.OPEN;
 const DEFAULT_SCREENSHOT_FILENAME = 'screenshot.png';
 
 /**

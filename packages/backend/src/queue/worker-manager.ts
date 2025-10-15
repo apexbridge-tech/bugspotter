@@ -30,19 +30,26 @@ import { createReplayWorker } from './workers/replay-worker.js';
 import { createIntegrationWorker } from './workers/integration-worker.js';
 import { createNotificationWorker } from './workers/notification-worker.js';
 import type { BaseWorker } from './workers/base-worker.js';
+import type { PluginRegistry } from '../integrations/plugin-registry.js';
 
 const logger = getLogger();
 
 /**
  * Worker factory function type
- * Accepts db, storage (optional), and connection parameters
+ * Accepts various parameters depending on worker needs:
+ * - DatabaseClient or specific repositories (BugReportRepository)
+ * - Storage (optional)
+ * - Redis connection
+ * Can be async for workers that need initialization (e.g., plugin loading)
  */
 type WorkerFactory = (
-  db: DatabaseClient,
-  storage: IStorageService,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Workers have different dependency signatures
+  dbOrRepo: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Storage may be undefined for some workers
+  storage: any,
   connection: Redis
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BaseWorker needs generic flexibility for different job types
-) => BaseWorker<any, any, any>;
+) => BaseWorker<any, any, any> | Promise<BaseWorker<any, any, any>>;
 
 /**
  * Worker configuration for registry
@@ -67,15 +74,11 @@ const WORKER_REGISTRY: WorkerConfig[] = [
   { name: 'screenshot', factory: createScreenshotWorker, needsStorage: true },
   { name: 'replay', factory: createReplayWorker, needsStorage: true },
   {
-    name: 'integration',
-    factory: createIntegrationWorker as WorkerFactory,
-    needsStorage: false,
-  },
-  {
     name: 'notification',
     factory: createNotificationWorker as WorkerFactory,
     needsStorage: false,
   },
+  // Note: 'integration' worker handled specially in startWorker() due to PluginRegistry requirement
 ];
 
 export interface WorkerMetrics {
@@ -107,12 +110,14 @@ export class WorkerManager {
   private workerMetrics: Map<string, WorkerMetrics>;
   private db: DatabaseClient;
   private storage: IStorageService;
+  private pluginRegistry: PluginRegistry | null;
   private startTime: Date | null = null;
   private isShuttingDown = false;
 
-  constructor(db: DatabaseClient, storage: IStorageService) {
+  constructor(db: DatabaseClient, storage: IStorageService, pluginRegistry?: PluginRegistry) {
     this.db = db;
     this.storage = storage;
+    this.pluginRegistry = pluginRegistry || null;
     this.workers = new Map();
     this.workerMetrics = new Map();
   }
@@ -147,6 +152,11 @@ export class WorkerManager {
       }
     }
 
+    // Start integration worker separately (special handling due to PluginRegistry)
+    if (config.workers.integration?.enabled) {
+      await this.startWorker({ name: 'integration', factory: null as any, needsStorage: false });
+    }
+
     logger.info('WorkerManager started successfully', {
       activeWorkers: this.workers.size,
     });
@@ -163,13 +173,35 @@ export class WorkerManager {
       logger.info(`Starting ${name} worker`);
       const queueManager = getQueueManager();
 
-      // Call factory with appropriate parameters
-      // If worker doesn't need storage, pass undefined (will be ignored)
-      const worker = factory(
-        this.db,
-        needsStorage ? this.storage : (undefined as any),
-        queueManager.getConnection()
-      );
+      // Special handling for workers with specific dependencies
+      let worker: BaseWorker<any, any, any>;
+
+      if (name === 'integration') {
+        // Integration worker needs PluginRegistry + BugReportRepository
+        if (!this.pluginRegistry) {
+          throw new Error('PluginRegistry required for integration worker but not provided');
+        }
+        worker = createIntegrationWorker(
+          this.pluginRegistry,
+          this.db.bugReports,
+          queueManager.getConnection()
+        );
+      } else if (name === 'screenshot' || name === 'replay' || name === 'notification') {
+        // Screenshot, Replay, and Notification workers only need BugReportRepository
+        // Storage is passed but may be undefined for notification worker
+        worker = await factory(
+          this.db.bugReports,
+          needsStorage ? this.storage : (undefined as any),
+          queueManager.getConnection()
+        );
+      } else {
+        // Other workers (if any future ones) need full DatabaseClient
+        worker = await factory(
+          this.db,
+          needsStorage ? this.storage : (undefined as any),
+          queueManager.getConnection()
+        );
+      }
 
       this.workers.set(name, worker);
       this.initializeWorkerMetrics(name);
@@ -445,9 +477,13 @@ let workerManagerInstance: WorkerManager | null = null;
 /**
  * Create and return singleton WorkerManager instance
  */
-export function createWorkerManager(db: DatabaseClient, storage: IStorageService): WorkerManager {
+export function createWorkerManager(
+  db: DatabaseClient,
+  storage: IStorageService,
+  pluginRegistry?: PluginRegistry
+): WorkerManager {
   if (!workerManagerInstance) {
-    workerManagerInstance = new WorkerManager(db, storage);
+    workerManagerInstance = new WorkerManager(db, storage, pluginRegistry);
   }
   return workerManagerInstance;
 }

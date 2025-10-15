@@ -12,7 +12,7 @@
  * 5. Track delivery success/failure rates
  *
  * Dependencies:
- * - DatabaseClient: For fetching bug report context
+ * - BugReportRepository: For fetching bug report context
  * - Email service: For sending email notifications
  * - Slack SDK: For sending Slack messages
  * - HTTP client: For webhook delivery
@@ -21,7 +21,7 @@
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { getLogger } from '../../logger.js';
-import type { DatabaseClient } from '../../db/client.js';
+import type { BugReportRepository } from '../../db/repositories.js';
 import type { IStorageService } from '../../storage/types.js';
 import {
   NOTIFICATION_JOB_NAME,
@@ -67,45 +67,24 @@ interface DeliveryResult {
  * Fetch bug report context for notification
  */
 async function fetchNotificationContext(
-  db: DatabaseClient,
+  bugReportRepo: BugReportRepository,
   bugReportId: string
 ): Promise<NotificationContext> {
-  const result = await db.query<{
-    id: string;
-    project_id: string;
-    title: string;
-    description: string;
-    status: string;
-    priority?: string;
-    metadata?: Record<string, unknown>;
-  }>(
-    `SELECT 
-      id, 
-      project_id,
-      title, 
-      description, 
-      status, 
-      priority,
-      metadata
-    FROM bug_reports 
-    WHERE id = $1`,
-    [bugReportId]
-  );
+  const report = await bugReportRepo.findById(bugReportId);
 
-  if (!result.rows || result.rows.length === 0) {
+  if (!report) {
     throw new Error(`Bug report not found: ${bugReportId}`);
   }
 
-  const report = result.rows[0];
   const metadata = (report.metadata || {}) as Record<string, unknown>;
 
   return {
     bugReportId: report.id,
     projectId: report.project_id,
     title: report.title,
-    description: report.description,
+    description: report.description || '',
     status: report.status,
-    priority: report.priority,
+    priority: report.priority || undefined,
     screenshotUrl: metadata.screenshotUrl as string | undefined,
     replayUrl: metadata.replayManifestUrl as string | undefined,
     externalUrl: metadata.externalUrl as string | undefined,
@@ -278,7 +257,7 @@ async function routeNotification(
  */
 async function processNotificationJob(
   job: Job<NotificationJobData, NotificationJobResult>,
-  db: DatabaseClient
+  bugReportRepo: BugReportRepository
 ): Promise<NotificationJobResult> {
   const startTime = Date.now();
 
@@ -299,7 +278,7 @@ async function processNotificationJob(
 
   // Step 1: Fetch bug report context
   await progress.update(1, 'Fetching context');
-  const context = await fetchNotificationContext(db, bugReportId);
+  const context = await fetchNotificationContext(bugReportRepo, bugReportId);
 
   // Step 2: Send notifications to all recipients
   await progress.update(2, 'Sending notifications');
@@ -356,7 +335,7 @@ async function processNotificationJob(
  * Create notification worker with concurrency and event handlers
  */
 export function createNotificationWorker(
-  db: DatabaseClient,
+  bugReportRepo: BugReportRepository,
   _storage: IStorageService,
   connection: Redis
 ): BaseWorker<NotificationJobData, NotificationJobResult, 'notifications'> {
@@ -366,7 +345,7 @@ export function createNotificationWorker(
     typeof QUEUE_NAMES.NOTIFICATIONS
   >({
     name: NOTIFICATION_JOB_NAME,
-    processor: async (job) => processNotificationJob(job, db),
+    processor: async (job) => processNotificationJob(job, bugReportRepo),
     connection,
     workerType: QUEUE_NAMES.NOTIFICATIONS,
   });

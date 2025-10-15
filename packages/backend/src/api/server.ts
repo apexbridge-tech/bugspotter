@@ -25,10 +25,12 @@ import type { RetentionService } from '../retention/retention-service.js';
 import type { RetentionScheduler } from '../retention/retention-scheduler.js';
 import type { QueueManager } from '../queue/queue-manager.js';
 import type { IStorageService } from '../storage/types.js';
+import type { PluginRegistry } from '../integrations/plugin-registry.js';
 
 export interface ServerOptions {
   db: DatabaseClient;
   storage: IStorageService;
+  pluginRegistry: PluginRegistry;
   retentionService?: RetentionService;
   retentionScheduler?: RetentionScheduler;
   queueManager?: QueueManager;
@@ -166,7 +168,7 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   }
 
   // Register integration routes
-  await registerIntegrationRoutes(fastify, db, options.storage);
+  await registerIntegrationRoutes(fastify, db, options.pluginRegistry);
 
   // Register error handlers
   fastify.setErrorHandler(errorHandler);

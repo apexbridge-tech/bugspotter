@@ -116,7 +116,18 @@ describe('WorkerManager', () => {
       getObject: vi.fn(),
     } as any;
 
-    workerManager = new WorkerManager(mockDb, mockStorage);
+    const mockPluginRegistry = {
+      get: vi.fn().mockReturnValue({
+        createFromBugReport: vi.fn().mockResolvedValue({
+          externalId: 'JIRA-123',
+          externalUrl: 'https://jira.example.com/browse/JIRA-123',
+          platform: 'jira',
+        }),
+      }),
+      getSupportedPlatforms: vi.fn().mockReturnValue(['jira']),
+    } as any;
+
+    workerManager = new WorkerManager(mockDb, mockStorage, mockPluginRegistry);
   });
 
   afterEach(async () => {

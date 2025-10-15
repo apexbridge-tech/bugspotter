@@ -4,7 +4,7 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { BaseRepository } from './base-repository.js';
-import type { ProjectMember, ProjectMemberInsert } from './types.js';
+import type { ProjectMember, ProjectMemberInsert } from '../types.js';
 
 export class ProjectMemberRepository extends BaseRepository<
   ProjectMember,

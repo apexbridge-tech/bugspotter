@@ -11,7 +11,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   DECIMAL_BASE,
-} from './constants.js';
+} from '../constants.js';
 import type {
   BugReport,
   BugReportInsert,
@@ -20,13 +20,13 @@ import type {
   BugReportSortOptions,
   PaginatedResult,
   PaginationOptions,
-} from './types.js';
+} from '../types.js';
 import {
   buildWhereClause,
   buildOrderByClause,
   buildPaginationClause,
   serializeJsonField,
-} from './query-builder.js';
+} from '../query-builder.js';
 
 export class BugReportRepository extends BaseRepository<
   BugReport,

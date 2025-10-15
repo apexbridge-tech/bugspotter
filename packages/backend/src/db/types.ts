@@ -60,7 +60,15 @@ export interface Session {
 /**
  * Ticket status values
  */
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'reopened';
+export const TICKET_STATUS = {
+  OPEN: 'open',
+  IN_PROGRESS: 'in_progress',
+  RESOLVED: 'resolved',
+  CLOSED: 'closed',
+  REOPENED: 'reopened',
+} as const;
+
+export type TicketStatus = (typeof TICKET_STATUS)[keyof typeof TICKET_STATUS];
 
 export interface Ticket {
   id: string;

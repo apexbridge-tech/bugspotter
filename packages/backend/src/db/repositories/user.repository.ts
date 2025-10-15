@@ -4,7 +4,7 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { BaseRepository } from './base-repository.js';
-import type { User, UserInsert } from './types.js';
+import type { User, UserInsert } from '../types.js';
 
 export class UserRepository extends BaseRepository<User, UserInsert, Partial<User>> {
   constructor(pool: Pool | PoolClient) {

@@ -45,6 +45,16 @@ async function main() {
     const storage = createStorageFromEnv();
     logger.info('Storage service initialized');
 
+    // Initialize integration plugin registry
+    logger.info('Initializing integration plugins...');
+    const { PluginRegistry } = await import('../integrations/plugin-registry.js');
+    const { loadIntegrationPlugins } = await import('../integrations/plugin-loader.js');
+    const pluginRegistry = new PluginRegistry(db, storage);
+    await loadIntegrationPlugins(pluginRegistry);
+    logger.info('Integration plugins loaded', {
+      platforms: pluginRegistry.getSupportedPlatforms(),
+    });
+
     // Initialize queue manager if Redis is configured
     let queueManager: ReturnType<typeof getQueueManager> | undefined;
     const queueConfig = getQueueConfig();
@@ -73,7 +83,7 @@ async function main() {
 
     // Create Fastify server
     logger.info('Creating Fastify server...');
-    const server = await createServer({ db, storage, queueManager });
+    const server = await createServer({ db, storage, pluginRegistry, queueManager });
     logger.info('Server created successfully');
 
     // Start listening for requests

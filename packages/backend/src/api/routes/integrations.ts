@@ -6,12 +6,10 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { DatabaseClient } from '../../db/client.js';
-import type { IStorageService } from '../../storage/types.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
 import { checkProjectAccess } from '../utils/resource.js';
 import { AppError } from '../middleware/error.js';
-import { PluginRegistry } from '../../integrations/plugin-registry.js';
-import { loadIntegrationPlugins } from '../../integrations/plugin-loader.js';
+import type { PluginRegistry } from '../../integrations/plugin-registry.js';
 import { getEncryptionService } from '../../utils/encryption.js';
 import { getLogger } from '../../logger.js';
 
@@ -23,12 +21,8 @@ const logger = getLogger();
 export async function registerIntegrationRoutes(
   server: FastifyInstance,
   db: DatabaseClient,
-  storage: IStorageService
+  registry: PluginRegistry
 ): Promise<void> {
-  // Initialize plugin registry
-  const registry = new PluginRegistry(db, storage);
-  await loadIntegrationPlugins(registry);
-
   const encryptionService = getEncryptionService();
 
   /**
