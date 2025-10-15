@@ -14,7 +14,7 @@ const logger = getLogger();
  */
 const ALGORITHM = 'aes-256-gcm' as const;
 const KEY_LENGTH = 32; // 256 bits
-const IV_LENGTH = 16; // 128 bits for GCM
+const IV_LENGTH = 12; // 96 bits (recommended for GCM)
 const SALT_LENGTH = 16;
 const SCRYPT_N = 16384; // CPU/memory cost parameter
 const SCRYPT_R = 8; // Block size
