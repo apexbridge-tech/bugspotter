@@ -91,7 +91,8 @@ export function createScreenshotWorker(
         thumbnailBuffer
       );
 
-      // Update database with thumbnail URL
+      // Update database with screenshot and thumbnail URLs
+      await bugReportRepo.updateScreenshotUrl(bugReportId, originalResult.url);
       await bugReportRepo.updateThumbnailUrl(bugReportId, thumbnailResult.url);
 
       const processingTimeMs = Date.now() - startTime;

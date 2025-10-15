@@ -11,7 +11,17 @@
     "format": "prettier --write \"**/*.{js,ts,json,md,html,css}\"",
     "format:check": "prettier --check \"**/*.{js,ts,json,md,html,css}\"",
     "lint": "eslint \"packages/**/*.{ts,js}\"",
-    "lint:fix": "eslint \"packages/**/*.{ts,js}\" --fix"
+    "lint:fix": "eslint \"packages/**/*.{ts,js}\" --fix",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:logs:api": "docker-compose logs -f api",
+    "docker:logs:worker": "docker-compose logs -f worker",
+    "docker:restart": "docker-compose restart",
+    "docker:ps": "docker-compose ps",
+    "docker:clean": "docker-compose down -v",
+    "docker:test": "docker-compose exec api pnpm test"
   },
   "keywords": [
     "bug-tracking",

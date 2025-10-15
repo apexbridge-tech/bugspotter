@@ -208,6 +208,20 @@ export class BugReportRepository extends BaseRepository<
   }
 
   /**
+   * Update screenshot URL after upload to storage
+   * Used by Screenshot worker after uploading to MinIO/S3
+   */
+  async updateScreenshotUrl(bugReportId: string, screenshotUrl: string): Promise<void> {
+    const query = `
+      UPDATE ${this.tableName}
+      SET screenshot_url = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+    `;
+
+    await this.getClient().query(query, [screenshotUrl, bugReportId]);
+  }
+
+  /**
    * Update bug report metadata with thumbnail URL
    * Used by Screenshot worker after processing
    */

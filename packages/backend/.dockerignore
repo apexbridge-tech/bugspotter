@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test files and coverage
+tests/
+test-storage/
+coverage/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+vitest.config.ts
+vitest.*.config.ts
+playwright.config.ts
+test-results/
+playwright-report/
+
+# Documentation
+*.md
+!README.md
+docs/
+examples/
+
+# Development files
+.env
+.env.local
+.env.*.local
+tsconfig.typecheck.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Scripts
+scripts/
