@@ -44,7 +44,7 @@ Services will be available at:
 
 - **API**: http://localhost:3000
 - **Health Check**: http://localhost:3000/health
-- **MinIO Console**: http://localhost:9001 (admin/minioadmin)
+- **MinIO Console**: http://localhost:9001 (minioadmin123456 / minioadmin12345678901234567890123456)
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
 
@@ -54,12 +54,13 @@ Test the API:
 # Health check
 curl http://localhost:3000/health
 
-# Create a test project
-curl -X POST http://localhost:3000/api/projects \
+# Register a user and get auth token
+curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Test Project",
-    "description": "Testing Docker setup"
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "SecurePass123!"
   }'
 ```
 
@@ -109,8 +110,9 @@ curl -X POST http://localhost:3000/api/projects \
   - 9000: S3 API
   - 9001: Web Console
 - **Volume**: `minio_data` (persistent)
-- **Default Credentials**: minioadmin/minioadmin
+- **Default Credentials**: minioadmin123456 / minioadmin12345678901234567890123456
 - **Bucket**: `bugspotter` (auto-created)
+- **Note**: Credentials must be 16+ chars (user) and 32+ chars (password) for security validation
 
 ## Available Commands
 
@@ -150,16 +152,16 @@ POSTGRES_PASSWORD=your_secure_password
 
 ```bash
 # Generate with: openssl rand -base64 32
-JWT_SECRET=your_jwt_secret_here
-ENCRYPTION_KEY=your_encryption_key_here
+JWT_SECRET=your_jwt_secret_here      # 32+ characters required
+ENCRYPTION_KEY=your_encryption_key_here  # 32+ characters required
 ```
 
 #### Storage
 
 ```bash
 STORAGE_BACKEND=minio
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
+MINIO_ROOT_USER=minioadmin123456     # 16+ characters required
+MINIO_ROOT_PASSWORD=minioadmin12345678901234567890123456  # 32+ characters required
 MINIO_BUCKET=bugspotter
 ```
 
