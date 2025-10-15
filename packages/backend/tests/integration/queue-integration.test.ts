@@ -153,7 +153,7 @@ describe('Queue System Integration', () => {
 
     // Initialize worker manager
     console.log('🔄 Starting workers...');
-    workerManager = new WorkerManager(db, storage, pluginRegistry);
+    workerManager = new WorkerManager(db.bugReports, storage, pluginRegistry);
     await workerManager.start();
     const metrics = workerManager.getMetrics();
     expect(metrics.runningWorkers).toBeGreaterThan(0);

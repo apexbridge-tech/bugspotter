@@ -241,6 +241,32 @@ export class BugReportRepository extends BaseRepository<
   }
 
   /**
+   * Update screenshot and thumbnail URLs atomically
+   * Used by Screenshot worker to ensure both URLs are updated together
+   */
+  async updateScreenshotUrls(
+    bugReportId: string,
+    screenshotUrl: string,
+    thumbnailUrl: string
+  ): Promise<void> {
+    const query = `
+      UPDATE ${this.tableName}
+      SET 
+        screenshot_url = $1,
+        metadata = jsonb_set(
+          COALESCE(metadata, '{}'::jsonb),
+          '{thumbnailUrl}',
+          $2::jsonb,
+          true
+        ),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+    `;
+
+    await this.getClient().query(query, [screenshotUrl, JSON.stringify(thumbnailUrl), bugReportId]);
+  }
+
+  /**
    * Update bug report metadata with replay manifest URL
    * Used by Replay worker after processing chunks
    */

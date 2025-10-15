@@ -22,26 +22,31 @@ echo "==================================="
 wait_for_postgres() {
   echo "Waiting for PostgreSQL..."
   
-  # Extract connection details from DATABASE_URL
-  # Format: postgresql://user:pass@host:port/db
-  # Remove protocol prefix
-  DB_URL_NO_PROTO="${DATABASE_URL#postgresql://}"
-  DB_URL_NO_PROTO="${DB_URL_NO_PROTO#postgres://}"
-  
-  # Extract host:port/db part (after @)
-  DB_HOSTPORT="${DB_URL_NO_PROTO#*@}"
-  
-  # Extract host (before :)
-  DB_HOST="${DB_HOSTPORT%%:*}"
-  
-  # Extract port (after : and before /)
-  DB_PORT_DB="${DB_HOSTPORT#*:}"
-  DB_PORT="${DB_PORT_DB%%/*}"
-  
-  if [ -z "$DB_HOST" ] || [ -z "$DB_PORT" ]; then
-    echo "Error: Could not parse DATABASE_URL"
-    echo "Expected format: postgresql://user:pass@host:port/db"
-    exit 1
+  # Use env vars if provided, otherwise parse DATABASE_URL
+  if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
+    echo "Using DB_HOST and DB_PORT from environment"
+  else
+    echo "Parsing DATABASE_URL for connection details..."
+    # Extract connection details from DATABASE_URL
+    # Format: postgresql://user:pass@host:port/db
+    DB_URL_NO_PROTO="${DATABASE_URL#postgresql://}"
+    DB_URL_NO_PROTO="${DB_URL_NO_PROTO#postgres://}"
+    
+    # Extract host:port/db part (after @)
+    DB_HOSTPORT="${DB_URL_NO_PROTO#*@}"
+    
+    # Extract host (before :)
+    DB_HOST="${DB_HOSTPORT%%:*}"
+    
+    # Extract port (after : and before /)
+    DB_PORT_DB="${DB_HOSTPORT#*:}"
+    DB_PORT="${DB_PORT_DB%%/*}"
+    
+    if [ -z "$DB_HOST" ] || [ -z "$DB_PORT" ]; then
+      echo "Error: Could not parse DATABASE_URL and DB_HOST/DB_PORT not set"
+      echo "Set DB_HOST and DB_PORT env vars, or use format: postgresql://user:pass@host:port/db"
+      exit 1
+    fi
   fi
   
   echo "Checking PostgreSQL at $DB_HOST:$DB_PORT..."
@@ -70,29 +75,34 @@ wait_for_postgres() {
 wait_for_redis() {
   echo "Waiting for Redis..."
   
-  # Extract connection details from REDIS_URL
-  # Format: redis://host:port or redis://user:pass@host:port
-  # Remove protocol prefix
-  REDIS_URL_NO_PROTO="${REDIS_URL#redis://}"
-  
-  # Handle optional auth (user:pass@)
-  if echo "$REDIS_URL_NO_PROTO" | grep -q '@'; then
-    # Extract host:port part (after @)
-    REDIS_HOSTPORT="${REDIS_URL_NO_PROTO#*@}"
+  # Use env vars if provided, otherwise parse REDIS_URL
+  if [ -n "$REDIS_HOST" ] && [ -n "$REDIS_PORT" ]; then
+    echo "Using REDIS_HOST and REDIS_PORT from environment"
   else
-    # No auth, entire string is host:port
-    REDIS_HOSTPORT="$REDIS_URL_NO_PROTO"
+    echo "Parsing REDIS_URL for connection details..."
+    # Extract connection details from REDIS_URL
+    # Format: redis://host:port or redis://user:pass@host:port
+    REDIS_URL_NO_PROTO="${REDIS_URL#redis://}"
+    
+    # Handle optional auth (user:pass@)
+    if echo "$REDIS_URL_NO_PROTO" | grep -q '@'; then
+      # Extract host:port part (after @)
+      REDIS_HOSTPORT="${REDIS_URL_NO_PROTO#*@}"
+    else
+      # No auth, entire string is host:port
+      REDIS_HOSTPORT="$REDIS_URL_NO_PROTO"
+    fi
+    
+    # Extract host (before :)
+    REDIS_HOST="${REDIS_HOSTPORT%%:*}"
+    
+    # Extract port (after :)
+    REDIS_PORT="${REDIS_HOSTPORT#*:}"
+    
+    # Default values if parsing fails
+    REDIS_HOST=${REDIS_HOST:-localhost}
+    REDIS_PORT=${REDIS_PORT:-6379}
   fi
-  
-  # Extract host (before :)
-  REDIS_HOST="${REDIS_HOSTPORT%%:*}"
-  
-  # Extract port (after :)
-  REDIS_PORT="${REDIS_HOSTPORT#*:}"
-  
-  # Default values if parsing fails
-  REDIS_HOST=${REDIS_HOST:-localhost}
-  REDIS_PORT=${REDIS_PORT:-6379}
   
   echo "Checking Redis at $REDIS_HOST:$REDIS_PORT..."
   

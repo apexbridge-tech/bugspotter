@@ -114,7 +114,7 @@ curl -X POST http://localhost:3000/api/v1/auth/register \
 
 ### MinIO (`minio`)
 
-- **Image**: `minio/minio:latest`
+- **Image**: `minio/minio:RELEASE.2024-10-13T13-34-11Z`
 - **Ports**:
   - 9000: S3 API
   - 9001: Web Console
@@ -273,9 +273,21 @@ Replace container services with managed alternatives:
 
 ```bash
 # External PostgreSQL (AWS RDS, etc.)
+# Option 1: Use connection URL
+DATABASE_URL=postgresql://user:pass@db.example.com:5432/bugspotter
+
+# Option 2: Use separate host/port (recommended for complex URLs)
+DB_HOST=db.example.com
+DB_PORT=5432
 DATABASE_URL=postgresql://user:pass@db.example.com:5432/bugspotter
 
 # External Redis (AWS ElastiCache, etc.)
+# Option 1: Use connection URL
+REDIS_URL=redis://redis.example.com:6379
+
+# Option 2: Use separate host/port (recommended for complex URLs)
+REDIS_HOST=redis.example.com
+REDIS_PORT=6379
 REDIS_URL=redis://redis.example.com:6379
 
 # AWS S3

@@ -123,11 +123,10 @@ export function createScreenshotWorker(
         originalUrl = originalResult.url;
         thumbnailUrl = thumbnailResult.url;
 
-        // Update database with screenshot and thumbnail URLs
+        // Update database with both URLs atomically
         // This is the critical operation that might fail - if it does, the next retry
         // will skip upload and reuse the existing files (idempotent behavior)
-        await bugReportRepo.updateScreenshotUrl(bugReportId, originalUrl);
-        await bugReportRepo.updateThumbnailUrl(bugReportId, thumbnailUrl);
+        await bugReportRepo.updateScreenshotUrls(bugReportId, originalUrl, thumbnailUrl);
       }
 
       const processingTimeMs = Date.now() - startTime;

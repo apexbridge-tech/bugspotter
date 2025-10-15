@@ -10,7 +10,7 @@
     "start": "node dist/api/index.js",
     "worker:dev": "tsx watch src/worker.ts",
     "worker:start": "node dist/worker.js",
-    "build": "tsc",
+    "build": "tsc && cp -r src/db/migrations/*.sql dist/db/migrations/",
     "migrate": "tsx src/db/migrations/migrate.ts",
     "migrate:create": "tsx src/db/migrations/create-migration.ts",
     "test": "vitest run",

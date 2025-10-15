@@ -166,9 +166,6 @@ services:
       WORKER_NOTIFICATION_ENABLED: ${WORKER_NOTIFICATION_ENABLED:-true}
     ports:
       - "${API_PORT:-3000}:3000"
-    volumes:
-      # Optional: Mount local storage directory
-      - api_uploads:/app/data/uploads
     networks:
       - bugspotter
     healthcheck:
@@ -213,9 +210,6 @@ services:
       # Job Configuration
       JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:-7}
       MAX_JOB_RETRIES: ${MAX_JOB_RETRIES:-3}
-    volumes:
-      # Optional: Mount local storage directory
-      - worker_uploads:/app/data/uploads
     networks:
       - bugspotter
     healthcheck:
@@ -234,10 +228,6 @@ volumes:
   redis_data:
     driver: local
   minio_data:
-    driver: local
-  api_uploads:
-    driver: local
-  worker_uploads:
     driver: local
 
 # ============================================================================

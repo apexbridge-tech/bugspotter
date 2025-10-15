@@ -82,12 +82,9 @@ COPY packages/types/package.json ./packages/types/
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy built artifacts from builder stage
+# Copy built artifacts from builder stage (includes SQL files from build step)
 COPY --from=builder /app/packages/types/dist ./packages/types/dist
 COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
-
-# Copy migration files (needed at runtime)
-COPY packages/backend/src/db/migrations/*.sql ./packages/backend/dist/db/migrations/
 
 # Copy entrypoint script
 COPY packages/backend/docker-entrypoint.sh /usr/local/bin/
