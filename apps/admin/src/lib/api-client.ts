@@ -6,6 +6,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 let getAccessToken: (() => string | null) | null = null;
 let updateAccessToken: ((token: string) => void) | null = null;
 
+// Promise caching to prevent multiple concurrent refresh calls
+let refreshTokenPromise: Promise<string> | null = null;
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -42,24 +45,49 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
 
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't retry on auth endpoints (prevents infinite loops)
+    const isAuthEndpoint =
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/refresh');
+
+    // If error is 401 and we haven't retried yet and it's not an auth endpoint
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
-        // Refresh token is in httpOnly cookie, backend reads it automatically
-        const response = await axios.post(
-          `${API_BASE_URL}/v1/auth/refresh`,
-          {}, // Empty body - refresh token comes from cookie
-          { withCredentials: true } // Critical: Send httpOnly cookie
-        );
+        // Use cached promise if refresh already in progress (prevents multiple concurrent refreshes)
+        if (!refreshTokenPromise) {
+          refreshTokenPromise = (async () => {
+            try {
+              // Refresh token is in httpOnly cookie, backend reads it automatically
+              const response = await axios.post(
+                `${API_BASE_URL}/v1/auth/refresh`,
+                {}, // Empty body - refresh token comes from cookie
+                { withCredentials: true } // Critical: Send httpOnly cookie
+              );
 
-        const { access_token } = response.data;
+              const { access_token } = response.data.data;
 
-        // Update access token in memory via accessor function
-        if (updateAccessToken) {
-          updateAccessToken(access_token);
+              // Guard: Ensure token exists before updating
+              if (!access_token) {
+                throw new Error('No access_token in refresh response');
+              }
+
+              // Update access token in memory via accessor function
+              if (updateAccessToken) {
+                updateAccessToken(access_token);
+              }
+
+              return access_token;
+            } finally {
+              // Clear promise cache after completion (success or failure)
+              refreshTokenPromise = null;
+            }
+          })();
         }
+
+        // Wait for refresh to complete
+        const access_token = await refreshTokenPromise;
 
         // Retry the original request with new token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;

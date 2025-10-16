@@ -83,11 +83,7 @@ async function isSystemInitialized(db: DatabaseClient): Promise<boolean> {
 /**
  * Validate admin credentials
  */
-function validateAdminCredentials(
-  email: string | undefined,
-  password: string | undefined,
-  _name: string | undefined
-): void {
+function validateAdminCredentials(email: string | undefined, password: string | undefined): void {
   if (!email || !password) {
     throw new AppError(ERROR_MESSAGES.ADMIN_CREDENTIALS_REQUIRED, 400, 'ValidationError');
   }
@@ -174,7 +170,7 @@ export async function setupRoutes(fastify: FastifyInstance, db: DatabaseClient):
       }
 
       // Validate required fields
-      validateAdminCredentials(admin_email, admin_password, undefined);
+      validateAdminCredentials(admin_email, admin_password);
       validateStorageConfig(storage_access_key, storage_secret_key, storage_bucket);
 
       // Hash admin password
