@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/auth-context';
-import { Activity, Settings, FolderKanban, LogOut } from 'lucide-react';
+import { Activity, Settings, FolderKanban, LogOut, Bug } from 'lucide-react';
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -38,6 +38,17 @@ export default function DashboardLayout() {
             >
               <FolderKanban className="w-5 h-5 mr-3" />
               Projects
+            </Link>
+            <Link
+              to="/bug-reports"
+              className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
+                isActive('/bug-reports')
+                  ? 'bg-primary text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Bug className="w-5 h-5 mr-3" />
+              Bug Reports
             </Link>
             <Link
               to="/settings"

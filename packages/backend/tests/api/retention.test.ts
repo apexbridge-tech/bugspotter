@@ -66,7 +66,7 @@ describe('Retention Routes', () => {
       },
     });
     const userData = userResponse.json();
-    testAccessToken = userData.data.tokens.access_token;
+    testAccessToken = userData.data.access_token;
 
     // Create project for regular user
     const projectResponse = await server.inject({
@@ -91,7 +91,7 @@ describe('Retention Routes', () => {
         role: 'admin',
       },
     });
-    testAdminToken = adminResponse.json().data.tokens.access_token;
+    testAdminToken = adminResponse.json().data.access_token;
 
     // Create another user to test unauthorized access
     const otherUserResponse = await server.inject({
@@ -103,7 +103,7 @@ describe('Retention Routes', () => {
         role: 'user',
       },
     });
-    otherUserToken = otherUserResponse.json().data.tokens.access_token;
+    otherUserToken = otherUserResponse.json().data.access_token;
   });
 
   afterAll(async () => {
@@ -167,7 +167,7 @@ describe('Retention Routes', () => {
 
         expect(response.statusCode).toBe(403);
         const json = response.json();
-        expect(json.error).toBe('Access denied to this project');
+        expect(json.error).toBe('Forbidden');
       });
 
       it('should allow project owner to access retention settings', async () => {
@@ -223,7 +223,7 @@ describe('Retention Routes', () => {
 
         expect(response.statusCode).toBe(403);
         const json = response.json();
-        expect(json.error).toBe('Access denied to this project');
+        expect(json.error).toBe('Forbidden');
       });
 
       it('should return 404 for non-existent project only to authenticated users with potential access', async () => {
@@ -451,7 +451,7 @@ describe('Retention Routes', () => {
       expect(response.statusCode).toBe(403);
     });
 
-    it('should return 501 Not Implemented (endpoint not yet implemented)', async () => {
+    it('should update global retention configuration', async () => {
       const response = await server.inject({
         method: 'PUT',
         url: '/api/v1/admin/retention',
@@ -464,10 +464,11 @@ describe('Retention Routes', () => {
         },
       });
 
-      expect(response.statusCode).toBe(501);
+      expect(response.statusCode).toBe(200);
       const json = response.json();
-      expect(json.error).toBe('Not Implemented');
-      expect(json.message).toContain('database persistence');
+      expect(json.success).toBe(true);
+      expect(json.policy).toBeDefined();
+      expect(json.policy.bugReportRetentionDays).toBe(90);
     });
   });
 

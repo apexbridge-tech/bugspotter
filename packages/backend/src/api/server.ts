@@ -9,6 +9,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
+import cookie from '@fastify/cookie';
 import { config } from '../config.js';
 import { getLogger } from '../logger.js';
 import type { DatabaseClient } from '../db/client.js';
@@ -56,6 +57,12 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
     genReqId: () => {
       return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     },
+  });
+
+  // Register cookie plugin for httpOnly cookies
+  await fastify.register(cookie, {
+    secret: config.jwt.secret, // Sign cookies for additional security
+    parseOptions: {},
   });
 
   // Register CORS plugin

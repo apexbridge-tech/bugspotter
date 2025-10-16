@@ -44,11 +44,13 @@ function generateTokens(fastify: FastifyInstance, userId: string, role: string) 
 
   // Calculate expiry time in seconds
   const expiresIn = parseExpiryTime(config.jwt.expiresIn);
+  const refreshExpiresIn = parseExpiryTime(config.jwt.refreshExpiresIn);
 
   return {
     access_token,
     refresh_token,
     expires_in: expiresIn,
+    refresh_expires_in: refreshExpiresIn,
     token_type: 'Bearer' as const,
   };
 }
@@ -101,12 +103,23 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       // Generate tokens
       const tokens = generateTokens(fastify, user.id, user.role);
 
+      // Set refresh token in httpOnly cookie
+      reply.setCookie('refresh_token', tokens.refresh_token, {
+        httpOnly: true,
+        secure: config.server.env === 'production',
+        sameSite: 'strict',
+        maxAge: tokens.refresh_expires_in,
+        path: '/',
+      });
+
       // Remove password hash from response
       const userWithoutPassword = omitFields(user, 'password_hash');
 
       return sendCreated(reply, {
         user: userWithoutPassword,
-        tokens,
+        access_token: tokens.access_token,
+        expires_in: tokens.expires_in,
+        token_type: tokens.token_type,
       });
     }
   );
@@ -143,19 +156,30 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       // Generate tokens
       const tokens = generateTokens(fastify, user.id, user.role);
 
+      // Set refresh token in httpOnly cookie
+      reply.setCookie('refresh_token', tokens.refresh_token, {
+        httpOnly: true,
+        secure: config.server.env === 'production',
+        sameSite: 'strict',
+        maxAge: tokens.refresh_expires_in,
+        path: '/',
+      });
+
       // Remove password hash from response
       const userWithoutPassword = omitFields(user, 'password_hash');
 
       return sendSuccess(reply, {
         user: userWithoutPassword,
-        tokens,
+        access_token: tokens.access_token,
+        expires_in: tokens.expires_in,
+        token_type: tokens.token_type,
       });
     }
   );
 
   /**
    * POST /api/v1/auth/refresh
-   * Refresh access token using refresh token
+   * Refresh access token using refresh token from httpOnly cookie
    */
   fastify.post<{ Body: RefreshTokenBody }>(
     '/api/v1/auth/refresh',
@@ -164,7 +188,17 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       config: { public: true },
     },
     async (request, reply) => {
-      const { refresh_token } = request.body;
+      // Try to get refresh token from cookie first (new secure method)
+      let refresh_token = request.cookies.refresh_token;
+
+      // Fallback to request body for backward compatibility
+      if (!refresh_token && request.body?.refresh_token) {
+        refresh_token = request.body.refresh_token;
+      }
+
+      if (!refresh_token) {
+        throw new AppError('Refresh token not provided', 401, 'Unauthorized');
+      }
 
       try {
         // Verify refresh token
@@ -176,10 +210,45 @@ export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {
         // Generate new tokens
         const tokens = generateTokens(fastify, user.id, user.role);
 
-        return sendSuccess(reply, tokens);
+        // Set new refresh token in httpOnly cookie
+        reply.setCookie('refresh_token', tokens.refresh_token, {
+          httpOnly: true,
+          secure: config.server.env === 'production',
+          sameSite: 'strict',
+          maxAge: tokens.refresh_expires_in,
+          path: '/',
+        });
+
+        return sendSuccess(reply, {
+          access_token: tokens.access_token,
+          expires_in: tokens.expires_in,
+          token_type: tokens.token_type,
+        });
       } catch {
         throw new AppError('Invalid or expired refresh token', 401, 'Unauthorized');
       }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/logout
+   * Logout user and clear refresh token cookie
+   */
+  fastify.post(
+    '/api/v1/auth/logout',
+    {
+      config: { public: true },
+    },
+    async (_request, reply) => {
+      // Clear refresh token cookie
+      reply.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: config.server.env === 'production',
+        sameSite: 'strict',
+        path: '/',
+      });
+
+      return sendSuccess(reply, { message: 'Logged out successfully' });
     }
   );
 }

@@ -8,6 +8,7 @@ import type { ZodSchema } from 'zod';
 import type { DatabaseClient } from '../../db/client.js';
 import type { RetentionService } from '../../retention/retention-service.js';
 import type { RetentionScheduler } from '../../retention/retention-scheduler.js';
+import { findOrThrow, checkProjectAccess } from '../utils/resource.js';
 import {
   updateRetentionPolicyRequestSchema,
   applyRetentionRequestSchema,
@@ -43,6 +44,7 @@ const ERROR_MESSAGES = {
   PROJECT_ACCESS_DENIED: 'Access denied to this project',
   PROJECT_NOT_FOUND: 'Project not found',
   VALIDATION_FAILED: 'Validation failed',
+  UNAUTHORIZED: 'User authentication required (Authorization Bearer token)',
 } as const;
 
 // ============================================================================
@@ -75,6 +77,42 @@ function successResponse(data: Record<string, unknown>) {
 }
 
 /**
+ * Parse and validate project retention settings
+ */
+function parseProjectSettings(
+  projectSettings: unknown,
+  projectId: string
+): ProjectRetentionSettings | undefined {
+  const validationResult = ProjectRetentionSettingsSchema.safeParse(projectSettings);
+
+  if (validationResult.success) {
+    return validationResult.data as ProjectRetentionSettings;
+  }
+
+  logger.warn('Invalid project settings, using defaults', {
+    projectId,
+    error: validationResult.error.message,
+  });
+
+  return undefined;
+}
+
+/**
+ * Format Zod validation error for user-friendly response
+ */
+function formatValidationError(error: {
+  issues?: Array<{ path?: unknown[]; message?: string }>;
+  message: string;
+}): string {
+  const firstError = error.issues?.[0];
+  const fieldName = (firstError?.path?.join('.') || 'field')
+    .replace(/([A-Z])/g, ' $1')
+    .toLowerCase();
+  const message = firstError?.message || error.message;
+  return `${fieldName}: ${message}`;
+}
+
+/**
  * Register retention API routes
  */
 export function retentionRoutes(
@@ -104,16 +142,6 @@ export function retentionRoutes(
   /**
    * PUT /api/v1/admin/retention
    * Update global retention policy (admin only)
-   *
-   * NOTE: Currently not implemented - requires system_config table for persistence.
-   * Global retention policies are currently defined via environment variables:
-   * - DEFAULT_RETENTION_DAYS
-   * - SCREENSHOT_RETENTION_DAYS
-   * - REPLAY_RETENTION_DAYS
-   * - ATTACHMENT_RETENTION_DAYS
-   * - ARCHIVED_RETENTION_DAYS
-   *
-   * TODO: Implement persistence when system_config table is added
    */
   fastify.put(
     '/api/v1/admin/retention',
@@ -129,18 +157,18 @@ export function retentionRoutes(
         return reply.code(400).send({ error: validation.error.message });
       }
 
-      // TODO: Persist to system_config table once implemented
-      logger.warn('Global retention policy update requested but not persisted (not implemented)', {
+      // Update global retention policy in database
+      const updatedPolicy = await db.systemConfig.updateGlobalRetentionPolicy(
+        validation.data,
+        request.authUser!.id
+      );
+
+      logger.info('Global retention policy updated', {
         userId: request.authUser!.id,
         updates: validation.data,
       });
 
-      return reply.code(501).send({
-        error: 'Not Implemented',
-        message:
-          'Global retention policy updates require database persistence (system_config table). Currently managed via environment variables.',
-        hint: 'Use project-specific retention policies via PUT /api/v1/projects/:id/retention instead.',
-      });
+      return reply.send(successResponse({ policy: updatedPolicy }));
     }
   );
 
@@ -163,42 +191,21 @@ export function retentionRoutes(
     async (request, reply: FastifyReply) => {
       const { id: projectId } = request.params;
 
-      // CRITICAL: Verify user is authenticated
+      // Verify user is authenticated
       if (!request.authUser) {
-        return reply.code(401).send({
-          error: 'Unauthorized',
-          message: 'User authentication required (Authorization Bearer token)',
-        });
+        return reply
+          .code(401)
+          .send({ error: 'Unauthorized', message: ERROR_MESSAGES.UNAUTHORIZED });
       }
 
-      // Admins can access any project
-      const isAdmin = request.authUser.role === USER_ROLES.ADMIN;
-      if (!isAdmin) {
-        const hasAccess = await db.projects.hasAccess(projectId, request.authUser.id);
-        if (!hasAccess) {
-          return reply.code(403).send({ error: ERROR_MESSAGES.PROJECT_ACCESS_DENIED });
-        }
-      }
+      // Verify access using centralized utility
+      await checkProjectAccess(projectId, request.authUser, request.authProject, db, 'Project');
 
-      const project = await db.projects.findById(projectId);
-      if (!project) {
-        return reply.code(404).send({ error: ERROR_MESSAGES.PROJECT_NOT_FOUND });
-      }
+      // Get project or throw 404
+      const project = await findOrThrow(() => db.projects.findById(projectId), 'Project');
 
-      // Validate project settings with runtime type checking
-      const validationResult = ProjectRetentionSettingsSchema.safeParse(project.settings);
-      let settings: ProjectRetentionSettings | undefined;
-
-      if (validationResult.success) {
-        // Type assertion safe after Zod validation
-        settings = validationResult.data as ProjectRetentionSettings;
-      } else {
-        logger.warn('Invalid project settings, using defaults', {
-          projectId,
-          error: validationResult.error.message,
-        });
-        settings = undefined;
-      }
+      // Parse project settings
+      const settings = parseProjectSettings(project.settings, projectId);
 
       const tier = settings?.tier ?? DEFAULT_TIER;
       const retention = settings?.retention ?? getRetentionPolicyForTier(tier);
@@ -233,12 +240,11 @@ export function retentionRoutes(
     async (request, reply: FastifyReply) => {
       const { id: projectId } = request.params;
 
-      // CRITICAL: Verify user is authenticated
+      // Verify user is authenticated
       if (!request.authUser) {
-        return reply.code(401).send({
-          error: 'Unauthorized',
-          message: 'User authentication required (Authorization Bearer token)',
-        });
+        return reply
+          .code(401)
+          .send({ error: 'Unauthorized', message: ERROR_MESSAGES.UNAUTHORIZED });
       }
 
       // Check if user has permission (owner or admin)
@@ -250,38 +256,20 @@ export function retentionRoutes(
         }
       }
 
+      // Validate request body
       const validation = validateRequestBody(
         updateRetentionPolicyRequestSchema.shape.body,
         request.body
       );
       if (!validation.success) {
-        const firstError = validation.error.issues?.[0];
-        const fieldName = (firstError?.path?.join('.') || 'field')
-          .replace(/([A-Z])/g, ' $1')
-          .toLowerCase();
-        const message = firstError?.message || validation.error.message;
-        return reply.code(400).send({ error: `${fieldName}: ${message}` });
+        return reply.code(400).send({ error: formatValidationError(validation.error) });
       }
 
-      const project = await db.projects.findById(projectId);
-      if (!project) {
-        return reply.code(404).send({ error: ERROR_MESSAGES.PROJECT_NOT_FOUND });
-      }
+      // Get project or throw 404
+      const project = await findOrThrow(() => db.projects.findById(projectId), 'Project');
 
-      // Validate project settings with runtime type checking
-      const validationResult = ProjectRetentionSettingsSchema.safeParse(project.settings);
-      let settings: ProjectRetentionSettings | undefined;
-
-      if (validationResult.success) {
-        // Type assertion safe after Zod validation
-        settings = validationResult.data as ProjectRetentionSettings;
-      } else {
-        logger.warn('Invalid project settings, using defaults', {
-          projectId,
-          error: validationResult.error.message,
-        });
-        settings = undefined;
-      }
+      // Parse project settings
+      const settings = parseProjectSettings(project.settings, projectId);
 
       const tier = settings?.tier ?? DEFAULT_TIER;
 

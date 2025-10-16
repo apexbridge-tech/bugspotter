@@ -6,26 +6,30 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy package files
-COPY package.json ./
+# Copy workspace files
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/types ./packages/types
+
+# Copy admin app files
+COPY apps/admin/package.json ./apps/admin/
 
 # Install dependencies
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY . .
+# Copy admin source code
+COPY apps/admin ./apps/admin
 
 # Build the application
-RUN pnpm build
+RUN pnpm --filter @bugspotter/admin build
 
 # Production stage
 FROM nginx:alpine
 
 # Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/admin/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html
 
 # Add healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

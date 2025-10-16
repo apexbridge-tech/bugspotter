@@ -34,6 +34,7 @@ export default function SetupWizard() {
 
   useEffect(() => {
     checkSetupStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkSetupStatus = async () => {
@@ -42,8 +43,19 @@ export default function SetupWizard() {
       if (status.initialized) {
         navigate('/login');
       }
-    } catch {
-      // Setup not complete, continue
+    } catch (error) {
+      // Expected: Setup not initialized (404) - continue to setup wizard
+      // Unexpected: Network errors, server errors - log for debugging
+      if (import.meta.env.DEV) {
+        console.warn('Setup status check failed (this is expected if setup not complete):', error);
+      }
+      
+      // Check if it's a network error (not just "not initialized")
+      const errorMessage = handleApiError(error);
+      if (errorMessage.includes('Network') || errorMessage.includes('timeout')) {
+        toast.error('Unable to connect to server. Please check your connection.');
+      }
+      // Otherwise, assume setup is not complete and continue
     }
   };
 
@@ -82,11 +94,28 @@ export default function SetupWizard() {
     setIsLoading(true);
 
     try {
+      console.log('🚀 Starting setup initialization...');
       const response = await setupService.initialize(formData);
-      login(response.access_token, response.refresh_token, response.user);
+      console.log('✅ Setup response received:', response);
+      
       toast.success('Setup completed successfully');
-      navigate('/');
+      
+      // Response is already unwrapped: {access_token, refresh_token, user}
+      console.log('📦 Using tokens and user:', { 
+        access_token: response.access_token?.substring(0, 20) + '...', 
+        user: response.user 
+      });
+      
+      // Login with the returned tokens
+      login(response.access_token, '', response.user);
+      console.log('✅ Login completed, navigating to dashboard...');
+      
+      // Force full page reload to ensure auth state is properly initialized
+      setTimeout(() => {
+        window.location.href = '/health';
+      }, 100);
     } catch (error) {
+      console.error('❌ Setup failed:', error);
       toast.error(handleApiError(error));
     } finally {
       setIsLoading(false);
@@ -118,7 +147,17 @@ export default function SetupWizard() {
               onChange={(e) => updateFormData('admin_password', e.target.value)}
               required
             />
-            <Button onClick={() => setStep(2)} className="w-full">
+            <Button 
+              onClick={() => {
+                console.log('📝 Step 1 -> Step 2, form data:', { 
+                  admin_name: formData.admin_name, 
+                  admin_email: formData.admin_email,
+                  has_password: !!formData.admin_password 
+                });
+                setStep(2);
+              }} 
+              className="w-full"
+            >
               Continue
             </Button>
           </div>

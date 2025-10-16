@@ -10,3 +10,4 @@ export { UserRepository } from './repositories/user.repository.js';
 export { SessionRepository } from './repositories/session.repository.js';
 export { TicketRepository } from './repositories/ticket.repository.js';
 export { ProjectMemberRepository } from './repositories/project-member.repository.js';
+export { SystemConfigRepository } from './repositories/system-config.repository.js';

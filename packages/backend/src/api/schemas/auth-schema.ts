@@ -17,12 +17,12 @@ export const userSchema = {
   },
 } as const;
 
-export const authTokenSchema = {
+// Response token schema (no refresh_token - sent via httpOnly cookie)
+export const authResponseTokenSchema = {
   type: 'object',
-  required: ['access_token', 'refresh_token', 'expires_in'],
+  required: ['access_token', 'expires_in', 'token_type'],
   properties: {
     access_token: { type: 'string' },
-    refresh_token: { type: 'string' },
     expires_in: { type: 'number' },
     token_type: { type: 'string', enum: ['Bearer'], default: 'Bearer' },
   },
@@ -45,10 +45,12 @@ export const loginSchema = {
         success: { type: 'boolean', enum: [true] },
         data: {
           type: 'object',
-          required: ['user', 'tokens'],
+          required: ['user', 'access_token', 'expires_in', 'token_type'],
           properties: {
             user: userSchema,
-            tokens: authTokenSchema,
+            access_token: { type: 'string' },
+            expires_in: { type: 'number' },
+            token_type: { type: 'string', enum: ['Bearer'] },
           },
         },
         timestamp: { type: 'string', format: 'date-time' },
@@ -75,10 +77,12 @@ export const registerSchema = {
         success: { type: 'boolean', enum: [true] },
         data: {
           type: 'object',
-          required: ['user', 'tokens'],
+          required: ['user', 'access_token', 'expires_in', 'token_type'],
           properties: {
             user: userSchema,
-            tokens: authTokenSchema,
+            access_token: { type: 'string' },
+            expires_in: { type: 'number' },
+            token_type: { type: 'string', enum: ['Bearer'] },
           },
         },
         timestamp: { type: 'string', format: 'date-time' },
@@ -90,10 +94,7 @@ export const registerSchema = {
 export const refreshTokenSchema = {
   body: {
     type: 'object',
-    required: ['refresh_token'],
-    properties: {
-      refresh_token: { type: 'string' },
-    },
+    properties: {}, // Empty - refresh_token comes from httpOnly cookie
   },
   response: {
     200: {
@@ -101,7 +102,15 @@ export const refreshTokenSchema = {
       required: ['success', 'data', 'timestamp'],
       properties: {
         success: { type: 'boolean', enum: [true] },
-        data: authTokenSchema,
+        data: {
+          type: 'object',
+          required: ['access_token', 'expires_in', 'token_type'],
+          properties: {
+            access_token: { type: 'string' },
+            expires_in: { type: 'number' },
+            token_type: { type: 'string', enum: ['Bearer'] },
+          },
+        },
         timestamp: { type: 'string', format: 'date-time' },
       },
     },

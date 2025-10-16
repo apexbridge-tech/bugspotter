@@ -180,8 +180,8 @@ services:
   # ==========================================================================
   admin:
     build:
-      context: ./apps/admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/admin/Dockerfile
     container_name: bugspotter-admin
     restart: unless-stopped
     depends_on:

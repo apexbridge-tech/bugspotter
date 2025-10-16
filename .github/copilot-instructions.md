@@ -773,4 +773,286 @@ pnpm format:check     # Check formatting
 
 ---
 
+## Admin Panel (React + TypeScript)
+
+**Location**: `apps/admin/` - Self-hosted admin control panel for BugSpotter
+
+**Stack**: React 18.3.1, TypeScript, Vite 5, Tailwind CSS 3, TanStack Query 5, React Router 6
+
+### Security Best Practices
+
+**1. Token Storage - NEVER use localStorage for JWTs**
+
+```tsx
+// ❌ BAD: localStorage is vulnerable to XSS attacks
+localStorage.setItem('access_token', token);
+
+// ✅ GOOD: Memory-only storage for access tokens
+const [accessToken, setAccessToken] = useState<string | null>(null);
+
+// ✅ GOOD: sessionStorage only for non-sensitive data (cleared on tab close)
+sessionStorage.setItem('user', JSON.stringify(userData));
+```
+
+**Why**: Any malicious script can steal tokens from `localStorage` via XSS. Store access tokens in memory (React state) and refresh tokens should be in httpOnly cookies (backend).
+
+**2. API Client Pattern - Token Accessor Functions**
+
+```tsx
+// ✅ GOOD: Use accessor pattern to decouple auth from HTTP client
+export const setAuthTokenAccessors = (
+  getter: () => string | null,
+  updater: (token: string) => void
+) => {
+  getAccessToken = getter;
+  updateAccessToken = updater;
+};
+
+// In auth context
+useEffect(() => {
+  setAuthTokenAccessors(
+    () => accessToken,
+    (token) => setAccessToken(token)
+  );
+}, [accessToken]);
+```
+
+**3. Error Handling - Never Silently Ignore Errors**
+
+```tsx
+// ❌ BAD: Silent error swallowing
+try {
+  await api.checkStatus();
+} catch {
+  // Setup not complete, continue
+}
+
+// ✅ GOOD: Distinguish expected vs unexpected errors
+try {
+  await api.checkStatus();
+} catch (error) {
+  if (import.meta.env.DEV) {
+    console.warn('Status check failed:', error);
+  }
+
+  const errorMessage = handleApiError(error);
+  if (errorMessage.includes('Network')) {
+    toast.error('Unable to connect to server');
+  }
+  // Otherwise, expected "not initialized" error
+}
+```
+
+### React Anti-Patterns to Avoid
+
+**1. Never setState During Render**
+
+```tsx
+// ❌ BAD: Causes infinite loops
+if (data && !formData.name) {
+  setFormData(data); // setState in render!
+}
+
+// ✅ GOOD: Use useEffect for side effects
+useEffect(() => {
+  if (data) {
+    setFormData(data);
+  }
+}, [data]);
+```
+
+**2. Memoize Callbacks to Prevent Re-renders**
+
+```tsx
+// ❌ BAD: Creates new function every render
+const updateField = (field, value) => {
+  setFormData((prev) => ({ ...prev, [field]: value }));
+};
+
+// ✅ GOOD: Memoized callback
+const updateField = useCallback((field, value) => {
+  setFormData((prev) => ({ ...prev, [field]: value }));
+}, []);
+```
+
+**3. Reset Form After Successful Mutations**
+
+```tsx
+// ❌ BAD: Form keeps old values
+const mutation = useMutation({
+  onSuccess: () => {
+    toast.success('Saved');
+  },
+});
+
+// ✅ GOOD: Sync form with server values
+const mutation = useMutation({
+  onSuccess: (updatedData) => {
+    setFormData(updatedData);
+    toast.success('Saved');
+  },
+});
+```
+
+**4. Component Extraction for Large Forms**
+
+When a component exceeds 150 lines or has repetitive Card/CardContent structures:
+
+- Extract reusable wrapper components (e.g., `SettingsSection`)
+- Split into feature-based components (e.g., `SecuritySettings`, `StorageSettings`)
+- Pass memoized callbacks as props to prevent re-renders
+
+**5. Input Validation**
+
+```tsx
+// ✅ GOOD: Add validation to number inputs
+const handleNumberChange = (field, value, min = 0) => {
+  const parsed = parseInt(value, 10);
+  if (!isNaN(parsed) && parsed >= min) {
+    updateField(field, parsed);
+  }
+};
+
+<Input
+  type="number"
+  min="60"
+  max="86400"
+  onChange={(e) => handleNumberChange('expiry', e.target.value, 60)}
+/>;
+```
+
+### Nginx Security Headers
+
+**Modern Security Headers** for `apps/admin/nginx.conf`:
+
+```nginx
+# ❌ REMOVE: X-XSS-Protection is deprecated (can introduce vulnerabilities)
+# add_header X-XSS-Protection "1; mode=block" always;
+
+# ✅ ADD: Content Security Policy (modern XSS protection)
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://api:*; frame-ancestors 'self';" always;
+
+# ✅ KEEP: These are still valid
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+```
+
+**Note**: CSP `'unsafe-inline'` is needed for Vite dev builds. For production, configure Vite to use nonces or hashes.
+
+### File Structure Conventions
+
+```
+apps/admin/
+├── src/
+│   ├── components/
+│   │   ├── ui/           # Reusable UI components (Button, Input, Card)
+│   │   └── settings/     # Feature-specific components (SecuritySettings)
+│   ├── contexts/         # React contexts (AuthContext)
+│   ├── lib/              # Utilities (api-client)
+│   ├── pages/            # Route pages (Login, Setup, Settings)
+│   ├── services/         # API service layer
+│   └── types/            # TypeScript type definitions
+├── nginx.conf            # Production nginx config
+├── Dockerfile            # Multi-stage build
+├── SECURITY.md           # Security documentation
+└── REACT_PATTERNS.md     # React best practices
+```
+
+### Admin Panel Testing Checklist
+
+Before committing admin panel changes:
+
+1. **Security**:
+   - [ ] No tokens in localStorage
+   - [ ] Errors are logged, not silently ignored
+   - [ ] Network errors show user feedback
+
+2. **React Patterns**:
+   - [ ] No setState during render
+   - [ ] useEffect for side effects
+   - [ ] Callbacks memoized with useCallback
+   - [ ] Forms reset after successful mutations
+
+3. **Code Quality**:
+   - [ ] Components under 150 lines
+   - [ ] No duplicated Card/CardContent boilerplate
+   - [ ] Input validation (min/max, type checking)
+   - [ ] TypeScript errors resolved
+
+4. **Build**:
+   - [ ] `pnpm build` succeeds
+   - [ ] No console errors in production build
+   - [ ] CSP headers don't block functionality
+
+---
+
+## Notification System Architecture
+
+**Location**: `packages/backend/src/queue/workers/notifications/`
+
+**Pattern**: Strategy Pattern + Registry Pattern + Factory Pattern
+
+### Notifier Structure (Each notifier is self-contained)
+
+```typescript
+// Each notifier file contains:
+// 1. Config interface
+export interface EmailNotifierConfig extends BaseNotifierConfig {
+  type: 'email';
+  smtp?: { host: string; port: number /* ... */ };
+  from: string;
+}
+
+// 2. Notifier implementation
+export class EmailNotifier implements INotifier {
+  readonly type = 'email';
+
+  // 3. Static config loader (reads from env vars)
+  static loadConfig(): EmailNotifierConfig | null {
+    if (process.env.EMAIL_NOTIFICATIONS_ENABLED !== 'true') {
+      return null;
+    }
+    // Load from environment variables
+  }
+
+  async send(recipient, context, event): Promise<NotificationResult> {
+    // Implementation
+  }
+}
+
+// 4. Factory function
+export function createEmailNotifier(config: EmailNotifierConfig): EmailNotifier {
+  return new EmailNotifier(config);
+}
+```
+
+**Key Principles**:
+
+1. **Single Responsibility** - Each notifier manages its own config type, loading logic, and delivery
+2. **No Centralized Config Files** - Config types live with their notifiers, not in shared files
+3. **Static loadConfig()** - Each notifier knows how to load its own configuration from environment
+4. **Registry Pattern** - `NotifierRegistry` manages all notifiers, creates NotifierConfig union type
+
+### Adding New Notifier (e.g., Telegram)
+
+1. Create `telegram-notifier.ts` with:
+   - `TelegramNotifierConfig` interface
+   - `TelegramNotifier` class implementing `INotifier`
+   - `static loadConfig()` method reading from env vars
+   - `createTelegramNotifier()` factory function
+
+2. Update `notifier-registry.ts`:
+   - Import new notifier and config type
+   - Add to `NotifierConfig` union type
+   - Add case to `createNotifier()` switch statement
+
+3. Update `notification-worker.ts`:
+   - Import notifier class
+   - Call `TelegramNotifier.loadConfig()` in worker initialization
+
+**No centralized config loader needed** - each notifier is autonomous!
+
+---
+
 **Always prioritize:** Type safety, testability, single responsibility, explicit over implicit, production-grade security.

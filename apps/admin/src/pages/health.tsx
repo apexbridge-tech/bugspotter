@@ -97,12 +97,12 @@ export default function HealthPage() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${getStatusColor(health?.services.database.status || '')}`}
+              className={`text-2xl font-bold ${getStatusColor(health?.services?.database?.status || '')}`}
             >
-              {health?.services.database.status?.toUpperCase()}
+              {health?.services?.database?.status?.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground">
-              Response: {health?.services.database.response_time}ms
+              Response: {health?.services?.database?.response_time}ms
             </p>
           </CardContent>
         </Card>
@@ -114,12 +114,12 @@ export default function HealthPage() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${getStatusColor(health?.services.redis.status || '')}`}
+              className={`text-2xl font-bold ${getStatusColor(health?.services?.redis?.status || '')}`}
             >
-              {health?.services.redis.status?.toUpperCase()}
+              {health?.services?.redis?.status?.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground">
-              Response: {health?.services.redis.response_time}ms
+              Response: {health?.services?.redis?.response_time}ms
             </p>
           </CardContent>
         </Card>
@@ -131,12 +131,12 @@ export default function HealthPage() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${getStatusColor(health?.services.storage.status || '')}`}
+              className={`text-2xl font-bold ${getStatusColor(health?.services?.storage?.status || '')}`}
             >
-              {health?.services.storage.status?.toUpperCase()}
+              {health?.services?.storage?.status?.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground">
-              Response: {health?.services.storage.response_time}ms
+              Response: {health?.services?.storage?.response_time}ms
             </p>
           </CardContent>
         </Card>
@@ -152,20 +152,22 @@ export default function HealthPage() {
             <div>
               <p className="text-sm font-medium text-gray-500">Disk Space</p>
               <p className="text-2xl font-bold">
-                {formatBytes(health?.system.disk_space_available || 0)}
+                {formatBytes(health?.system?.disk_space_available || 0)}
               </p>
               <p className="text-xs text-gray-500">
-                of {formatBytes(health?.system.disk_space_total || 0)}
+                of {formatBytes(health?.system?.disk_space_total || 0)}
               </p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Worker Queue</p>
-              <p className="text-2xl font-bold">{health?.system.worker_queue_depth || 0}</p>
+              <p className="text-2xl font-bold">{health?.system?.worker_queue_depth || 0}</p>
               <p className="text-xs text-gray-500">pending jobs</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Uptime</p>
-              <p className="text-2xl font-bold">{formatUptime(health?.system.uptime || 0)}</p>
+              <dt className="text-sm font-medium text-gray-500">Uptime</dt>
+              <dd className="mt-1 text-2xl font-semibold text-gray-900">
+                {formatUptime(health?.system?.uptime || 0)}
+              </dd>
             </div>
           </div>
         </CardContent>

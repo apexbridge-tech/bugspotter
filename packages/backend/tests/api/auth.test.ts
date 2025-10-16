@@ -50,8 +50,8 @@ describe('Auth Routes', () => {
       expect(json.success).toBe(true);
       expect(json.data.user.email).toBe('test@example.com');
       expect(json.data.user.role).toBe('user');
-      expect(json.data.tokens.access_token).toBeDefined();
-      expect(json.data.tokens.refresh_token).toBeDefined();
+      expect(json.data.access_token).toBeDefined();
+      // refresh_token is in httpOnly cookie, not in body
       expect(json.data.user.password_hash).toBeUndefined();
     });
 
@@ -155,8 +155,8 @@ describe('Auth Routes', () => {
       const json = response.json();
       expect(json.success).toBe(true);
       expect(json.data.user.email).toBe('login@example.com');
-      expect(json.data.tokens.access_token).toBeDefined();
-      expect(json.data.tokens.refresh_token).toBeDefined();
+      expect(json.data.access_token).toBeDefined();
+      // refresh_token is in httpOnly cookie, not in body
     });
 
     it('should reject invalid email', async () => {
@@ -205,9 +205,14 @@ describe('Auth Routes', () => {
         },
       });
 
-      const { refresh_token } = registerResponse.json().data.tokens;
+      // Extract refresh token from cookie
+      const setCookieHeader = registerResponse.headers['set-cookie'];
+      const refreshTokenCookie = Array.isArray(setCookieHeader)
+        ? setCookieHeader.find((c: string) => c.startsWith('refresh_token='))
+        : setCookieHeader;
+      const refresh_token = refreshTokenCookie?.split(';')[0]?.split('=')[1] || '';
 
-      // Refresh tokens
+      // Refresh tokens using body (backward compatibility)
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/auth/refresh',
@@ -220,7 +225,7 @@ describe('Auth Routes', () => {
       const json = response.json();
       expect(json.success).toBe(true);
       expect(json.data.access_token).toBeDefined();
-      expect(json.data.refresh_token).toBeDefined();
+      // refresh_token is in httpOnly cookie, not in body
     });
 
     it('should reject invalid refresh token', async () => {

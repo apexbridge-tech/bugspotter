@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { adminService } from '../services/api';
 import { handleApiError } from '../lib/api-client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Save } from 'lucide-react';
+import { InstanceSettingsSection } from '../components/settings/instance-settings';
+import { StorageSettingsSection } from '../components/settings/storage-settings';
+import { SecuritySettingsSection } from '../components/settings/security-settings';
+import { RetentionSettingsSection } from '../components/settings/retention-settings';
+import { FeatureSettingsSection } from '../components/settings/feature-settings';
 import type { InstanceSettings } from '../types';
 
 export default function SettingsPage() {
@@ -19,16 +22,21 @@ export default function SettingsPage() {
     queryFn: adminService.getSettings,
   });
 
-  // Update form data when settings are loaded
-  if (data && !formData.instance_name) {
-    setFormData(data);
-    setCorsInput(data.cors_origins?.join(', ') || '');
-  }
+  // Initialize form data when settings are loaded (proper useEffect)
+  useEffect(() => {
+    if (data) {
+      setFormData(data);
+      setCorsInput(data.cors_origins?.join(', ') || '');
+    }
+  }, [data]);
 
   const updateMutation = useMutation({
     mutationFn: adminService.updateSettings,
-    onSuccess: () => {
+    onSuccess: (updatedSettings) => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      // Reset form to server values after successful update
+      setFormData(updatedSettings);
+      setCorsInput(updatedSettings.cors_origins?.join(', ') || '');
       toast.success('Settings updated successfully');
     },
     onError: (error) => {
@@ -36,21 +44,32 @@ export default function SettingsPage() {
     },
   });
 
-  const updateField = <K extends keyof InstanceSettings>(field: K, value: InstanceSettings[K]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  // Memoize updateField to prevent unnecessary re-renders
+  const updateField = useCallback(
+    <K extends keyof InstanceSettings>(field: K, value: InstanceSettings[K]) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const dataToSend = {
-      ...formData,
-      cors_origins: corsInput
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-    };
-    updateMutation.mutate(dataToSend);
-  };
+  const handleCorsInputChange = useCallback((value: string) => {
+    setCorsInput(value);
+  }, []);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const dataToSend = {
+        ...formData,
+        cors_origins: corsInput
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      };
+      updateMutation.mutate(dataToSend);
+    },
+    [formData, corsInput, updateMutation]
+  );
 
   if (isLoading) {
     return (
@@ -68,174 +87,20 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Instance Configuration */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Instance Configuration</CardTitle>
-            <CardDescription>Basic settings for your BugSpotter instance</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              label="Instance Name"
-              value={formData.instance_name || ''}
-              onChange={(e) => updateField('instance_name', e.target.value)}
-            />
-            <Input
-              label="Instance URL"
-              value={formData.instance_url || ''}
-              onChange={(e) => updateField('instance_url', e.target.value)}
-            />
-            <Input
-              label="Support Email"
-              type="email"
-              value={formData.support_email || ''}
-              onChange={(e) => updateField('support_email', e.target.value)}
-            />
-          </CardContent>
-        </Card>
+        <InstanceSettingsSection formData={formData} updateField={updateField} />
 
-        {/* Storage Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Storage Settings</CardTitle>
-            <CardDescription>Configure your storage backend</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Storage Type</label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="minio"
-                    checked={formData.storage_type === 'minio'}
-                    onChange={(e) => updateField('storage_type', e.target.value as 'minio')}
-                    className="mr-2"
-                  />
-                  MinIO
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="s3"
-                    checked={formData.storage_type === 's3'}
-                    onChange={(e) => updateField('storage_type', e.target.value as 's3')}
-                    className="mr-2"
-                  />
-                  AWS S3
-                </label>
-              </div>
-            </div>
+        <StorageSettingsSection formData={formData} updateField={updateField} />
 
-            {formData.storage_type === 'minio' && (
-              <Input
-                label="MinIO Endpoint"
-                value={formData.storage_endpoint || ''}
-                onChange={(e) => updateField('storage_endpoint', e.target.value)}
-              />
-            )}
+        <SecuritySettingsSection
+          formData={formData}
+          corsInput={corsInput}
+          updateField={updateField}
+          onCorsInputChange={handleCorsInputChange}
+        />
 
-            <Input
-              label="Bucket Name"
-              value={formData.storage_bucket || ''}
-              onChange={(e) => updateField('storage_bucket', e.target.value)}
-            />
+        <RetentionSettingsSection formData={formData} updateField={updateField} />
 
-            {formData.storage_type === 's3' && (
-              <Input
-                label="AWS Region"
-                value={formData.storage_region || ''}
-                onChange={(e) => updateField('storage_region', e.target.value)}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Security Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Security Settings</CardTitle>
-            <CardDescription>Authentication and access control</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              label="JWT Access Token Expiry (seconds)"
-              type="number"
-              value={formData.jwt_access_expiry || ''}
-              onChange={(e) => updateField('jwt_access_expiry', parseInt(e.target.value))}
-            />
-            <Input
-              label="JWT Refresh Token Expiry (seconds)"
-              type="number"
-              value={formData.jwt_refresh_expiry || ''}
-              onChange={(e) => updateField('jwt_refresh_expiry', parseInt(e.target.value))}
-            />
-            <Input
-              label="Rate Limit Max Requests"
-              type="number"
-              value={formData.rate_limit_max || ''}
-              onChange={(e) => updateField('rate_limit_max', parseInt(e.target.value))}
-            />
-            <Input
-              label="Rate Limit Window (seconds)"
-              type="number"
-              value={formData.rate_limit_window || ''}
-              onChange={(e) => updateField('rate_limit_window', parseInt(e.target.value))}
-            />
-            <Input
-              label="CORS Origins (comma-separated)"
-              value={corsInput}
-              onChange={(e) => setCorsInput(e.target.value)}
-              placeholder="https://example.com, https://app.example.com"
-            />
-          </CardContent>
-        </Card>
-
-        {/* Retention Policies */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Retention Policies</CardTitle>
-            <CardDescription>Data retention and limits</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              label="Retention Days"
-              type="number"
-              value={formData.retention_days || ''}
-              onChange={(e) => updateField('retention_days', parseInt(e.target.value))}
-            />
-            <Input
-              label="Max Reports Per Project"
-              type="number"
-              value={formData.max_reports_per_project || ''}
-              onChange={(e) => updateField('max_reports_per_project', parseInt(e.target.value))}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Feature Flags */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Feature Flags</CardTitle>
-            <CardDescription>Enable or disable features</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={formData.session_replay_enabled || false}
-                onChange={(e) => updateField('session_replay_enabled', e.target.checked)}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <div>
-                <p className="font-medium">Session Replay</p>
-                <p className="text-sm text-gray-500">
-                  Enable session replay recording for bug reports
-                </p>
-              </div>
-            </label>
-          </CardContent>
-        </Card>
+        <FeatureSettingsSection formData={formData} updateField={updateField} />
 
         <div className="flex justify-end">
           <Button type="submit" isLoading={updateMutation.isPending} size="lg">

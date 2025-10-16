@@ -8,11 +8,12 @@ import DashboardLayout from './components/dashboard-layout';
 import SettingsPage from './pages/settings';
 import ProjectsPage from './pages/projects';
 import HealthPage from './pages/health';
+import BugReportsPage from './pages/bug-reports';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<SetupWizard />} />
@@ -27,12 +28,13 @@ function App() {
             <Route index element={<Navigate to="/health" replace />} />
             <Route path="health" element={<HealthPage />} />
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="bug-reports" element={<BugReportsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>
-      </Router>
-      <Toaster position="top-right" richColors />
-    </AuthProvider>
+        <Toaster position="top-right" richColors />
+      </AuthProvider>
+    </Router>
   );
 }
 

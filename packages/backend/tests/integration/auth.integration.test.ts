@@ -51,9 +51,11 @@ describe('Authentication Flow Integration Tests', () => {
       expect(body.data.user.email).toBe(email);
       expect(body.data.user.role).toBe('user');
       expect(body.data.user.password_hash).toBeUndefined(); // Should not expose password
-      expect(body.data.tokens.access_token).toBeDefined();
-      expect(body.data.tokens.refresh_token).toBeDefined();
-      expect(body.data.tokens.token_type).toBe('Bearer');
+      expect(body.data.access_token).toBeDefined();
+      expect(body.data.token_type).toBe('Bearer');
+      expect(body.data.expires_in).toBeGreaterThan(0);
+      // Refresh token should be in cookie, NOT in response body
+      expect(body.data.refresh_token).toBeUndefined();
 
       cleanup.trackUser(body.data.user.id);
     });
@@ -169,9 +171,20 @@ describe('Authentication Flow Integration Tests', () => {
       expect(body.success).toBe(true);
       expect(body.data.user.email).toBe(testEmail);
       expect(body.data.user.password_hash).toBeUndefined();
-      expect(body.data.tokens.access_token).toBeDefined();
-      expect(body.data.tokens.refresh_token).toBeDefined();
-      expect(body.data.tokens.expires_in).toBeGreaterThan(0);
+      expect(body.data.access_token).toBeDefined();
+      expect(body.data.expires_in).toBeGreaterThan(0);
+      expect(body.data.token_type).toBe('Bearer');
+      // Refresh token should be in cookie, NOT in response body
+      expect(body.data.refresh_token).toBeUndefined();
+
+      // Verify refresh token cookie was set
+      const setCookieHeader = response.headers['set-cookie'];
+      expect(setCookieHeader).toBeDefined();
+      const refreshTokenCookie = Array.isArray(setCookieHeader)
+        ? setCookieHeader.find((c: string) => c.startsWith('refresh_token='))
+        : setCookieHeader;
+      expect(refreshTokenCookie).toBeDefined();
+      expect(refreshTokenCookie).toContain('HttpOnly');
     });
 
     it('should reject login with incorrect password', async () => {
@@ -240,7 +253,7 @@ describe('Authentication Flow Integration Tests', () => {
       });
 
       const loginBody = JSON.parse(loginResponse.body);
-      accessToken = loginBody.data.tokens.access_token;
+      accessToken = loginBody.data.access_token;
     });
 
     it('should access protected endpoint with valid JWT', async () => {
@@ -341,17 +354,22 @@ describe('Authentication Flow Integration Tests', () => {
         },
       });
 
-      const loginBody = JSON.parse(loginResponse.body);
-      refreshToken = loginBody.data.tokens.refresh_token;
+      // Extract refresh token from cookie
+      const setCookieHeader = loginResponse.headers['set-cookie'];
+      const refreshTokenCookie = Array.isArray(setCookieHeader)
+        ? setCookieHeader.find((c) => c.startsWith('refresh_token='))
+        : setCookieHeader;
+      refreshToken = refreshTokenCookie?.split(';')[0]?.split('=')[1] || '';
     });
 
-    it('should refresh access token with valid refresh token', async () => {
+    it('should refresh access token with valid refresh token from cookie', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/auth/refresh',
-        payload: {
-          refresh_token: refreshToken,
+        headers: {
+          cookie: `refresh_token=${refreshToken}`,
         },
+        payload: {}, // Empty body to satisfy schema
       });
 
       expect(response.statusCode).toBe(200);
@@ -359,19 +377,24 @@ describe('Authentication Flow Integration Tests', () => {
 
       expect(body.success).toBe(true);
       expect(body.data.access_token).toBeDefined();
-      expect(body.data.refresh_token).toBeDefined();
       expect(body.data.token_type).toBe('Bearer');
-      // New tokens should be different from old ones
-      expect(body.data.access_token).not.toBe(refreshToken);
+      expect(body.data.expires_in).toBeGreaterThan(0);
+      // Response should NOT include refresh_token (it's in cookie)
+      expect(body.data.refresh_token).toBeUndefined();
+
+      // Should set new refresh token cookie
+      const setCookieHeader = response.headers['set-cookie'];
+      expect(setCookieHeader).toBeDefined();
     });
 
     it('should reject refresh with invalid token', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/auth/refresh',
-        payload: {
-          refresh_token: 'invalid.refresh.token',
+        headers: {
+          cookie: 'refresh_token=invalid.refresh.token',
         },
+        payload: {}, // Empty body to satisfy schema
       });
 
       expect(response.statusCode).toBe(401);
@@ -381,13 +404,14 @@ describe('Authentication Flow Integration Tests', () => {
     });
 
     it('should use new access token after refresh', async () => {
-      // Refresh token
+      // Refresh token using cookie
       const refreshResponse = await server.inject({
         method: 'POST',
         url: '/api/v1/auth/refresh',
-        payload: {
-          refresh_token: refreshToken,
+        headers: {
+          cookie: `refresh_token=${refreshToken}`,
         },
+        payload: {}, // Empty body to satisfy schema
       });
 
       const newAccessToken = JSON.parse(refreshResponse.body).data.access_token;
@@ -425,7 +449,7 @@ describe('Authentication Flow Integration Tests', () => {
           password: adminPassword,
         },
       });
-      const adminToken = JSON.parse(loginResponse.body).data.tokens.access_token;
+      const adminToken = JSON.parse(loginResponse.body).data.access_token;
 
       // Create project
       const projectResponse = await server.inject({
@@ -466,7 +490,7 @@ describe('Authentication Flow Integration Tests', () => {
           password,
         },
       });
-      const userToken = JSON.parse(loginResponse.body).data.tokens.access_token;
+      const userToken = JSON.parse(loginResponse.body).data.access_token;
 
       // Create admin user to create a project
       const { user: admin, password: adminPassword } = await createTestUser(db, {
@@ -482,7 +506,7 @@ describe('Authentication Flow Integration Tests', () => {
           password: adminPassword,
         },
       });
-      const adminToken = JSON.parse(adminLoginResponse.body).data.tokens.access_token;
+      const adminToken = JSON.parse(adminLoginResponse.body).data.access_token;
 
       const projectResponse = await server.inject({
         method: 'POST',
@@ -525,7 +549,7 @@ describe('Authentication Flow Integration Tests', () => {
           password,
         },
       });
-      const token = JSON.parse(loginResponse.body).data.tokens.access_token;
+      const token = JSON.parse(loginResponse.body).data.access_token;
 
       // Delete user
       await db.users.delete(userId);
@@ -563,8 +587,8 @@ describe('Authentication Flow Integration Tests', () => {
         payload: { email: user2.email, password: password2 },
       });
 
-      const token1 = JSON.parse(login1.body).data.tokens.access_token;
-      const token2 = JSON.parse(login2.body).data.tokens.access_token;
+      const token1 = JSON.parse(login1.body).data.access_token;
+      const token2 = JSON.parse(login2.body).data.access_token;
 
       expect(token1).toBeDefined();
     });

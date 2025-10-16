@@ -94,7 +94,7 @@ describe('API Integration Tests', () => {
         },
       });
       const loginBody = JSON.parse(loginResponse.body);
-      userJwt = loginBody.data.tokens.access_token;
+      userJwt = loginBody.data.access_token;
     });
 
     it('POST /api/v1/projects should create project with valid auth', async () => {
@@ -191,7 +191,7 @@ describe('API Integration Tests', () => {
           password: adminPassword,
         },
       });
-      const adminJwt = JSON.parse(loginResponse.body).data.tokens.access_token;
+      const adminJwt = JSON.parse(loginResponse.body).data.access_token;
 
       const project = await createTestProject(db);
       cleanup.trackProject(project.id);
@@ -566,7 +566,7 @@ describe('API Integration Tests', () => {
           payload: { email: user1.email, password: password1 },
         });
         expect(loginResponse.statusCode).toBe(200);
-        const jwt = JSON.parse(loginResponse.body).data.tokens.access_token;
+        const jwt = JSON.parse(loginResponse.body).data.access_token;
 
         // Try to access project2's bug report with user1's JWT
         const response = await server.inject({
@@ -605,7 +605,7 @@ describe('API Integration Tests', () => {
           payload: { email: user.email, password },
         });
         expect(loginResponse.statusCode).toBe(200);
-        const jwt = JSON.parse(loginResponse.body).data.tokens.access_token;
+        const jwt = JSON.parse(loginResponse.body).data.access_token;
 
         // Try to modify project2's bug report
         const response = await server.inject({
@@ -650,7 +650,7 @@ describe('API Integration Tests', () => {
           payload: { email: user.email, password },
         });
         expect(loginResponse.statusCode).toBe(200);
-        const jwt = JSON.parse(loginResponse.body).data.tokens.access_token;
+        const jwt = JSON.parse(loginResponse.body).data.access_token;
 
         // Try to list project2's bug reports by passing project_id
         const response = await server.inject({
@@ -692,7 +692,7 @@ describe('API Integration Tests', () => {
           payload: { email: user1.email, password: password1 },
         });
         expect(loginResponse1.statusCode).toBe(200);
-        const jwt1 = JSON.parse(loginResponse1.body).data.tokens.access_token;
+        const jwt1 = JSON.parse(loginResponse1.body).data.access_token;
 
         const createProjectResponse = await server.inject({
           method: 'POST',
@@ -714,7 +714,7 @@ describe('API Integration Tests', () => {
           payload: { email: user2.email, password: password2 },
         });
         expect(loginResponse2.statusCode).toBe(200);
-        const jwt2 = JSON.parse(loginResponse2.body).data.tokens.access_token;
+        const jwt2 = JSON.parse(loginResponse2.body).data.access_token;
 
         const response = await server.inject({
           method: 'GET',
@@ -749,7 +749,7 @@ describe('API Integration Tests', () => {
           payload: { email: user1.email, password: password1 },
         });
         expect(loginResponse1.statusCode).toBe(200);
-        const jwt1 = JSON.parse(loginResponse1.body).data.tokens.access_token;
+        const jwt1 = JSON.parse(loginResponse1.body).data.access_token;
 
         const createProjectResponse = await server.inject({
           method: 'POST',
@@ -771,7 +771,7 @@ describe('API Integration Tests', () => {
           payload: { email: user2.email, password: password2 },
         });
         expect(loginResponse2.statusCode).toBe(200);
-        const jwt2 = JSON.parse(loginResponse2.body).data.tokens.access_token;
+        const jwt2 = JSON.parse(loginResponse2.body).data.access_token;
 
         const response = await server.inject({
           method: 'PATCH',
@@ -810,7 +810,7 @@ describe('API Integration Tests', () => {
           url: '/api/v1/auth/login',
           payload: { email: admin.email, password: adminPassword },
         });
-        const adminJwt = JSON.parse(loginResponse1.body).data.tokens.access_token;
+        const adminJwt = JSON.parse(loginResponse1.body).data.access_token;
 
         const createProjectResponse = await server.inject({
           method: 'POST',
@@ -831,7 +831,7 @@ describe('API Integration Tests', () => {
           url: '/api/v1/auth/login',
           payload: { email: regularUser.email, password: userPassword },
         });
-        const regularUserJwt = JSON.parse(loginResponse2.body).data.tokens.access_token;
+        const regularUserJwt = JSON.parse(loginResponse2.body).data.access_token;
 
         const response = await server.inject({
           method: 'GET',
@@ -874,7 +874,7 @@ describe('API Integration Tests', () => {
           url: '/api/v1/auth/login',
           payload: { email: regularUser.email, password: userPassword },
         });
-        const userJwt = JSON.parse(loginResponse1.body).data.tokens.access_token;
+        const userJwt = JSON.parse(loginResponse1.body).data.access_token;
 
         const createProjectResponse = await server.inject({
           method: 'POST',
@@ -895,7 +895,7 @@ describe('API Integration Tests', () => {
           url: '/api/v1/auth/login',
           payload: { email: admin.email, password: adminPassword },
         });
-        const adminJwt = JSON.parse(loginResponse2.body).data.tokens.access_token;
+        const adminJwt = JSON.parse(loginResponse2.body).data.access_token;
 
         const response = await server.inject({
           method: 'GET',

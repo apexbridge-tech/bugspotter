@@ -6,8 +6,10 @@ export interface User {
 
 export interface AuthResponse {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string; // Optional: Only present in backward compatibility mode
   user: User;
+  expires_in: number;
+  token_type: string;
 }
 
 export interface SetupStatus {
@@ -77,4 +79,67 @@ export interface ServiceHealth {
   response_time: number;
   last_check: string;
   error?: string;
+}
+
+export type BugStatus = 'open' | 'in-progress' | 'resolved' | 'closed';
+export type BugPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface BugReport {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  screenshot_url: string | null;
+  replay_url: string | null;
+  metadata: {
+    consoleLogs?: Array<{ level: string; message: string; timestamp: number }>;
+    networkRequests?: Array<{ url: string; method: string; status: number }>;
+    browserMetadata?: {
+      userAgent?: string;
+      viewport?: { width: number; height: number };
+      url?: string;
+    };
+    [key: string]: unknown;
+  };
+  status: BugStatus;
+  priority: BugPriority;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  legal_hold: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BugReportFilters {
+  project_id?: string;
+  status?: BugStatus;
+  priority?: BugPriority;
+  created_after?: string;
+  created_before?: string;
+}
+
+export interface BugReportListResponse {
+  data: BugReport[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface Session {
+  id: string;
+  bug_report_id: string;
+  events: {
+    type: string;
+    recordedEvents: Array<{
+      type: number | string;
+      data?: unknown;
+      timestamp: number;
+      [key: string]: unknown;
+    }>;
+  };
+  duration: number | null;
+  created_at: string;
 }

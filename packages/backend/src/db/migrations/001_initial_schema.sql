@@ -195,6 +195,28 @@ COMMENT ON COLUMN project_integrations.enabled IS 'Whether integration is active
 COMMENT ON COLUMN project_integrations.config IS 'Non-sensitive configuration (project key, repository, channel, etc.)';
 COMMENT ON COLUMN project_integrations.encrypted_credentials IS 'Encrypted sensitive credentials (API tokens, passwords)';
 
+-- System configuration table
+CREATE TABLE IF NOT EXISTS system_config (
+    key VARCHAR(255) PRIMARY KEY,
+    value JSONB NOT NULL,
+    description TEXT,
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_config_updated_at ON system_config(updated_at DESC);
+
+COMMENT ON TABLE system_config IS 'Global system configuration and retention policies';
+COMMENT ON COLUMN system_config.key IS 'Configuration key (e.g., instance_settings, global_retention_policy)';
+COMMENT ON COLUMN system_config.value IS 'Configuration value as JSON';
+COMMENT ON COLUMN system_config.updated_by IS 'User who last updated this configuration';
+
+-- Insert default instance settings
+INSERT INTO system_config (key, value, description) VALUES
+    ('instance_settings', '{"instance_name": "BugSpotter", "instance_url": "http://localhost:3000", "support_email": "support@bugspotter.dev", "retention_days": 90, "max_reports_per_project": 10000, "session_replay_enabled": true}'::jsonb, 'Instance-wide configuration settings (admin panel)')
+ON CONFLICT (key) DO NOTHING;
+
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -217,6 +239,11 @@ CREATE TRIGGER update_bug_reports_updated_at
 
 CREATE TRIGGER update_project_integrations_updated_at
     BEFORE UPDATE ON project_integrations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_system_config_updated_at
+    BEFORE UPDATE ON system_config
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
