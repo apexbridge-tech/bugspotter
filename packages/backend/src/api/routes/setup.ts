@@ -209,11 +209,21 @@ export async function setupRoutes(fastify: FastifyInstance, db: DatabaseClient):
       const access_token = fastify.jwt.sign(payload, { expiresIn: TOKEN_EXPIRY.ACCESS });
       const refresh_token = fastify.jwt.sign(payload, { expiresIn: TOKEN_EXPIRY.REFRESH });
 
+      // Set refresh token in httpOnly cookie (secure practice)
+      reply.setCookie('refresh_token', refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+        path: '/',
+      });
+
       request.log.info({ email: admin_email }, 'System initialized with admin user');
 
       return sendSuccess(reply, {
         access_token,
-        refresh_token,
+        expires_in: 24 * 60 * 60, // 24 hours in seconds
+        token_type: 'Bearer',
         user: {
           id: user.id,
           email: user.email,

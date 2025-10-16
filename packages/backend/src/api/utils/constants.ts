@@ -50,3 +50,21 @@ export const SORTING = {
   DEFAULT_SORT_BY: 'created_at',
   DEFAULT_ORDER: 'desc',
 } as const;
+
+/**
+ * Parse time string (e.g., "24h", "7d") to seconds
+ * @param timeString - Time string with format: number + unit (s/m/h/d)
+ * @param defaultSeconds - Default value if parsing fails (defaults to 1 hour)
+ * @returns Time in seconds
+ */
+export function parseTimeString(timeString: string, defaultSeconds = 3600): number {
+  const match = timeString.match(/^(\d+)([smhd])$/);
+  if (!match) {
+    return defaultSeconds;
+  }
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  return value * (TIME_MULTIPLIERS[unit] || 1);
+}

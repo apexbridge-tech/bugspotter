@@ -11,7 +11,7 @@ import { AppError } from '../middleware/error.js';
 import { config } from '../../config.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
 import { findOrThrow, omitFields } from '../utils/resource.js';
-import { PASSWORD, TIME_MULTIPLIERS, DEFAULT_TOKEN_EXPIRY_SECONDS } from '../utils/constants.js';
+import { PASSWORD, parseTimeString, DEFAULT_TOKEN_EXPIRY_SECONDS } from '../utils/constants.js';
 
 interface LoginBody {
   email: string;
@@ -43,8 +43,8 @@ function generateTokens(fastify: FastifyInstance, userId: string, role: string) 
   });
 
   // Calculate expiry time in seconds
-  const expiresIn = parseExpiryTime(config.jwt.expiresIn);
-  const refreshExpiresIn = parseExpiryTime(config.jwt.refreshExpiresIn);
+  const expiresIn = parseTimeString(config.jwt.expiresIn, DEFAULT_TOKEN_EXPIRY_SECONDS);
+  const refreshExpiresIn = parseTimeString(config.jwt.refreshExpiresIn, DEFAULT_TOKEN_EXPIRY_SECONDS);
 
   return {
     access_token,
@@ -53,21 +53,6 @@ function generateTokens(fastify: FastifyInstance, userId: string, role: string) 
     refresh_expires_in: refreshExpiresIn,
     token_type: 'Bearer' as const,
   };
-}
-
-/**
- * Parse JWT expiry time string to seconds
- */
-function parseExpiryTime(timeString: string): number {
-  const match = timeString.match(/^(\d+)([smhd])$/);
-  if (!match) {
-    return DEFAULT_TOKEN_EXPIRY_SECONDS;
-  }
-
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-
-  return value * (TIME_MULTIPLIERS[unit] || 1);
 }
 
 export function authRoutes(fastify: FastifyInstance, db: DatabaseClient) {

@@ -6,7 +6,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { DatabaseClient } from '../../db/client.js';
 import { sendSuccess } from '../utils/response.js';
-import { TIME_MULTIPLIERS } from '../utils/constants.js';
+import { requireRole } from '../middleware/auth.js';
+import { parseTimeString } from '../utils/constants.js';
 import fs from 'fs/promises';
 import { config } from '../../config.js';
 
@@ -285,8 +286,12 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
   /**
    * GET /api/v1/admin/health
    * Get system health status
+   * Requires: admin role
    */
-  fastify.get('/api/v1/admin/health', async (_request, reply) => {
+  fastify.get(
+    '/api/v1/admin/health',
+    { onRequest: [requireRole('admin')] },
+    async (_request, reply) => {
     const [databaseHealth, redisHealth, storageHealth, diskSpace] = await Promise.all([
       checkDatabaseHealth(db),
       checkRedisHealth(),
@@ -325,14 +330,19 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
     };
 
     return sendSuccess(reply, health);
-  });
+    }
+  );
 
   /**
    * GET /api/v1/admin/settings
    * Get instance settings
    * Note: Writable settings from database, read-only from environment
+   * Requires: admin role
    */
-  fastify.get('/api/v1/admin/settings', async (_request, reply) => {
+  fastify.get(
+    '/api/v1/admin/settings',
+    { onRequest: [requireRole('admin')] },
+    async (_request, reply) => {
     // Fetch writable settings from database
     const dbSettings = await getInstanceSettings();
 
@@ -376,21 +386,24 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
     };
 
     return sendSuccess(reply, settings);
-  });
+    }
+  );
 
   /**
    * PATCH /api/v1/admin/settings
    * Update instance settings
    * Stores writable settings in database (no restart required)
+   * Requires: admin role
    */
   fastify.patch<{ Body: Partial<InstanceSettings> }>(
     '/api/v1/admin/settings',
+    { onRequest: [requireRole('admin')] },
     async (request, reply) => {
       const updates = request.body;
       const userId = request.authUser!.id;
 
       // Validate updates
-      if (updates.instance_name && updates.instance_name.length < 1) {
+      if ('instance_name' in updates && (!updates.instance_name || updates.instance_name.length < 1)) {
         return reply.code(400).send({ error: 'Instance name cannot be empty' });
       }
 
@@ -448,19 +461,4 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
       return sendSuccess(reply, settings);
     }
   );
-}
-
-/**
- * Parse time string (e.g., "24h", "7d") to seconds
- */
-function parseTimeString(timeStr: string): number {
-  const match = timeStr.match(/^(\d+)([smhd])$/);
-  if (!match) {
-    return 3600; // Default 1 hour
-  }
-
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-
-  return value * (TIME_MULTIPLIERS[unit] || 1);
 }

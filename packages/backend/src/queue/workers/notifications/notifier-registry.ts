@@ -4,7 +4,7 @@
  * Implements Factory Pattern + Registry Pattern
  */
 
-import type { INotifier } from './notifier.interface.js';
+import type { INotifier } from './notifier-interface.js';
 import { createEmailNotifier, type EmailNotifierConfig } from './email-notifier.js';
 import { createSlackNotifier, type SlackNotifierConfig } from './slack-notifier.js';
 import { createWebhookNotifier, type WebhookNotifierConfig } from './webhook-notifier.js';

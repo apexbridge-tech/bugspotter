@@ -10,7 +10,7 @@ import type {
   NotificationContext,
   NotificationResult,
   BaseNotifierConfig,
-} from './notifier.interface.js';
+} from './notifier-interface.js';
 
 /**
  * Email notifier configuration

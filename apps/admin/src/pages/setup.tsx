@@ -44,11 +44,6 @@ export default function SetupWizard() {
       }
     } catch (error) {
       // Expected: Setup not initialized (404) - continue to setup wizard
-      // Unexpected: Network errors, server errors - log for debugging
-      if (import.meta.env.DEV) {
-        console.warn('Setup status check failed (this is expected if setup not complete):', error);
-      }
-
       // Check if it's a network error (not just "not initialized")
       const errorMessage = handleApiError(error);
       if (errorMessage.includes('Network') || errorMessage.includes('timeout')) {
@@ -93,26 +88,15 @@ export default function SetupWizard() {
     setIsLoading(true);
 
     try {
-      console.log('🚀 Starting setup initialization...');
       const response = await setupService.initialize(formData);
-      console.log('✅ Setup response received:', response);
-
       toast.success('Setup completed successfully');
 
       // Response is already unwrapped: {access_token, refresh_token, user}
-      console.log('📦 Using tokens and user:', {
-        access_token: response.access_token?.substring(0, 20) + '...',
-        user: response.user,
-      });
-
-      // Login with the returned tokens
+      // Login with the returned tokens (updates auth context synchronously)
       login(response.access_token, '', response.user);
-      console.log('✅ Login completed, navigating to dashboard...');
 
-      // Force full page reload to ensure auth state is properly initialized
-      setTimeout(() => {
-        window.location.href = '/health';
-      }, 100);
+      // Navigate using React Router
+      navigate('/health');
     } catch (error) {
       console.error('❌ Setup failed:', error);
       toast.error(handleApiError(error));
@@ -147,14 +131,7 @@ export default function SetupWizard() {
               required
             />
             <Button
-              onClick={() => {
-                console.log('📝 Step 1 -> Step 2, form data:', {
-                  admin_name: formData.admin_name,
-                  admin_email: formData.admin_email,
-                  has_password: !!formData.admin_password,
-                });
-                setStep(2);
-              }}
+              onClick={() => setStep(2)}
               className="w-full"
             >
               Continue
