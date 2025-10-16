@@ -132,27 +132,30 @@ Access at `http://localhost:3001`
 Two configurations available:
 
 **Production (`nginx.conf` - default)**:
+
 - ✅ Strict CSP - No `unsafe-inline`, no `unsafe-eval`
 - ✅ HTTPS enforcement - `upgrade-insecure-requests`
 - ✅ External scripts blocked
 - SPA routing, API proxy, static caching, gzip, security headers
 
 **Development (`nginx.dev.conf`)**:
+
 - ⚠️ Relaxed CSP - Allows `unsafe-inline`, `unsafe-eval` for Vite HMR
 - ⚠️ WebSocket support for hot reloading
 - Same features as production config
 
 ### Content Security Policy (CSP)
 
-| Feature | Production | Development |
-|---------|-----------|-------------|
-| Inline scripts | ❌ Blocked | ✅ Allowed (`unsafe-inline`) |
-| Eval | ❌ Blocked | ✅ Allowed (`unsafe-eval`) |
-| External images | ❌ Blocked | ❌ Blocked |
-| WebSocket | ❌ Blocked | ✅ Allowed (HMR) |
-| HTTPS upgrade | ✅ Enforced | ❌ Disabled |
+| Feature         | Production  | Development                  |
+| --------------- | ----------- | ---------------------------- |
+| Inline scripts  | ❌ Blocked  | ✅ Allowed (`unsafe-inline`) |
+| Eval            | ❌ Blocked  | ✅ Allowed (`unsafe-eval`)   |
+| External images | ❌ Blocked  | ❌ Blocked                   |
+| WebSocket       | ❌ Blocked  | ✅ Allowed (HMR)             |
+| HTTPS upgrade   | ✅ Enforced | ❌ Disabled                  |
 
 **Why separate configs?**
+
 - Vite dev builds use inline scripts for HMR (hot module replacement)
 - Production Vite builds use external hashed scripts (no inline needed)
 - Strict CSP in production prevents XSS attacks
