@@ -19,11 +19,7 @@ export function SecuritySettingsSection({
   updateField,
   onCorsInputChange,
 }: SecuritySettingsProps) {
-  const handleNumberChange = (
-    field: keyof InstanceSettings,
-    value: string,
-    min: number = 0
-  ) => {
+  const handleNumberChange = (field: keyof InstanceSettings, value: string, min: number = 0) => {
     const parsed = parseInt(value, 10);
     if (!isNaN(parsed) && parsed >= min) {
       updateField(field, parsed as InstanceSettings[typeof field]);

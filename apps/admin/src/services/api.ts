@@ -114,15 +114,27 @@ export const bugReportService = {
     params.append('sort_by', sortBy);
     params.append('order', order);
 
-    if (filters?.project_id) params.append('project_id', filters.project_id);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.priority) params.append('priority', filters.priority);
-    if (filters?.created_after) params.append('created_after', filters.created_after);
-    if (filters?.created_before) params.append('created_before', filters.created_before);
+    if (filters?.project_id) {
+      params.append('project_id', filters.project_id);
+    }
+    if (filters?.status) {
+      params.append('status', filters.status);
+    }
+    if (filters?.priority) {
+      params.append('priority', filters.priority);
+    }
+    if (filters?.created_after) {
+      params.append('created_after', filters.created_after);
+    }
+    if (filters?.created_before) {
+      params.append('created_before', filters.created_before);
+    }
 
-    const response = await api.get<{ success: boolean; data: any[]; pagination: any }>(
-      `/v1/reports?${params.toString()}`
-    );
+    const response = await api.get<{
+      success: boolean;
+      data: BugReport[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/v1/reports?${params.toString()}`);
     // Paginated responses have data and pagination at the root level after unwrapping
     return { data: response.data.data, pagination: response.data.pagination };
   },

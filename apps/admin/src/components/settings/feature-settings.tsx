@@ -12,10 +12,7 @@ interface FeatureSettingsProps {
 
 export function FeatureSettingsSection({ formData, updateField }: FeatureSettingsProps) {
   return (
-    <SettingsSection
-      title="Feature Flags"
-      description="Enable or disable features"
-    >
+    <SettingsSection title="Feature Flags" description="Enable or disable features">
       <label className="flex items-center space-x-3 cursor-pointer">
         <input
           type="checkbox"
@@ -25,9 +22,7 @@ export function FeatureSettingsSection({ formData, updateField }: FeatureSetting
         />
         <div>
           <p className="font-medium">Session Replay</p>
-          <p className="text-sm text-gray-500">
-            Enable session replay recording for bug reports
-          </p>
+          <p className="text-sm text-gray-500">Enable session replay recording for bug reports</p>
         </div>
       </label>
     </SettingsSection>

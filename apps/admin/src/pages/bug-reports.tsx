@@ -105,15 +105,18 @@ export default function BugReportsPage() {
         </div>
         {reportData?.pagination && (
           <div className="text-sm text-gray-600">
-            Showing {(page - 1) * limit + 1}-
-            {Math.min(page * limit, reportData.pagination.total)} of {reportData.pagination.total}{' '}
-            reports
+            Showing {(page - 1) * limit + 1}-{Math.min(page * limit, reportData.pagination.total)}{' '}
+            of {reportData.pagination.total} reports
           </div>
         )}
       </div>
 
       {/* Filters */}
-      <BugReportFilters filters={filters} onFiltersChange={handleFiltersChange} projects={projects} />
+      <BugReportFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        projects={projects}
+      />
 
       {/* Loading State */}
       {isLoading && (

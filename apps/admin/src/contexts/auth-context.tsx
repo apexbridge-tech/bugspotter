@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setAuthTokenAccessors } from '../lib/api-client';
+import { authService } from '../services/api';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const userData = JSON.parse(storedUser);
         console.log('✅ Found user in sessionStorage:', userData);
-        
+
         // Proactively refresh access token using httpOnly refresh cookie
         // CRITICAL: Set user AFTER token refresh to prevent race condition
         fetch('/api/v1/auth/refresh', {
@@ -50,7 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({}), // Empty JSON object to satisfy Fastify
         })
           .then((res) => {
-            if (!res.ok) throw new Error('Token refresh failed');
+            if (!res.ok) {
+              throw new Error('Token refresh failed');
+            }
             return res.json();
           })
           .then((data) => {
@@ -85,12 +88,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [navigate]);
 
-  const login = (accessToken: string, _refreshToken: string, userData: User, onComplete?: () => void) => {
+  const login = (
+    accessToken: string,
+    _refreshToken: string,
+    userData: User,
+    onComplete?: () => void
+  ) => {
     console.log('🔐 Login called with user:', userData);
-    
+
     // Store access token in memory only (XSS protection)
     setAccessToken(accessToken);
-    
+
     // Store user data in sessionStorage (cleared when tab closes)
     // Less risk than localStorage, but still consider moving to memory-only in future
     if (userData) {
@@ -98,12 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('💾 Storing user in sessionStorage:', userJson);
       sessionStorage.setItem('user', userJson);
     }
-    
+
     setUser(userData);
 
     // Refresh token is now stored in httpOnly cookie by backend
     // No need to store it in frontend storage (XSS protection)
-    
+
     // Call completion callback if provided
     if (onComplete) {
       setTimeout(onComplete, 100);
@@ -117,10 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       // Call backend logout endpoint to clear httpOnly cookie
-      await fetch('http://localhost:3000/api/v1/auth/logout', {
-        method: 'POST',
-        credentials: 'include', // Send cookies
-      });
+      await authService.logout();
     } catch (error) {
       console.error('Logout API call failed:', error);
       // Continue with local cleanup even if API fails
@@ -144,7 +149,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, accessToken, login, logout, updateAccessToken }}
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        accessToken,
+        login,
+        logout,
+        updateAccessToken,
+      }}
     >
       {children}
     </AuthContext.Provider>

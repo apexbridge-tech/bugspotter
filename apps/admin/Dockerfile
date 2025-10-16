@@ -25,8 +25,9 @@ RUN pnpm --filter @bugspotter/admin build
 # Production stage
 FROM nginx:alpine
 
-# Copy custom nginx config
-COPY apps/admin/nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config (use nginx.dev.conf for development builds)
+ARG NGINX_CONFIG=nginx.conf
+COPY apps/admin/${NGINX_CONFIG} /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder
 COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html

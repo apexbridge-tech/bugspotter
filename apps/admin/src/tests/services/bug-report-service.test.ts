@@ -110,12 +110,12 @@ describe('bugReportService', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       };
-      const mockResponse = { data: mockReport };
+      const mockResponse = { data: { data: mockReport } };
       vi.mocked(api.get).mockResolvedValue(mockResponse);
 
       const result = await bugReportService.getById('report-123');
 
-      expect(api.get).toHaveBeenCalledWith('/reports/report-123');
+      expect(api.get).toHaveBeenCalledWith('/v1/reports/report-123');
       expect(result).toEqual(mockReport);
     });
   });
@@ -126,12 +126,12 @@ describe('bugReportService', () => {
         id: 'report-123',
         status: 'resolved' as BugStatus,
       };
-      const mockResponse = { data: mockReport };
+      const mockResponse = { data: { data: mockReport } };
       vi.mocked(api.patch).mockResolvedValue(mockResponse);
 
       await bugReportService.update('report-123', { status: 'resolved' });
 
-      expect(api.patch).toHaveBeenCalledWith('/reports/report-123', { status: 'resolved' });
+      expect(api.patch).toHaveBeenCalledWith('/v1/reports/report-123', { status: 'resolved' });
     });
 
     it('updates bug report priority', async () => {
@@ -139,12 +139,12 @@ describe('bugReportService', () => {
         id: 'report-123',
         priority: 'critical' as BugPriority,
       };
-      const mockResponse = { data: mockReport };
+      const mockResponse = { data: { data: mockReport } };
       vi.mocked(api.patch).mockResolvedValue(mockResponse);
 
       await bugReportService.update('report-123', { priority: 'critical' });
 
-      expect(api.patch).toHaveBeenCalledWith('/reports/report-123', { priority: 'critical' });
+      expect(api.patch).toHaveBeenCalledWith('/v1/reports/report-123', { priority: 'critical' });
     });
 
     it('updates multiple fields', async () => {
@@ -154,7 +154,7 @@ describe('bugReportService', () => {
         priority: 'high' as BugPriority,
         description: 'Updated description',
       };
-      const mockResponse = { data: mockReport };
+      const mockResponse = { data: { data: mockReport } };
       vi.mocked(api.patch).mockResolvedValue(mockResponse);
 
       await bugReportService.update('report-123', {
@@ -163,7 +163,7 @@ describe('bugReportService', () => {
         description: 'Updated description',
       });
 
-      expect(api.patch).toHaveBeenCalledWith('/reports/report-123', {
+      expect(api.patch).toHaveBeenCalledWith('/v1/reports/report-123', {
         status: 'in-progress',
         priority: 'high',
         description: 'Updated description',
@@ -177,7 +177,7 @@ describe('bugReportService', () => {
 
       await bugReportService.delete('report-123');
 
-      expect(api.delete).toHaveBeenCalledWith('/reports/report-123');
+      expect(api.delete).toHaveBeenCalledWith('/v1/reports/report-123');
     });
   });
 
@@ -188,7 +188,7 @@ describe('bugReportService', () => {
       const ids = ['report-1', 'report-2', 'report-3'];
       await bugReportService.bulkDelete(ids);
 
-      expect(api.post).toHaveBeenCalledWith('/reports/bulk-delete', { ids });
+      expect(api.post).toHaveBeenCalledWith('/v1/reports/bulk-delete', { ids });
     });
   });
 
@@ -203,12 +203,12 @@ describe('bugReportService', () => {
           created_at: '2024-01-01T00:00:00Z',
         },
       ];
-      const mockResponse = { data: mockSessions };
+      const mockResponse = { data: { data: mockSessions } };
       vi.mocked(api.get).mockResolvedValue(mockResponse);
 
       const result = await bugReportService.getSessions('report-123');
 
-      expect(api.get).toHaveBeenCalledWith('/reports/report-123/sessions');
+      expect(api.get).toHaveBeenCalledWith('/v1/reports/report-123/sessions');
       expect(result).toEqual(mockSessions);
     });
   });

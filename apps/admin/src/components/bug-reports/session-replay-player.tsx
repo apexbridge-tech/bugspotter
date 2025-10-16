@@ -26,7 +26,6 @@ export function SessionReplayPlayer({ session, className = '' }: SessionReplayPl
         }
 
         // Create new player instance
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         new rrwebPlayerDefault({
           target: containerRef.current!,
           props: {
@@ -60,7 +59,9 @@ export function SessionReplayPlayer({ session, className = '' }: SessionReplayPl
 
   if (!session?.events?.recordedEvents || session.events.recordedEvents.length === 0) {
     return (
-      <div className={`flex items-center justify-center h-[600px] bg-gray-100 rounded-lg ${className}`}>
+      <div
+        className={`flex items-center justify-center h-[600px] bg-gray-100 rounded-lg ${className}`}
+      >
         <div className="text-center text-gray-500">
           <p className="mb-2">📹 No session replay available</p>
           <p className="text-sm">This bug report does not have recorded events</p>

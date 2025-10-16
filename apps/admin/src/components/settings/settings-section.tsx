@@ -19,9 +19,7 @@ export function SettingsSection({ title, description, children, className }: Set
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className={className}>
-        {children}
-      </CardContent>
+      <CardContent className={className}>{children}</CardContent>
     </Card>
   );
 }

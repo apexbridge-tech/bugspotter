@@ -95,7 +95,8 @@ export function BugReportList({
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     {/* Project */}
                     <span className="text-gray-600">
-                      Project: <span className="font-medium">{getProjectName(report.project_id)}</span>
+                      Project:{' '}
+                      <span className="font-medium">{getProjectName(report.project_id)}</span>
                     </span>
 
                     {/* Status Badge */}

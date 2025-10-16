@@ -56,8 +56,9 @@ export function BugReportFilters({ filters, onFiltersChange, projects }: BugRepo
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Project Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+            <label htmlFor="filter-project" className="block text-sm font-medium text-gray-700 mb-1">Project</label>
             <select
+              id="filter-project"
               value={filters.project_id || ''}
               onChange={(e) => updateFilter('project_id', e.target.value || undefined)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -73,8 +74,9 @@ export function BugReportFilters({ filters, onFiltersChange, projects }: BugRepo
 
           {/* Status Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label htmlFor="filter-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
+              id="filter-status"
               value={filters.status || ''}
               onChange={(e) => updateFilter('status', (e.target.value as BugStatus) || undefined)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
@@ -90,8 +92,9 @@ export function BugReportFilters({ filters, onFiltersChange, projects }: BugRepo
 
           {/* Priority Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+            <label htmlFor="filter-priority" className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
             <select
+              id="filter-priority"
               value={filters.priority || ''}
               onChange={(e) =>
                 updateFilter('priority', (e.target.value as BugPriority) || undefined)
@@ -109,8 +112,9 @@ export function BugReportFilters({ filters, onFiltersChange, projects }: BugRepo
 
           {/* Date From Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+            <label htmlFor="filter-from-date" className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
             <Input
+              id="filter-from-date"
               type="date"
               value={filters.created_after || ''}
               onChange={(e) => updateFilter('created_after', e.target.value || undefined)}
@@ -119,8 +123,9 @@ export function BugReportFilters({ filters, onFiltersChange, projects }: BugRepo
 
           {/* Date To Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+            <label htmlFor="filter-to-date" className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
             <Input
+              id="filter-to-date"
               type="date"
               value={filters.created_before || ''}
               onChange={(e) => updateFilter('created_before', e.target.value || undefined)}

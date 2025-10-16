@@ -89,7 +89,13 @@ pnpm format  # Prettier
 ### Build Image
 
 ```bash
+# Production build (strict CSP)
 docker build -t bugspotter-admin:latest apps/admin
+
+# Development build (relaxed CSP for Vite HMR)
+docker build -t bugspotter-admin:dev \
+  --build-arg NGINX_CONFIG=nginx.dev.conf \
+  apps/admin
 ```
 
 ### Run Container
@@ -104,10 +110,12 @@ docker run -d \
 
 ### With Docker Compose
 
-The admin panel is included in the main `docker-compose.yml`:
-
 ```bash
+# Production (default - strict CSP)
 docker-compose up -d admin
+
+# Development (relaxed CSP for Vite HMR)
+ADMIN_NGINX_CONFIG=nginx.dev.conf docker-compose up -d admin
 ```
 
 Access at `http://localhost:3001`
@@ -117,16 +125,37 @@ Access at `http://localhost:3001`
 ### Environment Variables
 
 - `VITE_API_URL`: Backend API base URL (default: `/api` for proxying)
+- `ADMIN_NGINX_CONFIG`: Nginx config file (default: `nginx.conf`, dev: `nginx.dev.conf`)
 
 ### Nginx Configuration
 
-The production build uses Nginx with:
+Two configurations available:
 
-- SPA routing (fallback to index.html)
-- API proxy to backend service
-- Static asset caching (1 year)
-- Gzip compression
-- Security headers (X-Frame-Options, CSP, etc.)
+**Production (`nginx.conf` - default)**:
+- ✅ Strict CSP - No `unsafe-inline`, no `unsafe-eval`
+- ✅ HTTPS enforcement - `upgrade-insecure-requests`
+- ✅ External scripts blocked
+- SPA routing, API proxy, static caching, gzip, security headers
+
+**Development (`nginx.dev.conf`)**:
+- ⚠️ Relaxed CSP - Allows `unsafe-inline`, `unsafe-eval` for Vite HMR
+- ⚠️ WebSocket support for hot reloading
+- Same features as production config
+
+### Content Security Policy (CSP)
+
+| Feature | Production | Development |
+|---------|-----------|-------------|
+| Inline scripts | ❌ Blocked | ✅ Allowed (`unsafe-inline`) |
+| Eval | ❌ Blocked | ✅ Allowed (`unsafe-eval`) |
+| External images | ❌ Blocked | ❌ Blocked |
+| WebSocket | ❌ Blocked | ✅ Allowed (HMR) |
+| HTTPS upgrade | ✅ Enforced | ❌ Disabled |
+
+**Why separate configs?**
+- Vite dev builds use inline scripts for HMR (hot module replacement)
+- Production Vite builds use external hashed scripts (no inline needed)
+- Strict CSP in production prevents XSS attacks
 
 ## API Integration
 

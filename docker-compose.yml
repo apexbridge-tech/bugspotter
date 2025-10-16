@@ -182,6 +182,9 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      args:
+        # Use nginx.dev.conf for development, nginx.conf for production
+        NGINX_CONFIG: ${ADMIN_NGINX_CONFIG:-nginx.conf}
     container_name: bugspotter-admin
     restart: unless-stopped
     depends_on:
