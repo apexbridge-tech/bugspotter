@@ -166,12 +166,12 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-end space-x-1">
-            {data.time_series.map((point, index) => {
+            {data.time_series.map((point) => {
               const maxCount = Math.max(...data.time_series.map((p) => p.count));
               const height = maxCount > 0 ? (point.count / maxCount) * 100 : 0;
               return (
                 <div
-                  key={index}
+                  key={point.date}
                   className="flex-1 bg-primary rounded-t hover:bg-primary/80 transition-colors"
                   style={{ height: `${height}%`, minHeight: point.count > 0 ? '4px' : '0' }}
                   title={`${point.date}: ${point.count} reports`}

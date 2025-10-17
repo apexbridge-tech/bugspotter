@@ -153,7 +153,7 @@ Defined in `project_members` table for multi-user project collaboration.
 
 #### Admin-Only Endpoints
 
-```typescript
+```text
 // User Management
 GET    /api/v1/admin/users              // List users
 POST   /api/v1/admin/users              // Create user
@@ -172,7 +172,7 @@ DELETE /api/v1/projects/:id             // Delete any project (admin only)
 
 #### User + Admin Endpoints
 
-```typescript
+```text
 // Project Management (requireUser - any authenticated user)
 GET    /api/v1/projects                 // List my projects
 POST   /api/v1/projects                 // Create project
@@ -183,23 +183,23 @@ POST   /api/v1/projects/:id/regenerate  // Regenerate API key
 
 #### Public Endpoints (No Auth)
 
-```typescript
+```text
 // Setup
-GET / api / v1 / setup / status; // Check setup status
-POST / api / v1 / setup / initialize; // Initialize system
+GET    /api/v1/setup/status             // Check setup status
+POST   /api/v1/setup/initialize          // Initialize system
 
 // Authentication
-POST / api / v1 / auth / login; // User login
-POST / api / v1 / auth / refresh; // Refresh token
-POST / api / v1 / auth / logout; // Logout
+POST   /api/v1/auth/login                // User login
+POST   /api/v1/auth/refresh              // Refresh token
+POST   /api/v1/auth/logout               // Logout
 
 // Health
-GET / health; // Health check
+GET    /health                           // Health check
 ```
 
 #### API Key Authentication (SDK)
 
-```typescript
+```text
 // Bug Reports (X-API-Key header)
 GET    /api/v1/bug-reports              // List bug reports
 POST   /api/v1/bug-reports              // Create bug report
