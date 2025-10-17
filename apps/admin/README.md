@@ -31,7 +31,7 @@ Professional web-based admin control panel for managing BugSpotter self-hosted i
 - **Browser Metadata**: Inspect user agent, viewport, and environment info
 - **Bulk Operations**: Delete multiple reports at once
 
-###  Project Management
+### Project Management
 
 - List all projects with API keys
 - Create new projects
@@ -192,27 +192,32 @@ The admin panel uses JWT-based authentication with automatic token refresh:
 ### API Endpoints Used
 
 **Authentication:**
+
 - `POST /api/v1/auth/login` - User login
 - `POST /api/v1/auth/logout` - User logout
 - `POST /api/v1/auth/refresh` - Token refresh
 
 **Setup:**
+
 - `GET /api/v1/setup/status` - Check if system initialized
 - `POST /api/v1/setup/initialize` - Initialize system
 - `POST /api/v1/setup/test-storage` - Test storage connection
 
 **Admin:**
+
 - `GET /api/v1/admin/health` - System health status
 - `GET /api/v1/admin/settings` - Get instance settings
 - `PATCH /api/v1/admin/settings` - Update settings
 
 **Projects:**
+
 - `GET /api/v1/projects` - List projects
 - `POST /api/v1/projects` - Create project
 - `DELETE /api/v1/projects/:id` - Delete project
 - `POST /api/v1/projects/:id/regenerate-key` - Regenerate API key
 
 **Bug Reports:**
+
 - `GET /api/v1/reports` - List bug reports (with filters, pagination, sorting)
 - `GET /api/v1/reports/:id` - Get bug report by ID
 - `PATCH /api/v1/reports/:id` - Update bug report (status, priority, description)
@@ -349,7 +354,7 @@ apps/admin/
 
 ### Component Architecture
 
-### Settings Page Refactoring** (250+ lines → 115 lines + 6 focused components):
+### Settings Page Refactoring\*\* (250+ lines → 115 lines + 6 focused components):
 
 - Components extracted into `components/settings/` directory
 - Each section is self-contained and testable
