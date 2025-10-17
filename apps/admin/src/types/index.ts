@@ -171,7 +171,7 @@ export interface UserManagementResponse {
     page: number;
     limit: number;
     total: number;
-    pages: number;
+    totalPages: number;
   };
 }
 

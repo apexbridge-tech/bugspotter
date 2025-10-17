@@ -157,7 +157,7 @@ Object.keys(window).filter((k) => k.includes('token'));
 Content-Security-Policy:
   default-src 'self';
   script-src 'self';
-  style-src 'self' 'unsafe-inline';  # Allows inline styles for Vite CSS injection
+  style-src 'self' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=';  # Hash-based CSP for Vite
   img-src 'self' data:;
   font-src 'self' data:;
   connect-src 'self';
@@ -168,24 +168,45 @@ Content-Security-Policy:
   upgrade-insecure-requests;
 ```
 
-### Why 'unsafe-inline' for styles?
+### SHA256 Hash-Based CSP (Strict Security)
 
-Vite's production build uses CSS injection techniques that require inline styles. This is a **calculated trade-off**:
+**Current Implementation**: Uses **SHA256 hash whitelisting** instead of `'unsafe-inline'` for maximum security.
 
 - ✅ **Scripts remain strict** - No `'unsafe-inline'` for JavaScript execution
-- ✅ **XSS protection maintained** - Inline scripts blocked completely
-- ⚠️ **Styles allow inline** - Required for React component styling
+- ✅ **XSS protection maximized** - Only specific trusted styles allowed
+- ✅ **No unsafe-inline** - Hash-based approval for known content only
 - ✅ **No unsafe-eval** - Code evaluation blocked
 
-**Alternative Solutions (Future):**
+**How It Works:**
 
-1. **CSS Nonce** - Generate unique nonce per request (requires server-side rendering)
-2. **CSS Hash** - Use `'sha256-...'` for specific inline styles (complex to maintain)
-3. **External CSS Only** - Extract all styles to external files (limits dynamic styling)
+1. Vite injects a small inline `<style>` tag during build (empty or minimal)
+2. We calculate the SHA256 hash of this specific content
+3. CSP header includes `'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='` (hash of empty string)
+4. Only inline styles matching this exact hash are allowed
+5. Any malicious injected styles with different content will be blocked
 
-For production-grade security, consider implementing CSS nonces with SSR or migrating to a CSS-in-JS solution that generates external stylesheets.
+**Security Benefits:**
 
-## Resources
+- **Strict CSP** - No blanket `'unsafe-inline'` permission
+- **Whitelist Approach** - Only known, trusted content allowed
+- **XSS Mitigation** - Attackers cannot inject arbitrary inline styles
+- **Production-Grade** - Meets modern security standards
+
+**Maintenance:**
+
+If Vite changes its CSS injection pattern, regenerate hash:
+
+```bash
+# Calculate SHA256 hash of inline style content
+echo -n "" | openssl dgst -sha256 -binary | openssl base64
+# Update CSP header with new hash
+```
+
+**Alternative Solutions (If Needed):**
+
+1. **CSS Nonce** - Dynamic nonce per request (requires SSR + middleware)
+2. **External CSS Only** - Extract all styles (limits Vite optimizations)
+3. **Build-time Extraction** - Vite plugin to externalize all styles## Resources
 
 - [OWASP JWT Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
 - [Auth0: Token Storage Best Practices](https://auth0.com/docs/secure/security-guidance/data-security/token-storage)

@@ -186,12 +186,12 @@ export default function UsersPage() {
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
                     <span className="px-3 py-1">
-                      Page {page} of {data.pagination.pages}
+                      Page {page} of {data.pagination.totalPages}
                     </span>
                     <Button
                       size="sm"
                       variant="secondary"
-                      disabled={page >= data.pagination.pages}
+                      disabled={page >= data.pagination.totalPages}
                       onClick={() => setPage((p) => p + 1)}
                     >
                       <ChevronRight className="w-4 h-4" />

@@ -18,6 +18,7 @@ export ADMIN_PASSWORD="your-secure-password"
 Creates the initial admin account using the setup API.
 
 **Usage:**
+
 ```bash
 # Set credentials via environment variables (REQUIRED)
 export ADMIN_EMAIL="admin@yourcompany.com"
@@ -28,6 +29,7 @@ export ADMIN_PASSWORD="your-very-secure-password-123"
 ```
 
 **Security Notes:**
+
 - Use a strong password (minimum 12 characters, mixed case, numbers, special characters)
 - Change the default password immediately after first login
 - Never use simple passwords like "admin123" or "password"
@@ -37,6 +39,7 @@ export ADMIN_PASSWORD="your-very-secure-password-123"
 Tests all User Management and Analytics endpoints without requiring `jq`.
 
 **Usage:**
+
 ```bash
 # Set credentials via environment variables
 export ADMIN_EMAIL="admin@yourcompany.com"
@@ -47,6 +50,7 @@ export ADMIN_PASSWORD="your-secure-password"
 ```
 
 **What it tests:**
+
 - Authentication (JWT token generation)
 - User CRUD operations (create, list, update, delete)
 - User search and filtering
@@ -59,6 +63,7 @@ export ADMIN_PASSWORD="your-secure-password"
 Comprehensive test suite for user management API with `jq` for JSON parsing.
 
 **Usage:**
+
 ```bash
 # Install jq if not already installed
 sudo apt-get install jq
@@ -76,6 +81,7 @@ export ADMIN_PASSWORD="your-secure-password"
 ### For Development
 
 1. **Use `.env` file locally** (never commit it):
+
    ```bash
    # .env (in your local development environment)
    ADMIN_EMAIL=dev-admin@localhost
@@ -98,6 +104,7 @@ Store credentials as encrypted secrets in your CI/CD platform:
 - **CircleCI**: Use environment variables in project settings
 
 Example GitHub Actions:
+
 ```yaml
 env:
   ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
@@ -135,6 +142,7 @@ openssl rand -base64 32
 ## Common Mistakes to Avoid
 
 ❌ **DON'T:**
+
 - Commit credentials to git
 - Use "admin123" or similar weak passwords
 - Share credentials in Slack/email
@@ -142,6 +150,7 @@ openssl rand -base64 32
 - Use the same password across environments
 
 ✅ **DO:**
+
 - Use environment variables
 - Generate strong random passwords
 - Store in secure password managers
@@ -153,12 +162,14 @@ openssl rand -base64 32
 ### "Invalid credentials" error
 
 1. Verify environment variables are set:
+
    ```bash
    echo $ADMIN_EMAIL
    echo $ADMIN_PASSWORD
    ```
 
 2. Check if admin account exists:
+
    ```bash
    curl http://localhost:3000/api/v1/setup/status
    ```

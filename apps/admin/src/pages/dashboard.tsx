@@ -133,22 +133,28 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {data.top_projects.map((project) => (
-              <div key={project.id} className="flex justify-between items-center">
-                <div>
-                  <div className="font-medium">{project.name}</div>
-                  <div className="text-sm text-gray-600">{project.report_count} reports</div>
+            {data.top_projects.map((project) => {
+              const percentage =
+                data.projects.total_reports > 0
+                  ? (project.report_count / data.projects.total_reports) * 100
+                  : 0;
+              return (
+                <div key={project.id} className="flex justify-between items-center">
+                  <div>
+                    <div className="font-medium">{project.name}</div>
+                    <div className="text-sm text-gray-600">{project.report_count} reports</div>
+                  </div>
+                  <div className="w-32 bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full"
-                    style={{
-                      width: `${(project.report_count / data.projects.total_reports) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
