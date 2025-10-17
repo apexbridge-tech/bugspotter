@@ -149,8 +149,68 @@ Object.keys(window).filter((k) => k.includes('token'));
 - Expose tokens in error messages
 - Share tokens across origins
 
+## Content Security Policy (CSP)
+
+### Current CSP Headers (nginx.conf)
+
+```nginx
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=';  # Hash-based CSP for Vite
+  img-src 'self' data:;
+  font-src 'self' data:;
+  connect-src 'self';
+  frame-ancestors 'self';
+  base-uri 'self';
+  form-action 'self';
+  object-src 'none';
+  upgrade-insecure-requests;
+```
+
+### SHA256 Hash-Based CSP (Strict Security)
+
+**Current Implementation**: Uses **SHA256 hash whitelisting** instead of `'unsafe-inline'` for maximum security.
+
+- ✅ **Scripts remain strict** - No `'unsafe-inline'` for JavaScript execution
+- ✅ **XSS protection maximized** - Only specific trusted styles allowed
+- ✅ **No unsafe-inline** - Hash-based approval for known content only
+- ✅ **No unsafe-eval** - Code evaluation blocked
+
+**How It Works:**
+
+1. Vite injects a small inline `<style>` tag during build (empty or minimal)
+2. We calculate the SHA256 hash of this specific content
+3. CSP header includes `'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='` (hash of empty string)
+4. Only inline styles matching this exact hash are allowed
+5. Any malicious injected styles with different content will be blocked
+
+**Security Benefits:**
+
+- **Strict CSP** - No blanket `'unsafe-inline'` permission
+- **Whitelist Approach** - Only known, trusted content allowed
+- **XSS Mitigation** - Attackers cannot inject arbitrary inline styles
+- **Production-Grade** - Meets modern security standards
+
+**Maintenance:**
+
+If Vite changes its CSS injection pattern, regenerate hash:
+
+```bash
+# Calculate SHA256 hash of inline style content
+echo -n "" | openssl dgst -sha256 -binary | openssl base64
+# Update CSP header with new hash
+```
+
+**Alternative Solutions (If Needed):**
+
+1. **CSS Nonce** - Dynamic nonce per request (requires SSR + middleware)
+2. **External CSS Only** - Extract all styles (limits Vite optimizations)
+3. **Build-time Extraction** - Vite plugin to externalize all styles
+
 ## Resources
 
 - [OWASP JWT Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
 - [Auth0: Token Storage Best Practices](https://auth0.com/docs/secure/security-guidance/data-security/token-storage)
 - [OWASP XSS Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+- [CSP Best Practices](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)

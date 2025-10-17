@@ -20,7 +20,7 @@ Professional web-based admin control panel for managing BugSpotter self-hosted i
 - **Retention Policies**: Data retention days, max reports per project
 - **Feature Flags**: Toggle session replay on/off
 
-### 🐛 Bug Reports Management
+### Bug Reports Management
 
 - **Browse & Filter**: List all bug reports with advanced filtering (project, status, priority, date range)
 - **Detailed View**: Full bug report details with metadata, screenshots, console logs
@@ -354,7 +354,7 @@ apps/admin/
 
 ### Component Architecture
 
-### Settings Page Refactoring\*\* (250+ lines → 115 lines + 6 focused components):
+**Settings Page Refactoring** (250+ lines → 115 lines + 6 focused components):
 
 - Components extracted into `components/settings/` directory
 - Each section is self-contained and testable
