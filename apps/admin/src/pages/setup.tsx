@@ -130,10 +130,7 @@ export default function SetupWizard() {
               onChange={(e) => updateFormData('admin_password', e.target.value)}
               required
             />
-            <Button
-              onClick={() => setStep(2)}
-              className="w-full"
-            >
+            <Button onClick={() => setStep(2)} className="w-full">
               Continue
             </Button>
           </div>
