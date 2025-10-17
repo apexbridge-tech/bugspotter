@@ -10,6 +10,7 @@ import type {
   NotificationResult,
   BaseNotifierConfig,
 } from './notifier-interface.js';
+import { DEFAULT_NOTIFIER_CONFIG } from './notifier-interface.js';
 
 /**
  * Slack notifier configuration
@@ -184,9 +185,7 @@ export class SlackNotifier implements INotifier {
         enabled: true,
         webhookUrl,
         defaultChannel,
-        retryAttempts: 3,
-        retryDelayMs: 1000,
-        timeoutMs: 5000,
+        ...DEFAULT_NOTIFIER_CONFIG,
       };
     }
 
@@ -196,9 +195,7 @@ export class SlackNotifier implements INotifier {
         enabled: true,
         botToken,
         defaultChannel,
-        retryAttempts: 3,
-        retryDelayMs: 1000,
-        timeoutMs: 5000,
+        ...DEFAULT_NOTIFIER_CONFIG,
       };
     }
 

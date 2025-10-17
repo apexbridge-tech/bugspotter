@@ -11,6 +11,7 @@ import type {
   NotificationResult,
   BaseNotifierConfig,
 } from './notifier-interface.js';
+import { DEFAULT_NOTIFIER_CONFIG } from './notifier-interface.js';
 
 /**
  * Email notifier configuration
@@ -194,9 +195,7 @@ export class EmailNotifier implements INotifier {
           },
         },
         from: fromAddress,
-        retryAttempts: 3,
-        retryDelayMs: 2000,
-        timeoutMs: 10000,
+        ...DEFAULT_NOTIFIER_CONFIG,
       };
     }
 
@@ -216,9 +215,7 @@ export class EmailNotifier implements INotifier {
         provider,
         apiKey,
         from: fromAddress,
-        retryAttempts: 3,
-        retryDelayMs: 2000,
-        timeoutMs: 10000,
+        ...DEFAULT_NOTIFIER_CONFIG,
       };
     }
 

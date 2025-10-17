@@ -286,9 +286,9 @@ export class DatabaseClient implements RepositoryRegistry {
    * Execute a raw SQL query
    * Use this for complex queries not covered by repositories
    */
-  async query<T extends pg.QueryResultRow = any>(
+  async query<T extends pg.QueryResultRow = pg.QueryResultRow>(
     text: string,
-    params?: any[]
+    params?: unknown[]
   ): Promise<pg.QueryResult<T>> {
     return await this.pool.query<T>(text, params);
   }

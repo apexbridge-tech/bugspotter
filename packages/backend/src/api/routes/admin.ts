@@ -172,14 +172,14 @@ async function getWorkerQueueDepth(): Promise<number> {
 /**
  * Writable settings keys that can be stored in database
  */
-const WRITABLE_SETTINGS = [
+const WRITABLE_SETTINGS = new Set([
   'instance_name',
   'instance_url',
   'support_email',
   'retention_days',
   'max_reports_per_project',
   'session_replay_enabled',
-] as const;
+]);
 
 export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient): Promise<void> {
   /**
@@ -207,7 +207,7 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
     // Filter to only writable settings
     const filteredUpdates = Object.entries(updates).reduce(
       (acc, [key, value]) => {
-        if (WRITABLE_SETTINGS.includes(key as (typeof WRITABLE_SETTINGS)[number])) {
+        if (WRITABLE_SETTINGS.has(key)) {
           acc[key] = value;
         }
         return acc;
@@ -292,44 +292,44 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
     '/api/v1/admin/health',
     { onRequest: [requireRole('admin')] },
     async (_request, reply) => {
-    const [databaseHealth, redisHealth, storageHealth, diskSpace] = await Promise.all([
-      checkDatabaseHealth(db),
-      checkRedisHealth(),
-      checkStorageHealth(),
-      getDiskSpace(),
-    ]);
+      const [databaseHealth, redisHealth, storageHealth, diskSpace] = await Promise.all([
+        checkDatabaseHealth(db),
+        checkRedisHealth(),
+        checkStorageHealth(),
+        getDiskSpace(),
+      ]);
 
-    // Determine overall status
-    const servicesDown = [databaseHealth, redisHealth, storageHealth].filter(
-      (s) => s.status === 'down'
-    ).length;
+      // Determine overall status
+      const servicesDown = [databaseHealth, redisHealth, storageHealth].filter(
+        (s) => s.status === 'down'
+      ).length;
 
-    let overallStatus: 'healthy' | 'degraded' | 'unhealthy';
-    if (servicesDown === 0) {
-      overallStatus = 'healthy';
-    } else if (servicesDown === 1) {
-      overallStatus = 'degraded';
-    } else {
-      overallStatus = 'unhealthy';
-    }
+      let overallStatus: 'healthy' | 'degraded' | 'unhealthy';
+      if (servicesDown === 0) {
+        overallStatus = 'healthy';
+      } else if (servicesDown === 1) {
+        overallStatus = 'degraded';
+      } else {
+        overallStatus = 'unhealthy';
+      }
 
-    const health: HealthStatus = {
-      status: overallStatus,
-      timestamp: new Date().toISOString(),
-      services: {
-        database: databaseHealth,
-        redis: redisHealth,
-        storage: storageHealth,
-      },
-      system: {
-        disk_space_available: diskSpace.available,
-        disk_space_total: diskSpace.total,
-        worker_queue_depth: await getWorkerQueueDepth(),
-        uptime: process.uptime(),
-      },
-    };
+      const health: HealthStatus = {
+        status: overallStatus,
+        timestamp: new Date().toISOString(),
+        services: {
+          database: databaseHealth,
+          redis: redisHealth,
+          storage: storageHealth,
+        },
+        system: {
+          disk_space_available: diskSpace.available,
+          disk_space_total: diskSpace.total,
+          worker_queue_depth: await getWorkerQueueDepth(),
+          uptime: process.uptime(),
+        },
+      };
 
-    return sendSuccess(reply, health);
+      return sendSuccess(reply, health);
     }
   );
 
@@ -343,49 +343,49 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
     '/api/v1/admin/settings',
     { onRequest: [requireRole('admin')] },
     async (_request, reply) => {
-    // Fetch writable settings from database
-    const dbSettings = await getInstanceSettings();
+      // Fetch writable settings from database
+      const dbSettings = await getInstanceSettings();
 
-    // Combine with read-only settings from config
-    const settings: InstanceSettings = {
-      instance_name: getStringSetting(dbSettings, 'instance_name', 'INSTANCE_NAME', 'BugSpotter'),
-      instance_url: getStringSetting(
-        dbSettings,
-        'instance_url',
-        'INSTANCE_URL',
-        'http://localhost:3000'
-      ),
-      support_email: getStringSetting(
-        dbSettings,
-        'support_email',
-        'SUPPORT_EMAIL',
-        'support@bugspotter.dev'
-      ),
-      storage_type: config.storage.backend === 's3' ? 's3' : 'minio',
-      storage_endpoint: config.storage.s3.endpoint,
-      storage_bucket: config.storage.s3.bucket || 'bugspotter',
-      storage_region: config.storage.s3.region,
-      jwt_access_expiry: parseTimeString(config.jwt.expiresIn),
-      jwt_refresh_expiry: parseTimeString(config.jwt.refreshExpiresIn),
-      rate_limit_max: config.rateLimit.maxRequests,
-      rate_limit_window: Math.floor(config.rateLimit.windowMs / 1000),
-      cors_origins: config.server.corsOrigins,
-      retention_days: getNumberSetting(dbSettings, 'retention_days', 'RETENTION_DAYS', 90),
-      max_reports_per_project: getNumberSetting(
-        dbSettings,
-        'max_reports_per_project',
-        'MAX_REPORTS_PER_PROJECT',
-        10000
-      ),
-      session_replay_enabled: getBooleanSetting(
-        dbSettings,
-        'session_replay_enabled',
-        'SESSION_REPLAY_ENABLED',
-        true
-      ),
-    };
+      // Combine with read-only settings from config
+      const settings: InstanceSettings = {
+        instance_name: getStringSetting(dbSettings, 'instance_name', 'INSTANCE_NAME', 'BugSpotter'),
+        instance_url: getStringSetting(
+          dbSettings,
+          'instance_url',
+          'INSTANCE_URL',
+          'http://localhost:3000'
+        ),
+        support_email: getStringSetting(
+          dbSettings,
+          'support_email',
+          'SUPPORT_EMAIL',
+          'support@bugspotter.dev'
+        ),
+        storage_type: config.storage.backend === 's3' ? 's3' : 'minio',
+        storage_endpoint: config.storage.s3.endpoint,
+        storage_bucket: config.storage.s3.bucket || 'bugspotter',
+        storage_region: config.storage.s3.region,
+        jwt_access_expiry: parseTimeString(config.jwt.expiresIn),
+        jwt_refresh_expiry: parseTimeString(config.jwt.refreshExpiresIn),
+        rate_limit_max: config.rateLimit.maxRequests,
+        rate_limit_window: Math.floor(config.rateLimit.windowMs / 1000),
+        cors_origins: config.server.corsOrigins,
+        retention_days: getNumberSetting(dbSettings, 'retention_days', 'RETENTION_DAYS', 90),
+        max_reports_per_project: getNumberSetting(
+          dbSettings,
+          'max_reports_per_project',
+          'MAX_REPORTS_PER_PROJECT',
+          10000
+        ),
+        session_replay_enabled: getBooleanSetting(
+          dbSettings,
+          'session_replay_enabled',
+          'SESSION_REPLAY_ENABLED',
+          true
+        ),
+      };
 
-    return sendSuccess(reply, settings);
+      return sendSuccess(reply, settings);
     }
   );
 
@@ -403,7 +403,10 @@ export async function adminRoutes(fastify: FastifyInstance, db: DatabaseClient):
       const userId = request.authUser!.id;
 
       // Validate updates
-      if ('instance_name' in updates && (!updates.instance_name || updates.instance_name.length < 1)) {
+      if (
+        'instance_name' in updates &&
+        (!updates.instance_name || updates.instance_name.length < 1)
+      ) {
         return reply.code(400).send({ error: 'Instance name cannot be empty' });
       }
 

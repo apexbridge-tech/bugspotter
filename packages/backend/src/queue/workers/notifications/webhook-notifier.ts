@@ -10,6 +10,7 @@ import type {
   NotificationResult,
   BaseNotifierConfig,
 } from './notifier-interface.js';
+import { DEFAULT_NOTIFIER_CONFIG } from './notifier-interface.js';
 
 /**
  * Webhook notifier configuration
@@ -22,15 +23,6 @@ export interface WebhookNotifierConfig extends BaseNotifierConfig {
   signatureHeader?: string;
   signatureSecret?: string;
 }
-
-/**
- * Default notifier configuration values
- */
-const DEFAULT_NOTIFIER_CONFIG: Omit<BaseNotifierConfig, 'enabled'> = {
-  retryAttempts: 3,
-  retryDelayMs: 1000,
-  timeoutMs: 10000,
-};
 
 const logger = getLogger();
 
@@ -89,9 +81,7 @@ export class WebhookNotifier implements INotifier {
       headers: Object.keys(customHeaders).length > 0 ? customHeaders : undefined,
       signatureSecret,
       signatureHeader: 'x-bugspotter-signature',
-      retryAttempts: 3,
-      retryDelayMs: 2000,
-      timeoutMs: 10000,
+      ...DEFAULT_NOTIFIER_CONFIG,
     };
   }
 

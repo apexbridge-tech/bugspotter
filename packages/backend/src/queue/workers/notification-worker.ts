@@ -24,13 +24,10 @@ import { getLogger } from '../../logger.js';
 import type { BugReportRepository } from '../../db/repositories.js';
 import type { IStorageService } from '../../storage/types.js';
 import {
-  createNotifierRegistry,
+  createNotifierRegistryFromEnv,
   type NotifierRegistry,
-  type NotifierConfig,
 } from './notifications/notifier-registry.js';
-import { EmailNotifier } from './notifications/email-notifier.js';
-import { SlackNotifier } from './notifications/slack-notifier.js';
-import { WebhookNotifier } from './notifications/webhook-notifier.js';
+
 import {
   NOTIFICATION_JOB_NAME,
   validateNotificationJobData,
@@ -213,44 +210,8 @@ export function createNotificationWorker(
   _storage: IStorageService,
   connection: Redis
 ): BaseWorker<NotificationJobData, NotificationJobResult, 'notifications'> {
-  // Load notifier configurations from each notifier class
-  const notifierConfigs: NotifierConfig[] = [];
-
-  const emailConfig = EmailNotifier.loadConfig();
-  if (emailConfig) {
-    notifierConfigs.push(emailConfig);
-    logger.info('Email notifier configured', {
-      provider: emailConfig.provider || (emailConfig.smtp ? 'smtp' : 'unknown'),
-      from: emailConfig.from,
-    });
-  }
-
-  const slackConfig = SlackNotifier.loadConfig();
-  if (slackConfig) {
-    notifierConfigs.push(slackConfig);
-    logger.info('Slack notifier configured', {
-      hasWebhook: !!slackConfig.webhookUrl,
-      hasBot: !!slackConfig.botToken,
-    });
-  }
-
-  const webhookConfig = WebhookNotifier.loadConfig();
-  if (webhookConfig) {
-    notifierConfigs.push(webhookConfig);
-    logger.info('Webhook notifier configured', {
-      hasCustomHeaders: !!webhookConfig.headers,
-      hasSignature: !!webhookConfig.signatureSecret,
-    });
-  }
-
-  if (notifierConfigs.length === 0) {
-    logger.warn('No notification providers configured');
-  } else {
-    logger.info(`Loaded ${notifierConfigs.length} notification provider(s)`);
-  }
-
-  // Create notifier registry with loaded configurations
-  const notifierRegistry = createNotifierRegistry(notifierConfigs);
+  // Create notifier registry with auto-loaded configurations from environment
+  const notifierRegistry = createNotifierRegistryFromEnv();
 
   const worker = createWorker<
     NotificationJobData,

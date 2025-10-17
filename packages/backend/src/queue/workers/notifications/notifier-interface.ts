@@ -34,11 +34,21 @@ export interface NotificationResult {
  * Base configuration common to all notifiers
  */
 export interface BaseNotifierConfig {
+  type: string;
   enabled: boolean;
   retryAttempts?: number;
   retryDelayMs?: number;
   timeoutMs?: number;
 }
+
+/**
+ * Default configuration values for all notifiers
+ */
+export const DEFAULT_NOTIFIER_CONFIG = {
+  retryAttempts: 3,
+  retryDelayMs: 2000,
+  timeoutMs: 10000,
+} as const;
 
 /**
  * Notifier interface - implemented by all notification providers

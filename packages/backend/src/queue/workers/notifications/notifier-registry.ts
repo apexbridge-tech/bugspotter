@@ -5,9 +5,13 @@
  */
 
 import type { INotifier } from './notifier-interface.js';
-import { createEmailNotifier, type EmailNotifierConfig } from './email-notifier.js';
-import { createSlackNotifier, type SlackNotifierConfig } from './slack-notifier.js';
-import { createWebhookNotifier, type WebhookNotifierConfig } from './webhook-notifier.js';
+import { EmailNotifier, createEmailNotifier, type EmailNotifierConfig } from './email-notifier.js';
+import { SlackNotifier, createSlackNotifier, type SlackNotifierConfig } from './slack-notifier.js';
+import {
+  WebhookNotifier,
+  createWebhookNotifier,
+  type WebhookNotifierConfig,
+} from './webhook-notifier.js';
 import { getLogger } from '../../../logger.js';
 
 /**
@@ -112,10 +116,54 @@ export class NotifierRegistry {
 }
 
 /**
+ * Load all notifier configurations from environment
+ */
+export function loadAllNotifierConfigs(): NotifierConfig[] {
+  const configs: NotifierConfig[] = [];
+
+  // Load each notifier configuration
+  const loaders = [
+    { name: 'email', loader: EmailNotifier.loadConfig },
+    { name: 'slack', loader: SlackNotifier.loadConfig },
+    { name: 'webhook', loader: WebhookNotifier.loadConfig },
+  ];
+
+  for (const { name, loader } of loaders) {
+    try {
+      const config = loader();
+      if (config) {
+        configs.push(config);
+        logger.info(`Loaded ${name} notifier configuration`);
+      }
+    } catch (error) {
+      logger.error(`Failed to load ${name} notifier configuration`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (configs.length === 0) {
+    logger.warn('No notification providers configured');
+  } else {
+    logger.info(`Loaded ${configs.length} notification provider(s)`);
+  }
+
+  return configs;
+}
+
+/**
  * Create and configure notifier registry
  */
 export function createNotifierRegistry(configs: NotifierConfig[]): NotifierRegistry {
   const registry = new NotifierRegistry();
   registry.registerMultiple(configs);
   return registry;
+}
+
+/**
+ * Create notifier registry with auto-loaded configurations
+ */
+export function createNotifierRegistryFromEnv(): NotifierRegistry {
+  const configs = loadAllNotifierConfigs();
+  return createNotifierRegistry(configs);
 }

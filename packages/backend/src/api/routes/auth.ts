@@ -44,7 +44,10 @@ function generateTokens(fastify: FastifyInstance, userId: string, role: string) 
 
   // Calculate expiry time in seconds
   const expiresIn = parseTimeString(config.jwt.expiresIn, DEFAULT_TOKEN_EXPIRY_SECONDS);
-  const refreshExpiresIn = parseTimeString(config.jwt.refreshExpiresIn, DEFAULT_TOKEN_EXPIRY_SECONDS);
+  const refreshExpiresIn = parseTimeString(
+    config.jwt.refreshExpiresIn,
+    DEFAULT_TOKEN_EXPIRY_SECONDS
+  );
 
   return {
     access_token,

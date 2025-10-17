@@ -12,6 +12,7 @@ import type {
   JobOptions,
   JobStatus,
   JobState,
+  JobProgress,
   QueueMetrics,
   QueueStats,
 } from './types.js';
@@ -194,7 +195,7 @@ export class QueueManager {
       id: job.id!,
       name: job.name,
       data: job.data as TData,
-      progress: job.progress as any,
+      progress: job.progress as JobProgress | null,
       returnValue: job.returnvalue as TResult,
       failedReason: job.failedReason ?? null,
       stacktrace: job.stacktrace ?? null,
