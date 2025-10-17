@@ -45,7 +45,7 @@ describe('Project Routes', () => {
         role: 'user',
       },
     });
-    testAccessToken = userResponse.json().data.tokens.access_token;
+    testAccessToken = userResponse.json().data.access_token;
 
     // Create admin user with unique email
     const adminResponse = await server.inject({
@@ -57,7 +57,7 @@ describe('Project Routes', () => {
         role: 'admin',
       },
     });
-    testAdminToken = adminResponse.json().data.tokens.access_token;
+    testAdminToken = adminResponse.json().data.access_token;
   });
 
   describe('POST /api/v1/projects', () => {

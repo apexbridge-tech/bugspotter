@@ -13,7 +13,7 @@
  * for event handling and lifecycle management.
  */
 
-import type { Worker } from 'bullmq';
+import type { Worker, Job } from 'bullmq';
 import { getLogger } from '../../logger.js';
 
 const logger = getLogger();
@@ -24,8 +24,11 @@ const logger = getLogger();
  * Encapsulates BullMQ Worker functionality (Facade pattern) so callers
  * don't need to know about the underlying implementation.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic defaults for flexible worker types
-export interface BaseWorker<DataType = any, ResultType = any, NameType extends string = string> {
+export interface BaseWorker<
+  DataType = unknown,
+  ResultType = unknown,
+  NameType extends string = string,
+> {
   /**
    * Get the underlying BullMQ Worker instance
    * Used internally - prefer using the encapsulated methods instead
@@ -51,9 +54,12 @@ export interface BaseWorker<DataType = any, ResultType = any, NameType extends s
   /**
    * Register event handlers for job lifecycle events
    */
-  on(event: 'completed', handler: (job: any) => void): void;
-  on(event: 'failed', handler: (job: any, error: Error) => void): void;
-  on(event: string, handler: (...args: any[]) => void): void;
+  on(event: 'completed', handler: (job: Job<DataType, ResultType, NameType>) => void): void;
+  on(
+    event: 'failed',
+    handler: (job: Job<DataType, ResultType, NameType>, error: Error) => void
+  ): void;
+  on(event: string, handler: (...args: unknown[]) => void): void;
 }
 
 /**
@@ -67,7 +73,7 @@ export interface BaseWorker<DataType = any, ResultType = any, NameType extends s
  * @param workerName - Display name for logging (e.g., 'Replay', 'Integration')
  * @returns BaseWorker wrapper with all required methods
  */
-export function createBaseWorkerWrapper<D = any, R = any, N extends string = string>(
+export function createBaseWorkerWrapper<D = unknown, R = unknown, N extends string = string>(
   worker: Worker<D, R, N>,
   workerName: string
 ): BaseWorker<D, R, N> {
@@ -79,8 +85,10 @@ export function createBaseWorkerWrapper<D = any, R = any, N extends string = str
     },
     pause: async () => await worker.pause(),
     resume: async () => await worker.resume(),
-    on: (event: string, handler: (...args: any[]) => void) => {
-      worker.on(event as any, handler as any);
-    },
+    on: ((event: string, handler: (...args: unknown[]) => void) => {
+      // BullMQ Worker events are not strictly typed, so we need to cast
+      // The overload signatures in BaseWorker provide type safety at call sites
+      worker.on(event as keyof typeof worker.eventNames, handler as never);
+    }) as BaseWorker<D, R, N>['on'],
   };
 }

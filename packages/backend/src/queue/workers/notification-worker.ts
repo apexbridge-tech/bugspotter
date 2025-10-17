@@ -24,6 +24,11 @@ import { getLogger } from '../../logger.js';
 import type { BugReportRepository } from '../../db/repositories.js';
 import type { IStorageService } from '../../storage/types.js';
 import {
+  createNotifierRegistryFromEnv,
+  type NotifierRegistry,
+} from './notifications/notifier-registry.js';
+
+import {
   NOTIFICATION_JOB_NAME,
   validateNotificationJobData,
   createNotificationJobResult,
@@ -93,163 +98,28 @@ async function fetchNotificationContext(
 }
 
 /**
- * Send email notification (placeholder - requires email service)
- */
-async function sendEmailNotification(
-  recipient: string,
-  context: NotificationContext,
-  _metadata?: Record<string, unknown>
-): Promise<DeliveryResult> {
-  logger.info('Sending email notification', {
-    recipient,
-    bugReportId: context.bugReportId,
-  });
-
-  try {
-    // TODO: Implement email delivery
-    // - Use email service (SendGrid, AWS SES, Mailgun, etc.)
-    // - Build HTML email template with bug report details
-    // - Include links to screenshot, replay, external issue
-    // - Handle bounce/delivery failures
-    // - Support batch sending for multiple recipients
-
-    // Placeholder implementation
-    logger.debug('Email sent', { recipient, subject: context.title });
-
-    return {
-      recipient,
-      success: true,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Email send failed', { recipient, error: errorMessage });
-
-    return {
-      recipient,
-      success: false,
-      error: errorMessage,
-    };
-  }
-}
-
-/**
- * Send Slack notification (placeholder - requires Slack SDK)
- */
-async function sendSlackNotification(
-  recipient: string,
-  context: NotificationContext,
-  _metadata?: Record<string, unknown>
-): Promise<DeliveryResult> {
-  logger.info('Sending Slack notification', {
-    recipient,
-    bugReportId: context.bugReportId,
-  });
-
-  try {
-    // TODO: Implement Slack delivery
-    // - Use Slack Web API (@slack/web-api)
-    // - Format message with blocks (header, context, actions)
-    // - Include screenshot preview (image block)
-    // - Add action buttons (view, assign, close)
-    // - Support thread replies for updates
-    // - Handle rate limiting (Tier 3: 50+ requests/minute)
-
-    // Placeholder implementation
-    logger.debug('Slack message sent', { channel: recipient, title: context.title });
-
-    return {
-      recipient,
-      success: true,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Slack send failed', { recipient, error: errorMessage });
-
-    return {
-      recipient,
-      success: false,
-      error: errorMessage,
-    };
-  }
-}
-
-/**
- * Send webhook notification (placeholder - requires HTTP client)
- */
-async function sendWebhookNotification(
-  recipient: string,
-  context: NotificationContext,
-  metadata?: Record<string, unknown>
-): Promise<DeliveryResult> {
-  logger.info('Sending webhook notification', {
-    recipient,
-    bugReportId: context.bugReportId,
-  });
-
-  try {
-    // TODO: Implement webhook delivery
-    // - Use HTTP client (fetch, axios, got, etc.)
-    // - POST JSON payload to webhook URL
-    // - Include event type, bug report data, timestamps
-    // - Support custom headers from metadata
-    // - Implement retry logic for failed webhooks (3 attempts)
-    // - Verify webhook signatures if configured
-    // - Handle timeouts (10 second default)
-
-    // Placeholder implementation
-    const payload = {
-      event: metadata?.event || 'bug_report_created',
-      bugReport: {
-        id: context.bugReportId,
-        projectId: context.projectId,
-        title: context.title,
-        description: context.description,
-        status: context.status,
-        priority: context.priority,
-        screenshotUrl: context.screenshotUrl,
-        replayUrl: context.replayUrl,
-        externalUrl: context.externalUrl,
-      },
-      timestamp: new Date().toISOString(),
-    };
-
-    logger.debug('Webhook sent', { url: recipient, payload });
-
-    return {
-      recipient,
-      success: true,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error('Webhook send failed', { url: recipient, error: errorMessage });
-
-    return {
-      recipient,
-      success: false,
-      error: errorMessage,
-    };
-  }
-}
-
-/**
- * Route notification to appropriate handler
+ * Route notification using notifier registry
  */
 async function routeNotification(
+  notifierRegistry: NotifierRegistry,
   type: string,
   recipient: string,
   context: NotificationContext,
-  metadata?: Record<string, unknown>
+  event: string
 ): Promise<DeliveryResult> {
-  switch (type.toLowerCase()) {
-    case 'email':
-      return sendEmailNotification(recipient, context, metadata);
-    case 'slack':
-      return sendSlackNotification(recipient, context, metadata);
-    case 'webhook':
-      return sendWebhookNotification(recipient, context, metadata);
-    default:
-      throw new Error(`Unsupported notification type: ${type}`);
+  const notifier = notifierRegistry.get(type.toLowerCase());
+
+  if (!notifier) {
+    throw new Error(`No notifier registered for type: ${type}`);
   }
+
+  const result = await notifier.send(recipient, context, event);
+
+  return {
+    recipient,
+    success: result.success,
+    error: result.error,
+  };
 }
 
 /**
@@ -257,13 +127,14 @@ async function routeNotification(
  */
 async function processNotificationJob(
   job: Job<NotificationJobData, NotificationJobResult>,
-  bugReportRepo: BugReportRepository
+  bugReportRepo: BugReportRepository,
+  notifierRegistry: NotifierRegistry
 ): Promise<NotificationJobResult> {
   const startTime = Date.now();
 
   // Validate job data
   validateNotificationJobData(job.data);
-  const { bugReportId, projectId, type, recipients, event, metadata } = job.data;
+  const { bugReportId, projectId, type, recipients, event } = job.data;
 
   logger.info('Processing notification job', {
     jobId: job.id,
@@ -288,7 +159,7 @@ async function processNotificationJob(
     const recipient = recipients[i];
 
     try {
-      const result = await routeNotification(type, recipient, context, metadata);
+      const result = await routeNotification(notifierRegistry, type, recipient, context, event);
       results.push(result);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -339,13 +210,16 @@ export function createNotificationWorker(
   _storage: IStorageService,
   connection: Redis
 ): BaseWorker<NotificationJobData, NotificationJobResult, 'notifications'> {
+  // Create notifier registry with auto-loaded configurations from environment
+  const notifierRegistry = createNotifierRegistryFromEnv();
+
   const worker = createWorker<
     NotificationJobData,
     NotificationJobResult,
     typeof QUEUE_NAMES.NOTIFICATIONS
   >({
     name: NOTIFICATION_JOB_NAME,
-    processor: async (job) => processNotificationJob(job, bugReportRepo),
+    processor: async (job) => processNotificationJob(job, bugReportRepo, notifierRegistry),
     connection,
     workerType: QUEUE_NAMES.NOTIFICATIONS,
   });

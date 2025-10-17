@@ -29,9 +29,5 @@ export {
   type RetryStrategy,
   type RetryConfig,
 } from './db/retry.js';
-export {
-  createRepositories,
-  type RepositoryRegistry,
-  type TransactionContext,
-  type TransactionCallback,
-} from './db/transaction.js';
+export { createRepositories, type RepositoryRegistry } from './db/repositories/factory.js';
+export { type TransactionContext, type TransactionCallback } from './db/transaction.js';

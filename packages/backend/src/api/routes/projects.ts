@@ -36,6 +36,34 @@ function generateApiKey(): string {
 
 export function projectRoutes(fastify: FastifyInstance, db: DatabaseClient) {
   /**
+   * GET /api/v1/projects
+   * Get all projects for the authenticated user
+   */
+  fastify.get(
+    '/api/v1/projects',
+    {
+      preHandler: [requireUser],
+    },
+    async (request, reply) => {
+      // Admin users see all projects
+      if (request.authUser?.role === 'admin') {
+        const projects = await db.projects.findAll();
+        return sendSuccess(reply, projects);
+      }
+
+      // Regular users see projects they created or are members of
+      const query = `
+        SELECT DISTINCT p.* FROM projects p
+        LEFT JOIN project_members pm ON p.id = pm.project_id
+        WHERE p.created_by = $1 OR pm.user_id = $1
+        ORDER BY p.created_at DESC
+      `;
+      const result = await db.query(query, [request.authUser!.id]);
+      return sendSuccess(reply, result.rows);
+    }
+  );
+
+  /**
    * POST /api/v1/projects
    * Create a new project (requires user authentication)
    */

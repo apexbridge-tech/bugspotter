@@ -9,6 +9,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
+import cookie from '@fastify/cookie';
 import { config } from '../config.js';
 import { getLogger } from '../logger.js';
 import type { DatabaseClient } from '../db/client.js';
@@ -21,6 +22,8 @@ import { authRoutes } from './routes/auth.js';
 import { retentionRoutes } from './routes/retention.js';
 import { jobRoutes } from './routes/jobs.js';
 import { registerIntegrationRoutes } from './routes/integrations.js';
+import { adminRoutes } from './routes/admin.js';
+import { setupRoutes } from './routes/setup.js';
 import type { RetentionService } from '../retention/retention-service.js';
 import type { RetentionScheduler } from '../retention/retention-scheduler.js';
 import type { QueueManager } from '../queue/queue-manager.js';
@@ -54,6 +57,12 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
     genReqId: () => {
       return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     },
+  });
+
+  // Register cookie plugin for httpOnly cookies
+  await fastify.register(cookie, {
+    secret: config.jwt.secret, // Sign cookies for additional security
+    parseOptions: {},
   });
 
   // Register CORS plugin
@@ -153,6 +162,8 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
 
   // Register routes
   await healthRoutes(fastify, db);
+  await setupRoutes(fastify, db);
+  await adminRoutes(fastify, db);
   bugReportRoutes(fastify, db, options.queueManager);
   await projectRoutes(fastify, db);
   await authRoutes(fastify, db);

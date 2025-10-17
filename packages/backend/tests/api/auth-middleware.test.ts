@@ -52,7 +52,7 @@ describe('Authentication Middleware', () => {
         password: 'password123',
       },
     });
-    testAccessToken = registerResponse.json().data.tokens.access_token;
+    testAccessToken = registerResponse.json().data.access_token;
   });
 
   describe('Public Routes', () => {

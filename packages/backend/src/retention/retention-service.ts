@@ -346,7 +346,7 @@ export class RetentionService {
 
     // Batch insert to database using VALUES clause
     const FIELDS_PER_ROW = 14;
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     // Pre-allocate and build placeholders efficiently
     const valuesClauses = reports.map((report, idx) => {

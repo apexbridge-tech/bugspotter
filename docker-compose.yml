@@ -176,6 +176,34 @@ services:
       start_period: 40s
 
   # ==========================================================================
+  # BugSpotter Admin Panel
+  # ==========================================================================
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        # Use nginx.dev.conf for development, nginx.conf for production
+        NGINX_CONFIG: ${ADMIN_NGINX_CONFIG:-nginx.conf}
+    container_name: bugspotter-admin
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: /api
+    ports:
+      - "${ADMIN_PORT:-3001}:80"
+    networks:
+      - bugspotter
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ==========================================================================
   # BugSpotter Background Worker
   # ==========================================================================
   worker:

@@ -7,20 +7,18 @@ import pg from 'pg';
 import { config } from '../config.js';
 import { getLogger } from '../logger.js';
 import { executeWithRetry, type RetryConfig, DEFAULT_RETRY_CONFIG } from './retry.js';
-import {
-  createRepositories,
-  type RepositoryRegistry,
-  type TransactionCallback,
-} from './transaction.js';
-import {
+import { createRepositories, type RepositoryRegistry } from './repositories/factory.js';
+import { type TransactionCallback } from './transaction.js';
+import type {
   ProjectRepository,
   ProjectMemberRepository,
   BugReportRepository,
   UserRepository,
   SessionRepository,
   TicketRepository,
+  SystemConfigRepository,
 } from './repositories.js';
-import { ProjectIntegrationRepository } from './project-integration.repository.js';
+import type { ProjectIntegrationRepository } from './project-integration.repository.js';
 
 const { Pool } = pg;
 
@@ -77,14 +75,16 @@ export class DatabaseClient implements RepositoryRegistry {
   private pool: pg.Pool;
   private retryConfig: RetryConfig;
 
-  public readonly projects: ProjectRepository;
-  public readonly projectMembers: ProjectMemberRepository;
-  public readonly bugReports: BugReportRepository;
-  public readonly users: UserRepository;
-  public readonly sessions: SessionRepository;
-  public readonly tickets: TicketRepository;
-  public readonly projectIntegrations: ProjectIntegrationRepository;
-  public readonly retention: BugReportRepository;
+  // Repository instances - types from concrete classes, satisfies RepositoryRegistry
+  public readonly projects!: ProjectRepository;
+  public readonly projectMembers!: ProjectMemberRepository;
+  public readonly bugReports!: BugReportRepository;
+  public readonly users!: UserRepository;
+  public readonly sessions!: SessionRepository;
+  public readonly tickets!: TicketRepository;
+  public readonly projectIntegrations!: ProjectIntegrationRepository;
+  public readonly systemConfig!: SystemConfigRepository;
+  public readonly retention!: BugReportRepository;
 
   /**
    * Private constructor - use static create() method instead
@@ -98,12 +98,13 @@ export class DatabaseClient implements RepositoryRegistry {
     this.projects = this.wrapWithRetry(repositories.projects);
     this.projectMembers = this.wrapWithRetry(repositories.projectMembers);
     this.bugReports = this.wrapWithRetry(repositories.bugReports);
+    this.systemConfig = this.wrapWithRetry(repositories.systemConfig);
     // Retention operations consolidated into BugReportRepository
     this.retention = this.bugReports;
     this.users = this.wrapWithRetry(repositories.users);
     this.sessions = this.wrapWithRetry(repositories.sessions);
     this.tickets = this.wrapWithRetry(repositories.tickets);
-    this.projectIntegrations = this.wrapWithRetry(new ProjectIntegrationRepository(pool));
+    this.projectIntegrations = this.wrapWithRetry(repositories.projectIntegrations);
   }
 
   /**
@@ -285,9 +286,9 @@ export class DatabaseClient implements RepositoryRegistry {
    * Execute a raw SQL query
    * Use this for complex queries not covered by repositories
    */
-  async query<T extends pg.QueryResultRow = any>(
+  async query<T extends pg.QueryResultRow = pg.QueryResultRow>(
     text: string,
-    params?: any[]
+    params?: unknown[]
   ): Promise<pg.QueryResult<T>> {
     return await this.pool.query<T>(text, params);
   }

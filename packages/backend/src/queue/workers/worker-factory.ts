@@ -36,8 +36,7 @@ const QUEUE_TO_WORKER_CONFIG: Record<
 /**
  * Worker creation options
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic defaults for flexible worker types
-interface CreateWorkerOptions<D = any, R = any, N extends QueueName = QueueName> {
+interface CreateWorkerOptions<D = unknown, R = unknown, N extends QueueName = QueueName> {
   /** Queue name (must match job name) */
   name: string;
 
@@ -70,7 +69,7 @@ interface CreateWorkerOptions<D = any, R = any, N extends QueueName = QueueName>
  * });
  * ```
  */
-export function createWorker<D = any, R = any, N extends QueueName = QueueName>(
+export function createWorker<D = unknown, R = unknown, N extends QueueName = QueueName>(
   options: CreateWorkerOptions<D, R, N>
 ): Worker<D, R, N> {
   const config = getQueueConfig();
