@@ -18,6 +18,7 @@ import type {
   TicketRepository,
   SystemConfigRepository,
 } from './repositories.js';
+import type { AuditLogRepository } from './repositories/audit-log.repository.js';
 import type { ProjectIntegrationRepository } from './project-integration.repository.js';
 import { AnalyticsService } from '../analytics/analytics-service.js';
 
@@ -85,6 +86,7 @@ export class DatabaseClient implements RepositoryRegistry {
   public readonly tickets!: TicketRepository;
   public readonly projectIntegrations!: ProjectIntegrationRepository;
   public readonly systemConfig!: SystemConfigRepository;
+  public readonly auditLogs!: AuditLogRepository;
   public readonly retention!: BugReportRepository;
   public readonly analytics!: AnalyticsService;
 
@@ -101,6 +103,7 @@ export class DatabaseClient implements RepositoryRegistry {
     this.projectMembers = this.wrapWithRetry(repositories.projectMembers);
     this.bugReports = this.wrapWithRetry(repositories.bugReports);
     this.systemConfig = this.wrapWithRetry(repositories.systemConfig);
+    this.auditLogs = this.wrapWithRetry(repositories.auditLogs);
     // Retention operations consolidated into BugReportRepository
     this.retention = this.bugReports;
     this.users = this.wrapWithRetry(repositories.users);

@@ -11,6 +11,7 @@ import { UserRepository } from './user.repository.js';
 import { SessionRepository } from './session.repository.js';
 import { TicketRepository } from './ticket.repository.js';
 import { SystemConfigRepository } from './system-config.repository.js';
+import { AuditLogRepository } from './audit-log.repository.js';
 import { ProjectIntegrationRepository } from '../project-integration.repository.js';
 
 export interface RepositoryRegistry {
@@ -22,6 +23,7 @@ export interface RepositoryRegistry {
   tickets: TicketRepository;
   projectIntegrations: ProjectIntegrationRepository;
   systemConfig: SystemConfigRepository;
+  auditLogs: AuditLogRepository;
   retention: BugReportRepository;
 }
 
@@ -41,6 +43,7 @@ export function createRepositories(pool: Pool | PoolClient): RepositoryRegistry 
     tickets: new TicketRepository(pool),
     projectIntegrations: new ProjectIntegrationRepository(pool),
     systemConfig: new SystemConfigRepository(pool),
+    auditLogs: new AuditLogRepository(pool),
     // Retention operations consolidated into BugReportRepository
     retention: bugReports,
   };

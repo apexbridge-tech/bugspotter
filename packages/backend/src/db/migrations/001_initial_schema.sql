@@ -272,3 +272,29 @@ INSERT INTO permissions (role, resource, action) VALUES
     ('viewer', 'bug_report', 'read'),
     ('viewer', 'project', 'read')
 ON CONFLICT (role, resource, action) DO NOTHING;
+
+-- Audit logs table for tracking all administrative actions
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(50) NOT NULL,
+    resource VARCHAR(255) NOT NULL,
+    resource_id UUID,
+    ip_address INET,
+    user_agent TEXT,
+    details JSONB,
+    success BOOLEAN DEFAULT true,
+    error_message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_logs(resource);
+CREATE INDEX IF NOT EXISTS idx_audit_success ON audit_logs(success);
+
+COMMENT ON TABLE audit_logs IS 'Audit trail of all administrative actions';
+COMMENT ON COLUMN audit_logs.action IS 'HTTP method or custom action type';
+COMMENT ON COLUMN audit_logs.resource IS 'API path or resource type';
+COMMENT ON COLUMN audit_logs.details IS 'JSON payload with request body and metadata';

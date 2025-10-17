@@ -162,6 +162,11 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   const authMiddleware = createAuthMiddleware(db);
   fastify.addHook('onRequest', authMiddleware);
 
+  // Register audit logging middleware (after auth, logs admin actions)
+  const { createAuditMiddleware } = await import('./middleware/audit.js');
+  const auditMiddleware = createAuditMiddleware(db);
+  fastify.addHook('onResponse', auditMiddleware);
+
   // Register routes (await async functions)
   await healthRoutes(fastify, db);
   bugReportRoutes(fastify, db, options.queueManager);
@@ -171,6 +176,10 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   await setupRoutes(fastify, db);
   userRoutes(fastify, db.users);
   analyticsRoutes(fastify, db.analytics);
+
+  // Register audit log routes
+  const { auditLogRoutes } = await import('./routes/audit-logs.js');
+  auditLogRoutes(fastify, db);
 
   // Register job/queue routes if queue manager is provided
   if (options.queueManager) {
