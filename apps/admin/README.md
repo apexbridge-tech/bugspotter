@@ -180,14 +180,14 @@ Two configurations available:
 The admin panel uses JWT-based authentication with automatic token refresh:
 
 1. User logs in with email/password
-2. Receives `access_token` (1h) and `refresh_token` (7d)
+2. Receives `access_token` (1h) in response body, `refresh_token` (7d) in httpOnly cookie
 3. **Access token stored in memory** (React state) - XSS protection
-4. **Refresh token stored in sessionStorage** (temporary, until backend implements httpOnly cookies)
+4. **Refresh token stored in httpOnly cookie** (backend-managed) - Maximum security
 5. API client uses accessor functions to get tokens from auth context
-6. Automatically refreshes expired tokens via interceptor
+6. Automatically refreshes expired tokens via interceptor using httpOnly cookie
 7. On refresh failure, clears all tokens and redirects to login
 
-**Security Note**: For maximum security, backend should set refresh token in httpOnly cookie instead of sending in response body. This is documented in `apps/admin/SECURITY.md`.
+**Security Note**: Refresh tokens are never exposed to JavaScript. The backend sets them as httpOnly cookies, preventing XSS token theft entirely.
 
 ### API Endpoints Used
 
@@ -293,10 +293,10 @@ apps/admin/
 
 ### Authentication & Token Storage
 
-**⚠️ IMPORTANT**: Tokens are now stored securely to prevent XSS attacks:
+**⚠️ IMPORTANT**: Tokens are stored securely to prevent XSS attacks:
 
 - **Access Tokens**: Stored in **memory only** (React state) - NOT in localStorage
-- **Refresh Tokens**: Stored in **sessionStorage** (temporary) - cleared on tab close
+- **Refresh Tokens**: Stored in **httpOnly cookies** (backend-managed) - NOT accessible to JavaScript
 - **User Data**: Stored in sessionStorage (non-sensitive profile data only)
 
 **Why this matters**: `localStorage` is vulnerable to XSS attacks. Any malicious script can steal tokens. Memory-only storage provides strong XSS protection.
@@ -414,11 +414,12 @@ Network connectivity issue. Check:
 
 **This is expected behavior** - Access tokens are stored in memory for security. On page reload:
 
-- Access token is cleared (requires re-login or token refresh)
-- Refresh token in sessionStorage should trigger automatic token refresh
+- Access token is cleared (requires automatic token refresh)
+- Refresh token in httpOnly cookie is automatically sent to backend
+- Backend validates cookie and issues new access token
 - User data restored from sessionStorage
 
-If automatic refresh fails, user is redirected to login (expected).
+If automatic refresh fails (invalid/expired cookie), user is redirected to login (expected).
 
 ### Settings changes not saving
 
