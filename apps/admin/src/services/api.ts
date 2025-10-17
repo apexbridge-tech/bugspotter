@@ -195,11 +195,6 @@ export const userService = {
     return response.data.data;
   },
 
-  getById: async (id: string): Promise<User> => {
-    const response = await api.get<{ success: boolean; data: User }>(`/v1/admin/users/${id}`);
-    return response.data.data;
-  },
-
   create: async (data: CreateUserRequest): Promise<User> => {
     const response = await api.post<{ success: boolean; data: User }>('/v1/admin/users', data);
     return response.data.data;

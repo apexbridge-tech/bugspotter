@@ -33,6 +33,7 @@ export const listUsersSchema = {
                   name: { type: 'string' },
                   role: { type: 'string', enum: ['admin', 'user', 'viewer'] },
                   oauth_provider: { type: ['string', 'null'] },
+                  oauth_id: { type: ['string', 'null'] },
                   created_at: { type: 'string', format: 'date-time' },
                   updated_at: { type: 'string', format: 'date-time' },
                 },
@@ -56,7 +57,11 @@ export const createUserSchema = {
       password: { type: 'string', minLength: 8, maxLength: 100 },
       role: { type: 'string', enum: ['admin', 'user', 'viewer'] },
       oauth_provider: { type: 'string', maxLength: 50 },
+      oauth_id: { type: 'string', maxLength: 255 },
     },
+    // Note: Either 'password' OR ('oauth_provider' AND 'oauth_id') must be provided
+    // This matches the database constraint: check_auth_method
+    anyOf: [{ required: ['password'] }, { required: ['oauth_provider', 'oauth_id'] }],
   },
   response: {
     201: {
@@ -71,6 +76,7 @@ export const createUserSchema = {
             name: { type: 'string' },
             role: { type: 'string', enum: ['admin', 'user', 'viewer'] },
             oauth_provider: { type: ['string', 'null'] },
+            oauth_id: { type: ['string', 'null'] },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
@@ -109,6 +115,7 @@ export const updateUserSchema = {
             name: { type: 'string' },
             role: { type: 'string', enum: ['admin', 'user', 'viewer'] },
             oauth_provider: { type: ['string', 'null'] },
+            oauth_id: { type: ['string', 'null'] },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },

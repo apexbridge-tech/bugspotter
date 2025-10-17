@@ -4,6 +4,7 @@ export interface User {
   name: string;
   role?: 'admin' | 'user' | 'viewer';
   oauth_provider?: string | null;
+  oauth_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

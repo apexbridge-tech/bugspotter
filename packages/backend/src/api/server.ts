@@ -162,13 +162,13 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   const authMiddleware = createAuthMiddleware(db);
   fastify.addHook('onRequest', authMiddleware);
 
-  // Register routes
+  // Register routes (await async functions)
   await healthRoutes(fastify, db);
   bugReportRoutes(fastify, db, options.queueManager);
   projectRoutes(fastify, db);
   authRoutes(fastify, db);
   await adminRoutes(fastify, db);
-  setupRoutes(fastify, db);
+  await setupRoutes(fastify, db);
   userRoutes(fastify, db.users);
   analyticsRoutes(fastify, db.analytics);
 

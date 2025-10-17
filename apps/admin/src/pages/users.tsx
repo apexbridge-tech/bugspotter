@@ -211,13 +211,8 @@ export default function UsersPage() {
             setShowModal(false);
             setEditingUser(null);
           }}
-          onSubmit={(data: unknown) => {
-            if (editingUser) {
-              updateMutation.mutate({ id: editingUser.id, data: data as UpdateUserRequest });
-            } else {
-              createMutation.mutate(data as CreateUserRequest);
-            }
-          }}
+          onCreate={(data) => createMutation.mutate(data)}
+          onUpdate={(id, data) => updateMutation.mutate({ id, data })}
         />
       )}
     </div>
@@ -227,11 +222,13 @@ export default function UsersPage() {
 function UserFormModal({
   user,
   onClose,
-  onSubmit,
+  onCreate,
+  onUpdate,
 }: {
   user: User | null;
   onClose: () => void;
-  onSubmit: (data: unknown) => void;
+  onCreate?: (data: CreateUserRequest) => void;
+  onUpdate?: (id: string, data: UpdateUserRequest) => void;
 }) {
   const [formData, setFormData] = useState({
     email: user?.email || '',
@@ -242,15 +239,22 @@ function UserFormModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data = user
-      ? { name: formData.name, email: formData.email, role: formData.role }
-      : {
-          email: formData.email,
-          name: formData.name,
-          password: formData.password,
-          role: formData.role,
-        };
-    onSubmit(data);
+    if (user && onUpdate) {
+      // Edit mode - only send changed fields
+      onUpdate(user.id, {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+      });
+    } else if (onCreate) {
+      // Create mode - send all fields including password
+      onCreate({
+        email: formData.email,
+        name: formData.name,
+        password: formData.password,
+        role: formData.role,
+      });
+    }
   };
 
   return (

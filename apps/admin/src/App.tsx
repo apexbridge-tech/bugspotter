@@ -1,8 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/auth-context';
 import { ProtectedRoute } from './components/protected-route';
 import { AdminRoute } from './components/admin-route';
+import { DefaultRedirect } from './components/default-redirect';
 import LoginPage from './pages/login';
 import SetupWizard from './pages/setup';
 import DashboardLayout from './components/dashboard-layout';
@@ -29,7 +30,7 @@ function App() {
             }
           >
             {/* Default route: admin -> dashboard, user -> projects */}
-            <Route index element={<Navigate to="/projects" replace />} />
+            <Route index element={<DefaultRedirect />} />
             
             {/* Admin-only routes */}
             <Route path="dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />

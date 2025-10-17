@@ -64,12 +64,13 @@ export function userRoutes(fastify: FastifyInstance, userRepo: UserRepository) {
       schema: createUserSchema,
     },
     async (request, reply) => {
-      const { email, name, password, role, oauth_provider } = request.body as {
+      const { email, name, password, role, oauth_provider, oauth_id } = request.body as {
         email: string;
         name: string;
         password?: string;
         role: 'admin' | 'user' | 'viewer';
         oauth_provider?: string;
+        oauth_id?: string;
       };
 
       // Check if user already exists
@@ -82,8 +83,12 @@ export function userRoutes(fastify: FastifyInstance, userRepo: UserRepository) {
       let passwordHash: string | undefined;
       if (password) {
         passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-      } else if (!oauth_provider) {
-        throw new AppError('Password is required for non-OAuth users', 400, 'BadRequest');
+      } else if (!oauth_provider || !oauth_id) {
+        throw new AppError(
+          'Password is required for non-OAuth users, or both oauth_provider and oauth_id must be provided',
+          400,
+          'BadRequest'
+        );
       }
 
       // Create user
@@ -93,6 +98,7 @@ export function userRoutes(fastify: FastifyInstance, userRepo: UserRepository) {
         password_hash: passwordHash,
         role,
         oauth_provider,
+        oauth_id,
       });
 
       // Remove password hash from response

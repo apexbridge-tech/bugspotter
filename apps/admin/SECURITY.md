@@ -206,7 +206,9 @@ echo -n "" | openssl dgst -sha256 -binary | openssl base64
 
 1. **CSS Nonce** - Dynamic nonce per request (requires SSR + middleware)
 2. **External CSS Only** - Extract all styles (limits Vite optimizations)
-3. **Build-time Extraction** - Vite plugin to externalize all styles## Resources
+3. **Build-time Extraction** - Vite plugin to externalize all styles
+
+## Resources
 
 - [OWASP JWT Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
 - [Auth0: Token Storage Best Practices](https://auth0.com/docs/secure/security-guidance/data-security/token-storage)
