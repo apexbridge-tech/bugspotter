@@ -13,6 +13,7 @@ import SettingsPage from './pages/settings';
 import ProjectsPage from './pages/projects';
 import HealthPage from './pages/health';
 import BugReportsPage from './pages/bug-reports';
+import AuditLogsPage from './pages/audit-logs';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
             <Route path="users" element={<AdminRoute><UsersPage /></AdminRoute>} />
             <Route path="health" element={<AdminRoute><HealthPage /></AdminRoute>} />
             <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
+            <Route path="audit-logs" element={<AdminRoute><AuditLogsPage /></AdminRoute>} />
             
             {/* All users */}
             <Route path="projects" element={<ProjectsPage />} />
