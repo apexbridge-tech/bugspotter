@@ -149,8 +149,45 @@ Object.keys(window).filter((k) => k.includes('token'));
 - Expose tokens in error messages
 - Share tokens across origins
 
+## Content Security Policy (CSP)
+
+### Current CSP Headers (nginx.conf)
+
+```nginx
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';  # Allows inline styles for Vite CSS injection
+  img-src 'self' data:;
+  font-src 'self' data:;
+  connect-src 'self';
+  frame-ancestors 'self';
+  base-uri 'self';
+  form-action 'self';
+  object-src 'none';
+  upgrade-insecure-requests;
+```
+
+### Why 'unsafe-inline' for styles?
+
+Vite's production build uses CSS injection techniques that require inline styles. This is a **calculated trade-off**:
+
+- ✅ **Scripts remain strict** - No `'unsafe-inline'` for JavaScript execution
+- ✅ **XSS protection maintained** - Inline scripts blocked completely
+- ⚠️ **Styles allow inline** - Required for React component styling
+- ✅ **No unsafe-eval** - Code evaluation blocked
+
+**Alternative Solutions (Future):**
+
+1. **CSS Nonce** - Generate unique nonce per request (requires server-side rendering)
+2. **CSS Hash** - Use `'sha256-...'` for specific inline styles (complex to maintain)
+3. **External CSS Only** - Extract all styles to external files (limits dynamic styling)
+
+For production-grade security, consider implementing CSS nonces with SSR or migrating to a CSS-in-JS solution that generates external stylesheets.
+
 ## Resources
 
 - [OWASP JWT Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
 - [Auth0: Token Storage Best Practices](https://auth0.com/docs/secure/security-guidance/data-security/token-storage)
 - [OWASP XSS Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
+- [CSP Best Practices](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)

@@ -37,4 +37,58 @@ export class UserRepository extends BaseRepository<User, UserInsert, Partial<Use
   async findByOAuth(provider: string, oauthId: string): Promise<User | null> {
     return this.findByMultiple({ oauth_provider: provider, oauth_id: oauthId });
   }
+
+  /**
+   * List users with pagination and optional filtering
+   */
+  async listWithFilters(options: {
+    page?: number;
+    limit?: number;
+    role?: 'admin' | 'user' | 'viewer';
+    email?: string;
+  }): Promise<{ users: Omit<User, 'password_hash'>[]; total: number }> {
+    const { page = 1, limit = 20, role, email } = options;
+
+    // Build WHERE clause
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (role) {
+      conditions.push(`role = $${paramIndex}`);
+      params.push(role);
+      paramIndex++;
+    }
+
+    if (email) {
+      conditions.push(`email ILIKE $${paramIndex}`);
+      params.push(`%${email}%`);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const offset = (page - 1) * limit;
+
+    // Get total count
+    const countResult = await this.pool.query(
+      `SELECT COUNT(*) as total FROM users ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0].total);
+
+    // Get users (exclude password hash)
+    const result = await this.pool.query<Omit<User, 'password_hash'>>(
+      `SELECT id, email, name, role, oauth_provider, created_at
+       FROM users
+       ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+      [...params, limit, offset]
+    );
+
+    return {
+      users: result.rows,
+      total,
+    };
+  }
 }

@@ -12,6 +12,14 @@ import type {
   BugStatus,
   BugPriority,
   Session,
+  User,
+  UserRole,
+  CreateUserRequest,
+  UpdateUserRequest,
+  UserManagementResponse,
+  AnalyticsDashboard,
+  ReportTrend,
+  ProjectStats,
 } from '../types';
 
 export const authService = {
@@ -166,6 +174,69 @@ export const bugReportService = {
   getSessions: async (bugReportId: string): Promise<Session[]> => {
     const response = await api.get<{ success: boolean; data: Session[] }>(
       `/v1/reports/${bugReportId}/sessions`
+    );
+    return response.data.data;
+  },
+};
+
+export const userService = {
+  getAll: async (
+    params: {
+      page?: number;
+      limit?: number;
+      role?: UserRole;
+      email?: string;
+    } = {}
+  ): Promise<UserManagementResponse> => {
+    const response = await api.get<{ success: boolean; data: UserManagementResponse }>(
+      '/v1/admin/users',
+      { params }
+    );
+    return response.data.data;
+  },
+
+  getById: async (id: string): Promise<User> => {
+    const response = await api.get<{ success: boolean; data: User }>(`/v1/admin/users/${id}`);
+    return response.data.data;
+  },
+
+  create: async (data: CreateUserRequest): Promise<User> => {
+    const response = await api.post<{ success: boolean; data: User }>('/v1/admin/users', data);
+    return response.data.data;
+  },
+
+  update: async (id: string, data: UpdateUserRequest): Promise<User> => {
+    const response = await api.patch<{ success: boolean; data: User }>(
+      `/v1/admin/users/${id}`,
+      data
+    );
+    return response.data.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/v1/admin/users/${id}`);
+  },
+};
+
+export const analyticsService = {
+  getDashboard: async (): Promise<AnalyticsDashboard> => {
+    const response = await api.get<{ success: boolean; data: AnalyticsDashboard }>(
+      '/v1/analytics/dashboard'
+    );
+    return response.data.data;
+  },
+
+  getReportTrend: async (days: number = 30): Promise<ReportTrend> => {
+    const response = await api.get<{ success: boolean; data: ReportTrend }>(
+      '/v1/analytics/reports/trend',
+      { params: { days } }
+    );
+    return response.data.data;
+  },
+
+  getProjectStats: async (): Promise<ProjectStats[]> => {
+    const response = await api.get<{ success: boolean; data: ProjectStats[] }>(
+      '/v1/analytics/projects/stats'
     );
     return response.data.data;
   },

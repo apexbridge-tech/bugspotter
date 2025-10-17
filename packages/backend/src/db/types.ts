@@ -25,6 +25,7 @@ export interface ProjectMember {
 export interface User {
   id: string;
   email: string;
+  name: string | null;
   password_hash: string | null;
   role: 'admin' | 'user' | 'viewer';
   oauth_provider: string | null;
@@ -163,6 +164,7 @@ export type BugReportUpdate = Partial<
 export type UserInsert = {
   id?: string;
   email: string;
+  name?: string | null;
   password_hash?: string | null;
   role?: 'admin' | 'user' | 'viewer';
   oauth_provider?: string | null;

@@ -2,6 +2,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  role?: 'admin' | 'user' | 'viewer';
+  oauth_provider?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AuthResponse {
@@ -142,4 +146,92 @@ export interface Session {
   };
   duration: number | null;
   created_at: string;
+}
+
+// User Management Types
+export type UserRole = 'admin' | 'user' | 'viewer';
+
+export interface CreateUserRequest {
+  email: string;
+  name: string;
+  password?: string;
+  role: UserRole;
+  oauth_provider?: string;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+}
+
+export interface UserManagementResponse {
+  users: User[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// Analytics Types
+export interface AnalyticsDashboard {
+  bug_reports: {
+    by_status: {
+      open: number;
+      in_progress: number;
+      resolved: number;
+      closed: number;
+      total: number;
+    };
+    by_priority: {
+      low: number;
+      medium: number;
+      high: number;
+      critical: number;
+    };
+  };
+  projects: {
+    total: number;
+    total_reports: number;
+    avg_reports_per_project: number;
+  };
+  users: {
+    total: number;
+  };
+  time_series: Array<{
+    date: string;
+    count: number;
+  }>;
+  top_projects: Array<{
+    id: string;
+    name: string;
+    report_count: number;
+  }>;
+}
+
+export interface ReportTrend {
+  days: number;
+  trend: Array<{
+    date: string;
+    total: number;
+    open: number;
+    in_progress: number;
+    resolved: number;
+    closed: number;
+  }>;
+}
+
+export interface ProjectStats {
+  id: string;
+  name: string;
+  created_at: string;
+  total_reports: number;
+  open_reports: number;
+  in_progress_reports: number;
+  resolved_reports: number;
+  closed_reports: number;
+  critical_reports: number;
+  last_report_at: string | null;
 }

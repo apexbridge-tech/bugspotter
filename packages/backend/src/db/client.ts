@@ -19,6 +19,7 @@ import type {
   SystemConfigRepository,
 } from './repositories.js';
 import type { ProjectIntegrationRepository } from './project-integration.repository.js';
+import { AnalyticsService } from '../analytics/analytics-service.js';
 
 const { Pool } = pg;
 
@@ -85,6 +86,7 @@ export class DatabaseClient implements RepositoryRegistry {
   public readonly projectIntegrations!: ProjectIntegrationRepository;
   public readonly systemConfig!: SystemConfigRepository;
   public readonly retention!: BugReportRepository;
+  public readonly analytics!: AnalyticsService;
 
   /**
    * Private constructor - use static create() method instead
@@ -105,6 +107,7 @@ export class DatabaseClient implements RepositoryRegistry {
     this.sessions = this.wrapWithRetry(repositories.sessions);
     this.tickets = this.wrapWithRetry(repositories.tickets);
     this.projectIntegrations = this.wrapWithRetry(repositories.projectIntegrations);
+    this.analytics = new AnalyticsService(pool);
   }
 
   /**
