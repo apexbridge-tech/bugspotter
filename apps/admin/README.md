@@ -20,7 +20,18 @@ Professional web-based admin control panel for managing BugSpotter self-hosted i
 - **Retention Policies**: Data retention days, max reports per project
 - **Feature Flags**: Toggle session replay on/off
 
-### 📦 Project Management
+### 🐛 Bug Reports Management
+
+- **Browse & Filter**: List all bug reports with advanced filtering (project, status, priority, date range)
+- **Detailed View**: Full bug report details with metadata, screenshots, console logs
+- **Session Replay**: View rrweb session recordings with timeline controls
+- **Status Management**: Update bug status (open → in_progress → resolved → closed)
+- **Priority Control**: Set priority levels (low, medium, high, critical)
+- **Network Analysis**: View network requests with timing and payload details
+- **Browser Metadata**: Inspect user agent, viewport, and environment info
+- **Bulk Operations**: Delete multiple reports at once
+
+###  Project Management
 
 - List all projects with API keys
 - Create new projects
@@ -37,15 +48,17 @@ Professional web-based admin control panel for managing BugSpotter self-hosted i
 
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **UI Components**: Custom components with Lucide icons
-- **State Management**: TanStack Query (React Query)
-- **HTTP Client**: Axios with auto token refresh
-- **Routing**: React Router v6
-- **Notifications**: Sonner toast library
-- **Production**: Nginx for static file serving
+- **Frontend**: React 18.3.1 + TypeScript
+- **Build Tool**: Vite 5.2.8
+- **Styling**: Tailwind CSS 3.4.3
+- **UI Components**: Custom components with Lucide React 0.363.0 icons
+- **State Management**: TanStack Query 5.28.4 (React Query)
+- **HTTP Client**: Axios 1.6.8 with auto token refresh
+- **Routing**: React Router 6.22.3
+- **Session Replay**: rrweb-player 1.0.0-alpha.4
+- **Notifications**: Sonner 1.4.41 toast library
+- **Testing**: Vitest 3.2.4 + Playwright 1.56.0 + Testing Library
+- **Production**: Nginx Alpine for static file serving
 
 ## Development
 
@@ -178,18 +191,34 @@ The admin panel uses JWT-based authentication with automatic token refresh:
 
 ### API Endpoints Used
 
-- `POST /api/auth/login` - User login
-- `POST /api/auth/refresh` - Token refresh
-- `GET /api/setup/status` - Check if system initialized
-- `POST /api/setup/initialize` - Initialize system
-- `POST /api/setup/test-storage` - Test storage connection
-- `GET /api/admin/health` - System health status
-- `GET /api/admin/settings` - Get instance settings
-- `PATCH /api/admin/settings` - Update settings
-- `GET /api/projects` - List projects
-- `POST /api/projects` - Create project
-- `DELETE /api/projects/:id` - Delete project
-- `POST /api/projects/:id/regenerate-key` - Regenerate API key
+**Authentication:**
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/logout` - User logout
+- `POST /api/v1/auth/refresh` - Token refresh
+
+**Setup:**
+- `GET /api/v1/setup/status` - Check if system initialized
+- `POST /api/v1/setup/initialize` - Initialize system
+- `POST /api/v1/setup/test-storage` - Test storage connection
+
+**Admin:**
+- `GET /api/v1/admin/health` - System health status
+- `GET /api/v1/admin/settings` - Get instance settings
+- `PATCH /api/v1/admin/settings` - Update settings
+
+**Projects:**
+- `GET /api/v1/projects` - List projects
+- `POST /api/v1/projects` - Create project
+- `DELETE /api/v1/projects/:id` - Delete project
+- `POST /api/v1/projects/:id/regenerate-key` - Regenerate API key
+
+**Bug Reports:**
+- `GET /api/v1/reports` - List bug reports (with filters, pagination, sorting)
+- `GET /api/v1/reports/:id` - Get bug report by ID
+- `PATCH /api/v1/reports/:id` - Update bug report (status, priority, description)
+- `DELETE /api/v1/reports/:id` - Delete bug report
+- `POST /api/v1/reports/bulk-delete` - Bulk delete bug reports
+- `GET /api/v1/reports/:id/sessions` - Get session replays for bug report
 
 ## Project Structure
 
@@ -197,44 +226,67 @@ The admin panel uses JWT-based authentication with automatic token refresh:
 apps/admin/
 ├── src/
 │   ├── components/
-│   │   ├── ui/                      # Reusable UI components
+│   │   ├── ui/                           # Reusable UI components
 │   │   │   ├── button.tsx
 │   │   │   ├── card.tsx
-│   │   │   └── input.tsx
-│   │   ├── settings/                # Feature-specific components (NEW)
+│   │   │   ├── input.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── badge.tsx
+│   │   │   └── spinner.tsx
+│   │   ├── settings/                     # Settings feature components
 │   │   │   ├── settings-section.tsx      # Reusable settings wrapper
 │   │   │   ├── instance-settings.tsx     # Instance config section
 │   │   │   ├── storage-settings.tsx      # Storage config section
 │   │   │   ├── security-settings.tsx     # Security settings section
 │   │   │   ├── retention-settings.tsx    # Retention policy section
 │   │   │   └── feature-settings.tsx      # Feature flags section
+│   │   ├── bug-reports/                  # Bug reports feature components
+│   │   │   ├── bug-report-list.tsx             # Bug report table
+│   │   │   ├── bug-report-detail.tsx           # Full bug report view
+│   │   │   ├── bug-report-filters.tsx          # Filter controls
+│   │   │   ├── bug-report-status-controls.tsx  # Status/priority UI
+│   │   │   ├── bug-report-browser-metadata.tsx # Browser info display
+│   │   │   ├── bug-report-console-logs.tsx     # Console logs viewer
+│   │   │   ├── bug-report-network-table.tsx    # Network requests table
+│   │   │   └── session-replay-player.tsx       # rrweb player wrapper
 │   │   ├── dashboard-layout.tsx
 │   │   └── protected-route.tsx
 │   ├── contexts/
-│   │   └── auth-context.tsx         # Auth state (memory-only tokens)
+│   │   └── auth-context.tsx              # Auth state (memory-only tokens)
 │   ├── lib/
-│   │   └── api-client.ts            # Axios with token accessors
+│   │   └── api-client.ts                 # Axios with token accessors
 │   ├── pages/
-│   │   ├── health.tsx               # System health dashboard
-│   │   ├── login.tsx                # Login page
-│   │   ├── projects.tsx             # Project management
-│   │   ├── settings.tsx             # Settings page (refactored)
-│   │   └── setup.tsx                # Setup wizard
+│   │   ├── bug-reports.tsx               # Bug reports management (NEW)
+│   │   ├── health.tsx                    # System health dashboard
+│   │   ├── login.tsx                     # Login page
+│   │   ├── projects.tsx                  # Project management
+│   │   ├── settings.tsx                  # Settings page (refactored)
+│   │   └── setup.tsx                     # Setup wizard
 │   ├── services/
-│   │   └── api.ts                   # API service functions
+│   │   └── api.ts                        # API service functions
 │   ├── types/
-│   │   └── index.ts                 # TypeScript interfaces
-│   ├── App.tsx                      # Root component with routing
-│   ├── index.css                    # Tailwind styles
-│   └── main.tsx                     # React entry point
-├── Dockerfile                       # Multi-stage build
-├── nginx.conf                       # Nginx with CSP headers
-├── SECURITY.md                      # Security documentation (NEW)
-├── REACT_PATTERNS.md                # React best practices (NEW)
+│   │   └── index.ts                      # TypeScript interfaces
+│   ├── tests/
+│   │   ├── lib/
+│   │   │   └── api-client.test.ts
+│   │   └── pages/
+│   │       ├── login.test.tsx
+│   │       ├── setup.test.tsx
+│   │       └── health.test.tsx
+│   ├── App.tsx                           # Root component with routing
+│   ├── index.css                         # Tailwind styles
+│   └── main.tsx                          # React entry point
+├── Dockerfile                            # Multi-stage build
+├── nginx.conf                            # Production nginx with strict CSP
+├── nginx.dev.conf                        # Development nginx with relaxed CSP
+├── SECURITY.md                           # Security documentation
+├── REACT_PATTERNS.md                     # React best practices
 ├── package.json
 ├── tailwind.config.js
 ├── tsconfig.json
-└── vite.config.ts
+├── vite.config.ts
+├── vitest.config.ts
+└── playwright.config.ts
 ```
 
 ## Security
@@ -269,10 +321,12 @@ apps/admin/
 
 ## Browser Support
 
-- Chrome 60+
-- Firefox 55+
-- Safari 11+
-- Edge 79+
+- Chrome 60+ (ES2017)
+- Firefox 55+ (ES2017)
+- Safari 11+ (ES2017)
+- Edge 79+ (Chromium-based)
+
+**Note**: Modern JavaScript features (async/await, Object.entries, etc.) are used without transpilation.
 
 ## Code Quality & Best Practices
 
@@ -295,12 +349,20 @@ apps/admin/
 
 ### Component Architecture
 
-**Settings Page Refactoring** (250+ lines → 115 lines + 6 focused components):
+### Settings Page Refactoring** (250+ lines → 115 lines + 6 focused components):
 
 - Components extracted into `components/settings/` directory
 - Each section is self-contained and testable
 - Eliminated ~200 lines of duplicated Card/CardContent boilerplate
 - Improved maintainability through Single Responsibility Principle
+
+**Bug Reports Feature** (New in 2025):
+
+- 8 specialized components in `components/bug-reports/`
+- Full CRUD operations with filtering, sorting, pagination
+- Session replay integration with rrweb-player
+- Network analysis and console log viewers
+- Responsive design with mobile support
 
 ### Security Checklist
 
@@ -313,8 +375,10 @@ Before deploying admin panel changes:
 - [ ] Callbacks memoized where appropriate
 - [ ] Forms reset after successful mutations
 - [ ] Input validation in place (min/max, type checking)
-- [ ] TypeScript compiles without errors
+- [ ] TypeScript compiles without errors (`pnpm build`)
+- [ ] Tests pass (`pnpm test`)
 - [ ] CSP headers don't block functionality
+- [ ] Vite production build succeeds without warnings
 
 ## Troubleshooting
 
@@ -364,6 +428,47 @@ Check:
 2. API returns 200 OK (check Network tab)
 3. Form resets to server values after success
 4. No React errors in console (setState during render, etc.)
+
+### Bug reports not loading or filtering not working
+
+Check:
+
+1. Backend API is running and accessible
+2. Projects exist in the database
+3. Bug reports exist for selected filters
+4. Network tab shows successful API responses
+5. Console shows no CORS or authentication errors
+
+### Session replay player not working
+
+Check:
+
+1. Session replay is enabled in settings (feature flags)
+2. Bug report has associated session data
+3. rrweb-player CSS is loaded correctly
+4. Browser console shows no errors from player
+5. Storage service is accessible and serving replay files
+
+## Common Development Tasks
+
+### Adding a New Page
+
+1. Create page component in `src/pages/new-page.tsx`
+2. Add route in `src/App.tsx`
+3. Add navigation link in `src/components/dashboard-layout.tsx`
+4. Create API service functions in `src/services/api.ts`
+5. Add TypeScript types in `src/types/index.ts`
+6. Write tests in `src/tests/pages/new-page.test.tsx`
+
+### Adding a New API Endpoint
+
+1. Add service function in `src/services/api.ts`
+2. Add TypeScript types in `src/types/index.ts`
+3. Use TanStack Query hooks in components:
+   - `useQuery` for GET requests
+   - `useMutation` for POST/PATCH/DELETE
+4. Handle loading/error states
+5. Add toast notifications for success/error feedback
 
 ## License
 
