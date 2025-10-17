@@ -4,8 +4,13 @@
 # Make sure the services are running with: docker-compose up -d
 
 API_URL="http://localhost:3000"
-ADMIN_EMAIL="admin@bugspotter.dev"
-ADMIN_PASSWORD="admin123"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-your-secure-password}"
+
+# WARNING: Do not commit real credentials to the repository!
+# Set credentials via environment variables:
+#   export ADMIN_EMAIL="your-admin@email.com"
+#   export ADMIN_PASSWORD="your-secure-password"
 
 echo "🔐 Step 1: Login as admin to get JWT token..."
 LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/api/v1/auth/login" \

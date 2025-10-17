@@ -14,7 +14,7 @@ All User Management and Analytics Dashboard features have been successfully impl
 
 - **Login:** Successfully authenticates admin user
 - **JWT Token:** Properly generated and validated
-- **Credentials:** alex@budanov.me / 1-May345
+- **Credentials:** Use environment variables or create via `/api/v1/setup/initialize`
 
 ### ✅ User Management API (`/api/v1/admin/users`)
 
@@ -111,7 +111,7 @@ All User Management and Analytics Dashboard features have been successfully impl
 ### Admin UI
 
 - **URL:** http://localhost:3001
-- **Login:** alex@budanov.me / 1-May345
+- **Login:** Create admin account via setup wizard or API endpoint
 - **Pages:**
   - Dashboard: http://localhost:3001/dashboard
   - User Management: http://localhost:3001/users

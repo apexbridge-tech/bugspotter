@@ -298,7 +298,6 @@ apps/admin/
 
 ### Authentication & Token Storage
 
-<<<<<<< HEAD
 **⚠️ IMPORTANT**: Tokens are stored securely to prevent XSS attacks:
 
 - **Access Tokens**: Stored in **memory only** (React state) - NOT in localStorage

@@ -3,11 +3,17 @@ dist/
 *.log
 .env
 .env.local
+.env.production
 .DS_Store
 coverage/
 .vscode/
 .idea/
 .archive/
+
+# Credentials and secrets (never commit these!)
+*credentials*.json
+*secrets*.json
+*password*.txt
 
 # Playwright test artifacts
 playwright-report/
