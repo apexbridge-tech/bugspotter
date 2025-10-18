@@ -242,7 +242,7 @@ export class AuditLogRepository extends BaseRepository<AuditLog, AuditLogInsert>
     const statsResult = await this.getClient().query(query, values);
     const stats = statsResult.rows[0];
 
-    // Get action breakdown
+    // Get action breakdown (reuse same parameter values)
     const actionQuery = `
       SELECT action, COUNT(*) as count
       FROM audit_logs
@@ -253,12 +253,12 @@ export class AuditLogRepository extends BaseRepository<AuditLog, AuditLogInsert>
     `;
     const actionResult = await this.getClient().query(actionQuery, values);
 
-    // Get user breakdown
+    // Get user breakdown (reuse same parameter values)
     const userQuery = `
       SELECT user_id, COUNT(*) as count
       FROM audit_logs
       ${whereClause}
-      AND user_id IS NOT NULL
+      ${whereClause ? 'AND' : 'WHERE'} user_id IS NOT NULL
       GROUP BY user_id
       ORDER BY count DESC
       LIMIT 10

@@ -32,7 +32,8 @@ export default defineConfig({
     ? undefined
     : {
         command: 'pnpm dev',
-        url: 'http://localhost:5173',
+        url: 'http://localhost:3001',
         reuseExistingServer: !process.env.CI,
+        timeout: 120000,
       },
 });

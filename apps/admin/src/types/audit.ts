@@ -42,7 +42,7 @@ export interface PaginationInfo {
   page: number;
   limit: number;
   total: number;
-  total_pages: number;
+  totalPages: number;
 }
 
 export interface AuditLogsResponse {
@@ -59,4 +59,10 @@ export interface AuditLogResponse {
 export interface AuditStatisticsResponse {
   success: boolean;
   data: AuditLogStatistics;
+}
+
+export interface AuditLogsSimpleResponse {
+  success: boolean;
+  data: AuditLog[];
+  count: number;
 }

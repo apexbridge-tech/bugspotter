@@ -7,6 +7,7 @@ import type {
   AuditLogsResponse,
   AuditLogResponse,
   AuditStatisticsResponse,
+  AuditLogsSimpleResponse,
   AuditLogFilters,
 } from '../types/audit';
 
@@ -70,7 +71,7 @@ export const auditLogService = {
   /**
    * Get recent audit logs
    */
-  async getRecent(limit: number = 100): Promise<AuditLogsResponse> {
+  async getRecent(limit: number = 100): Promise<AuditLogsSimpleResponse> {
     const response = await api.get(`/v1/audit-logs/recent?limit=${limit}`);
     return response.data;
   },
@@ -78,7 +79,7 @@ export const auditLogService = {
   /**
    * Get audit logs for a specific user
    */
-  async getByUserId(userId: string, limit: number = 100): Promise<AuditLogsResponse> {
+  async getByUserId(userId: string, limit: number = 100): Promise<AuditLogsSimpleResponse> {
     const response = await api.get(`/v1/audit-logs/user/${userId}?limit=${limit}`);
     return response.data;
   },

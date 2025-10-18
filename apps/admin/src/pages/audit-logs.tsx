@@ -356,10 +356,10 @@ export default function AuditLogsPage() {
               </div>
 
               {/* Pagination */}
-              {data && data.pagination.total_pages > 1 && (
+              {data && data.pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-sm text-gray-500">
-                    Page {data.pagination.page} of {data.pagination.total_pages} (
+                    Page {data.pagination.page} of {data.pagination.totalPages} (
                     {data.pagination.total} total)
                   </p>
                   <div className="flex gap-2">
@@ -375,7 +375,7 @@ export default function AuditLogsPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      disabled={page >= data.pagination.total_pages}
+                      disabled={page >= data.pagination.totalPages}
                       onClick={() => setPage(page + 1)}
                     >
                       Next
