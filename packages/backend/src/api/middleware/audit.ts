@@ -23,37 +23,79 @@ const AUDIT_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
  * Extract resource ID from request path and body
+ * Uses multiple strategies to find UUIDs without hardcoding field names
  */
 function extractResourceId(request: FastifyRequest): string | null {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+  /**
+   * Helper to check if a value is a UUID string
+   */
+  function isUuid(value: unknown): value is string {
+    return typeof value === 'string' && uuidRegex.test(value);
+  }
+
+  /**
+   * Recursively search for UUID values in an object (max depth 3)
+   */
+  function findUuidInObject(obj: unknown, depth = 0): string | null {
+    if (depth > 3 || !obj || typeof obj !== 'object') {
+      return null;
+    }
+
+    const record = obj as Record<string, unknown>;
+
+    // Prioritize common ID field names
+    const priorityFields = ['id', 'project_id', 'user_id', 'bug_id', 'report_id', 'session_id'];
+    for (const field of priorityFields) {
+      if (field in record && isUuid(record[field])) {
+        return record[field];
+      }
+    }
+
+    // Search all fields that end with 'id' or '_id'
+    for (const [key, value] of Object.entries(record)) {
+      if ((key === 'id' || key.endsWith('_id') || key.endsWith('Id')) && isUuid(value)) {
+        return value;
+      }
+    }
+
+    // Recursively search nested objects
+    for (const value of Object.values(record)) {
+      if (value && typeof value === 'object') {
+        const found = findUuidInObject(value, depth + 1);
+        if (found) {
+          return found;
+        }
+      }
+    }
+
+    return null;
+  }
+
   // 1. Try Fastify route params first (most reliable)
-  const params = request.params as Record<string, unknown> | null;
+  const params = request.params;
   if (params && typeof params === 'object') {
-    // Check common param names
-    const paramId =
-      params.id || params.projectId || params.userId || params.bugId || params.reportId;
-    if (typeof paramId === 'string' && uuidRegex.test(paramId)) {
+    const paramId = findUuidInObject(params);
+    if (paramId) {
       return paramId;
     }
   }
 
-  // 2. Try to extract from URL path (e.g., /api/v1/users/123)
-  // Remove query params first
+  // 2. Scan URL path for any UUID segment (handles IDs in middle of path)
   const path = request.url.split('?')[0];
   const pathParts = path.split('/');
-  const lastPart = pathParts[pathParts.length - 1];
-
-  if (uuidRegex.test(lastPart)) {
-    return lastPart;
+  for (const part of pathParts) {
+    if (isUuid(part)) {
+      return part;
+    }
   }
 
-  // 3. Try to extract from body
-  const body = request.body as Record<string, unknown> | null;
+  // 3. Search request body for UUID values
+  const body = request.body;
   if (body && typeof body === 'object') {
-    // Check common body fields with type validation
-    const bodyId = body.id || body.project_id || body.user_id || body.bug_id;
-    if (typeof bodyId === 'string' && uuidRegex.test(bodyId)) {
+    const bodyId = findUuidInObject(body);
+    if (bodyId) {
       return bodyId;
     }
   }

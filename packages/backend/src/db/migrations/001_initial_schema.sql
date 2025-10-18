@@ -274,8 +274,9 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
-CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_logs(resource);
+CREATE INDEX IF NOT EXISTS idx_audit_resource_pattern ON audit_logs(resource text_pattern_ops);
 CREATE INDEX IF NOT EXISTS idx_audit_success ON audit_logs(success);
+CREATE INDEX IF NOT EXISTS idx_audit_resource_id ON audit_logs(resource_id) WHERE resource_id IS NOT NULL;
 
 COMMENT ON TABLE audit_logs IS 'Audit trail of all administrative actions';
 COMMENT ON COLUMN audit_logs.action IS 'HTTP method or custom action type';
