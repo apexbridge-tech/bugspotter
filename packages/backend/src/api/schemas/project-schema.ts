@@ -113,3 +113,30 @@ export const regenerateApiKeySchema = {
     },
   },
 } as const;
+
+export const deleteProjectSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      required: ['success', 'data', 'timestamp'],
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        data: {
+          type: 'object',
+          required: ['message'],
+          properties: {
+            message: { type: 'string' },
+          },
+        },
+        timestamp: { type: 'string', format: 'date-time' },
+      },
+    },
+  },
+} as const;

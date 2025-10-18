@@ -47,7 +47,7 @@ export const auditLogService = {
       params.append('end_date', filters.end_date);
     }
 
-    const response = await api.get(`/api/v1/audit-logs?${params.toString()}`);
+    const response = await api.get(`/v1/audit-logs?${params.toString()}`);
     return response.data;
   },
 
@@ -55,7 +55,7 @@ export const auditLogService = {
    * Get a specific audit log by ID
    */
   async getAuditLogById(id: string): Promise<AuditLogResponse> {
-    const response = await api.get(`/api/v1/audit-logs/${id}`);
+    const response = await api.get(`/v1/audit-logs/${id}`);
     return response.data;
   },
 
@@ -63,7 +63,7 @@ export const auditLogService = {
    * Get audit log statistics
    */
   async getStatistics(): Promise<AuditStatisticsResponse> {
-    const response = await api.get('/api/v1/audit-logs/statistics');
+    const response = await api.get('/v1/audit-logs/statistics');
     return response.data;
   },
 
@@ -71,7 +71,7 @@ export const auditLogService = {
    * Get recent audit logs
    */
   async getRecent(limit: number = 100): Promise<AuditLogsResponse> {
-    const response = await api.get(`/api/v1/audit-logs/recent?limit=${limit}`);
+    const response = await api.get(`/v1/audit-logs/recent?limit=${limit}`);
     return response.data;
   },
 
@@ -79,7 +79,7 @@ export const auditLogService = {
    * Get audit logs for a specific user
    */
   async getByUserId(userId: string, limit: number = 100): Promise<AuditLogsResponse> {
-    const response = await api.get(`/api/v1/audit-logs/user/${userId}?limit=${limit}`);
+    const response = await api.get(`/v1/audit-logs/user/${userId}?limit=${limit}`);
     return response.data;
   },
 };

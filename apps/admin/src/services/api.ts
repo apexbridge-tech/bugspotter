@@ -218,6 +218,7 @@ export const analyticsService = {
     const response = await api.get<{ success: boolean; data: AnalyticsDashboard }>(
       '/v1/analytics/dashboard'
     );
+    console.log('Analytics response:', response.data);
     return response.data.data;
   },
 

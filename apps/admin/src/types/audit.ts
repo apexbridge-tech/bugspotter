@@ -37,7 +37,8 @@ export interface AuditLogStatistics {
     user_id: string;
     count: number;
   }>;
-}export interface PaginationInfo {
+}
+export interface PaginationInfo {
   page: number;
   limit: number;
   total: number;

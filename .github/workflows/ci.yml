@@ -197,14 +197,128 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-sdk
           path: packages/sdk/playwright-report/
           retention-days: 7
+
+  playwright-admin:
+    name: Admin E2E Tests
+    runs-on: ubuntu-latest
+    needs: [test, test-backend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Create .env file
+        run: |
+          cat > .env << 'EOF'
+          # PostgreSQL
+          POSTGRES_DB=bugspotter
+          POSTGRES_USER=bugspotter
+          POSTGRES_PASSWORD=bugspotter_ci_password
+
+          # MinIO
+          MINIO_ROOT_USER=minioadmin
+          MINIO_ROOT_PASSWORD=minioadmin123
+          MINIO_BUCKET=bugspotter
+
+          # Security
+          JWT_SECRET=ci_jwt_secret_key_for_testing_only_not_production
+          ENCRYPTION_KEY=ci_encryption_key_for_testing_only_32bytes
+
+          # Environment
+          NODE_ENV=production
+          LOG_LEVEL=info
+          CORS_ORIGINS=http://localhost:3001
+          EOF
+
+      - name: Start Docker services
+        run: |
+          docker compose up -d --wait --wait-timeout 120
+          echo "✅ Docker services started"
+
+      - name: Verify services health
+        run: |
+          echo "Checking service health..."
+          docker compose ps
+          
+          # Wait for API to be fully ready
+          for i in {1..30}; do
+            if curl -f http://localhost:3000/ready; then
+              echo "✅ API is ready"
+              break
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 2
+          done
+          
+          # Verify admin panel
+          if curl -f http://localhost:3001/; then
+            echo "✅ Admin panel is accessible"
+          else
+            echo "❌ Admin panel not accessible"
+            exit 1
+          fi
+
+      - name: Setup admin user
+        run: |
+          chmod +x ./setup-admin.sh
+          ./setup-admin.sh
+          echo "✅ Admin user created"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers for admin
+        run: |
+          # Install Chromium with dependencies
+          pnpm --filter @bugspotter/admin exec playwright install --with-deps chromium
+
+      - name: Run admin E2E tests
+        env:
+          BASE_URL: http://localhost:3001
+        run: |
+          # Run admin E2E tests in Chromium
+          pnpm --filter @bugspotter/admin run test:e2e --project=chromium
+
+      - name: Upload admin E2E report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-admin
+          path: apps/admin/playwright-report/
+          retention-days: 7
+
+      - name: Collect Docker logs on failure
+        if: failure()
+        run: |
+          echo "=== API Logs ==="
+          docker compose logs api --tail=100
+          echo "=== Admin Logs ==="
+          docker compose logs admin --tail=100
+          echo "=== Postgres Logs ==="
+          docker compose logs postgres --tail=50
+
+      - name: Stop Docker services
+        if: always()
+        run: docker compose down -v
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test, test-backend, playwright]
+    needs: [lint, test, test-backend, playwright, playwright-admin]
 
     steps:
       - name: Checkout code

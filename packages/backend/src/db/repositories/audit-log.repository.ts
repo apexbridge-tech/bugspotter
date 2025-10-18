@@ -204,7 +204,10 @@ export class AuditLogRepository extends BaseRepository<AuditLog, AuditLogInsert>
   /**
    * Get audit log statistics
    */
-  async getStatistics(startDate?: Date, endDate?: Date): Promise<{
+  async getStatistics(
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<{
     total: number;
     success: number;
     failures: number;

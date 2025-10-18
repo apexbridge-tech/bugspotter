@@ -39,10 +39,7 @@ function extractResourceId(request: FastifyRequest): string | null {
   const body = request.body as Record<string, unknown> | null;
   if (body && typeof body === 'object') {
     const id =
-      (body.id as string) ||
-      (body.project_id as string) ||
-      (body.user_id as string) ||
-      null;
+      (body.id as string) || (body.project_id as string) || (body.user_id as string) || null;
     return id;
   }
 
@@ -59,7 +56,7 @@ function sanitizeBody(body: unknown): Record<string, unknown> | null {
   }
 
   const sanitized = { ...body } as Record<string, unknown>;
-  
+
   // Remove sensitive fields
   const sensitiveFields = ['password', 'password_hash', 'api_key', 'secret', 'token'];
   for (const field of sensitiveFields) {

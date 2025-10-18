@@ -11,6 +11,7 @@ import {
   getProjectSchema,
   updateProjectSchema,
   regenerateApiKeySchema,
+  deleteProjectSchema,
 } from '../schemas/project-schema.js';
 import { requireUser, requireRole } from '../middleware/auth.js';
 import { sendSuccess, sendCreated } from '../utils/response.js';
@@ -162,6 +163,34 @@ export function projectRoutes(fastify: FastifyInstance, db: DatabaseClient) {
       request.log.info({ project_id: id, user_id: request.authUser?.id }, 'API key regenerated');
 
       return sendSuccess(reply, { api_key: newApiKey });
+    }
+  );
+
+  /**
+   * DELETE /api/v1/projects/:id
+   * Delete a project (admin only)
+   */
+  fastify.delete<{ Params: { id: string } }>(
+    '/api/v1/projects/:id',
+    {
+      schema: deleteProjectSchema,
+      preHandler: [requireUser, requireRole('admin')],
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+
+      // Check if project exists
+      const project = await findOrThrow(() => db.projects.findById(id), 'Project');
+
+      // Check if user has access to this project (admin-only endpoint via requireRole)
+      await checkProjectAccess(project.id, request.authUser, request.authProject, db, 'Project');
+
+      // Delete the project
+      await db.projects.delete(id);
+
+      request.log.info({ project_id: id, user_id: request.authUser?.id }, 'Project deleted');
+
+      return sendSuccess(reply, { message: 'Project deleted successfully' });
     }
   );
 }
