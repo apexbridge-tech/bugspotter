@@ -80,8 +80,10 @@ export class AuditLogRepository extends BaseRepository<AuditLog, AuditLogInsert>
     }
 
     if (filters.resource) {
+      // Use prefix matching instead of contains to leverage text_pattern_ops index
+      // This allows index usage for patterns like '/api/v1/users%'
       conditions.push(`resource ILIKE $${++paramCount}`);
-      values.push(`%${filters.resource}%`);
+      values.push(`${filters.resource}%`);
     }
 
     if (filters.success !== undefined) {
@@ -106,9 +108,22 @@ export class AuditLogRepository extends BaseRepository<AuditLog, AuditLogInsert>
     const countResult = await this.getClient().query(countQuery, values);
     const total = parseInt(countResult.rows[0].total, 10);
 
-    // Build ORDER BY clause
+    // Build ORDER BY clause with SQL injection prevention
     const sortBy = sortOptions.sort_by || 'timestamp';
     const order = sortOptions.order || 'desc';
+
+    // Validate sort column (whitelist)
+    const validSortColumns = ['timestamp', 'action', 'resource'];
+    if (!validSortColumns.includes(sortBy)) {
+      throw new Error(`Invalid sort column: ${sortBy}`);
+    }
+
+    // Validate sort order (whitelist)
+    const validOrders = ['asc', 'desc'];
+    if (!validOrders.includes(order.toLowerCase())) {
+      throw new Error(`Invalid sort order: ${order}`);
+    }
+
     const orderClause = `ORDER BY ${sortBy} ${order.toUpperCase()}`;
 
     // Get paginated data
@@ -233,8 +248,8 @@ export class AuditLogRepository extends BaseRepository<AuditLog, AuditLogInsert>
     const query = `
       SELECT
         COUNT(*) as total,
-        SUM(CASE WHEN success = true THEN 1 ELSE 0 END) as success,
-        SUM(CASE WHEN success = false THEN 1 ELSE 0 END) as failures
+        COALESCE(SUM(CASE WHEN success = true THEN 1 ELSE 0 END), 0) as success,
+        COALESCE(SUM(CASE WHEN success = false THEN 1 ELSE 0 END), 0) as failures
       FROM audit_logs
       ${whereClause}
     `;

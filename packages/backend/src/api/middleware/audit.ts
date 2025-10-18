@@ -105,24 +105,53 @@ function extractResourceId(request: FastifyRequest): string | null {
 
 /**
  * Sanitize request body for audit logging
- * Remove sensitive fields like passwords
+ * Recursively remove sensitive fields like passwords
  */
 function sanitizeBody(body: unknown): Record<string, unknown> | null {
   if (!body || typeof body !== 'object') {
     return null;
   }
 
-  const sanitized = { ...body } as Record<string, unknown>;
+  const sensitiveFields = [
+    'password',
+    'password_hash',
+    'api_key',
+    'secret',
+    'token',
+    'access_token',
+    'refresh_token',
+  ];
 
-  // Remove sensitive fields
-  const sensitiveFields = ['password', 'password_hash', 'api_key', 'secret', 'token'];
-  for (const field of sensitiveFields) {
-    if (field in sanitized) {
-      sanitized[field] = '[REDACTED]';
+  /**
+   * Recursively sanitize an object or array
+   */
+  function sanitizeRecursive(obj: unknown): unknown {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
     }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      return obj.map((item) => sanitizeRecursive(item));
+    }
+
+    // Handle objects
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Check if field name is sensitive
+      if (sensitiveFields.includes(key.toLowerCase())) {
+        sanitized[key] = '[REDACTED]';
+      } else if (value && typeof value === 'object') {
+        // Recursively sanitize nested objects/arrays
+        sanitized[key] = sanitizeRecursive(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
   }
 
-  return sanitized;
+  return sanitizeRecursive(body) as Record<string, unknown>;
 }
 
 /**

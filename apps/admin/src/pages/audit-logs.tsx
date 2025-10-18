@@ -124,7 +124,7 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Statistics Cards */}
-      {stats?.data && !statsError && <StatisticsCards statistics={stats.data} />}
+      {stats && !statsError && stats.data && <StatisticsCards statistics={stats.data} />}
 
       {/* Filters */}
       {showFilters && (

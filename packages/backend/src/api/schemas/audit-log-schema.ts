@@ -5,7 +5,7 @@
 import { paginationSchema, paginationResponseSchema, sortOrderSchema } from './common-schema.js';
 
 export const auditLogSortByEnum = ['timestamp', 'action', 'resource'] as const;
-export const auditLogActionEnum = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+export const auditLogActionEnum = ['POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
 export const auditLogSchema = {
   type: 'object',
@@ -126,8 +126,28 @@ export const getAuditLogStatisticsSchema = {
             total: { type: 'number' },
             success: { type: 'number' },
             failures: { type: 'number' },
-            by_action: { type: 'object' },
-            by_user: { type: 'object' },
+            by_action: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['action', 'count'],
+                properties: {
+                  action: { type: 'string' },
+                  count: { type: 'number' },
+                },
+              },
+            },
+            by_user: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['user_id', 'count'],
+                properties: {
+                  user_id: { type: 'string', format: 'uuid' },
+                  count: { type: 'number' },
+                },
+              },
+            },
           },
         },
       },
