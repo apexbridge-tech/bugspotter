@@ -82,15 +82,30 @@ export interface Ticket {
 
 export interface AuditLog {
   id: string;
+  timestamp: Date;
   user_id: string | null;
   action: string;
   resource: string;
   resource_id: string | null;
-  details: Record<string, unknown>;
   ip_address: string | null;
   user_agent: string | null;
-  timestamp: Date;
+  details: Record<string, unknown> | null;
+  success: boolean;
+  error_message: string | null;
 }
+
+export type AuditLogInsert = {
+  id?: string;
+  user_id?: string | null;
+  action: string;
+  resource: string;
+  resource_id?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  details?: Record<string, unknown> | null;
+  success?: boolean;
+  error_message?: string | null;
+};
 
 export interface Permission {
   id: string;

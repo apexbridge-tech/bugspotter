@@ -145,23 +145,6 @@ CREATE TABLE IF NOT EXISTS tickets (
 CREATE INDEX IF NOT EXISTS idx_tickets_bug_report ON tickets(bug_report_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_external ON tickets(external_id);
 
--- Audit logs table (Enterprise only)
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    action VARCHAR(100) NOT NULL,
-    resource VARCHAR(100) NOT NULL,
-    resource_id UUID,
-    details JSONB DEFAULT '{}',
-    ip_address INET,
-    user_agent TEXT,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource, resource_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC);
-
 -- Permissions table (Enterprise only)
 CREATE TABLE IF NOT EXISTS permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -272,3 +255,30 @@ INSERT INTO permissions (role, resource, action) VALUES
     ('viewer', 'bug_report', 'read'),
     ('viewer', 'project', 'read')
 ON CONFLICT (role, resource, action) DO NOTHING;
+
+-- Audit logs table for tracking all administrative actions
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(50) NOT NULL,
+    resource VARCHAR(255) NOT NULL,
+    resource_id UUID,
+    ip_address INET,
+    user_agent TEXT,
+    details JSONB,
+    success BOOLEAN DEFAULT true,
+    error_message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_resource_pattern ON audit_logs(resource text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_audit_success ON audit_logs(success);
+CREATE INDEX IF NOT EXISTS idx_audit_resource_id ON audit_logs(resource_id) WHERE resource_id IS NOT NULL;
+
+COMMENT ON TABLE audit_logs IS 'Audit trail of all administrative actions';
+COMMENT ON COLUMN audit_logs.action IS 'HTTP method or custom action type';
+COMMENT ON COLUMN audit_logs.resource IS 'API path or resource type';
+COMMENT ON COLUMN audit_logs.details IS 'JSON payload with request body and metadata';

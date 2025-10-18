@@ -4,10 +4,11 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Activity, FolderKanban, Users, AlertCircle } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['analytics-dashboard'],
     queryFn: () => analyticsService.getDashboard(),
     refetchInterval: 60000, // Refresh every minute
+    retry: 1, // Only retry once
   });
 
   if (isLoading) {
@@ -18,13 +19,49 @@ export default function DashboardPage() {
     );
   }
 
-  if (!data) {
+  if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-red-600">Failed to load dashboard data</div>
+        <div className="space-y-2">
+          <div className="text-lg text-red-600">Failed to load dashboard data</div>
+          <div className="text-sm text-gray-500">
+            {error instanceof Error ? error.message : 'Unknown error occurred'}
+          </div>
+        </div>
       </div>
     );
   }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-500">No data available</div>
+      </div>
+    );
+  }
+
+  // Handle missing or incomplete data gracefully
+  const bugReports = data.bug_reports?.by_status || {
+    open: 0,
+    in_progress: 0,
+    resolved: 0,
+    closed: 0,
+    total: 0,
+  };
+  const bugPriority = data.bug_reports?.by_priority || {
+    low: 0,
+    medium: 0,
+    high: 0,
+    critical: 0,
+  };
+  const projects = data.projects || {
+    total: 0,
+    total_reports: 0,
+    avg_reports_per_project: 0,
+  };
+  const users = data.users || { total: 0 };
+  const timeSeries = data.time_series || [];
+  const topProjects = data.top_projects || [];
 
   return (
     <div className="space-y-6">
@@ -34,24 +71,24 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Bug Reports"
-          value={data.bug_reports.by_status.total}
+          value={bugReports.total}
           icon={<Activity className="w-6 h-6 text-blue-600" />}
-          subtitle={`${data.bug_reports.by_status.open} open`}
+          subtitle={`${bugReports.open} open`}
         />
         <MetricCard
           title="Projects"
-          value={data.projects.total}
+          value={projects.total}
           icon={<FolderKanban className="w-6 h-6 text-green-600" />}
-          subtitle={`${data.projects.total_reports} total reports`}
+          subtitle={`${projects.total_reports} total reports`}
         />
         <MetricCard
           title="Users"
-          value={data.users.total}
+          value={users.total}
           icon={<Users className="w-6 h-6 text-purple-600" />}
         />
         <MetricCard
           title="Avg Reports/Project"
-          value={data.projects.avg_reports_per_project.toFixed(1)}
+          value={projects.avg_reports_per_project.toFixed(1)}
           icon={<AlertCircle className="w-6 h-6 text-orange-600" />}
         />
       </div>
@@ -65,26 +102,26 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <StatusBar
               label="Open"
-              count={data.bug_reports.by_status.open}
-              total={data.bug_reports.by_status.total}
+              count={bugReports.open}
+              total={bugReports.total}
               color="bg-blue-500"
             />
             <StatusBar
               label="In Progress"
-              count={data.bug_reports.by_status.in_progress}
-              total={data.bug_reports.by_status.total}
+              count={bugReports.in_progress}
+              total={bugReports.total}
               color="bg-yellow-500"
             />
             <StatusBar
               label="Resolved"
-              count={data.bug_reports.by_status.resolved}
-              total={data.bug_reports.by_status.total}
+              count={bugReports.resolved}
+              total={bugReports.total}
               color="bg-green-500"
             />
             <StatusBar
               label="Closed"
-              count={data.bug_reports.by_status.closed}
-              total={data.bug_reports.by_status.total}
+              count={bugReports.closed}
+              total={bugReports.total}
               color="bg-gray-500"
             />
           </div>
@@ -100,26 +137,26 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <StatusBar
               label="Critical"
-              count={data.bug_reports.by_priority.critical}
-              total={data.bug_reports.by_status.total}
+              count={bugPriority.critical}
+              total={bugReports.total}
               color="bg-red-600"
             />
             <StatusBar
               label="High"
-              count={data.bug_reports.by_priority.high}
-              total={data.bug_reports.by_status.total}
+              count={bugPriority.high}
+              total={bugReports.total}
               color="bg-orange-500"
             />
             <StatusBar
               label="Medium"
-              count={data.bug_reports.by_priority.medium}
-              total={data.bug_reports.by_status.total}
+              count={bugPriority.medium}
+              total={bugReports.total}
               color="bg-blue-500"
             />
             <StatusBar
               label="Low"
-              count={data.bug_reports.by_priority.low}
-              total={data.bug_reports.by_status.total}
+              count={bugPriority.low}
+              total={bugReports.total}
               color="bg-gray-500"
             />
           </div>
@@ -133,10 +170,10 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {data.top_projects.map((project) => {
+            {topProjects.map((project) => {
               const percentage =
-                data.projects.total_reports > 0
-                  ? (project.report_count / data.projects.total_reports) * 100
+                projects.total_reports > 0
+                  ? (project.report_count / projects.total_reports) * 100
                   : 0;
               return (
                 <div key={project.id} className="flex justify-between items-center">
@@ -166,8 +203,8 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-end space-x-1">
-            {data.time_series.map((point) => {
-              const maxCount = Math.max(...data.time_series.map((p) => p.count));
+            {timeSeries.map((point) => {
+              const maxCount = Math.max(...timeSeries.map((p) => p.count));
               const height = maxCount > 0 ? (point.count / maxCount) * 100 : 0;
               return (
                 <div

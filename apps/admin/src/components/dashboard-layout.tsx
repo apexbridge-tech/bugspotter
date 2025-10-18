@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/auth-context';
-import { Activity, Settings, FolderKanban, LogOut, Bug, LayoutDashboard, Users, LucideIcon } from 'lucide-react';
+import { Activity, Settings, FolderKanban, LogOut, Bug, LayoutDashboard, Users, FileText, LucideIcon } from 'lucide-react';
 
 interface NavItem {
   path: string;
@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
   { path: '/users', label: 'User Management', icon: Users, adminOnly: true },
   { path: '/health', label: 'System Health', icon: Activity, adminOnly: true },
+  { path: '/audit-logs', label: 'Audit Logs', icon: FileText, adminOnly: true },
   { path: '/projects', label: 'Projects', icon: FolderKanban },
   { path: '/bug-reports', label: 'Bug Reports', icon: Bug },
   { path: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
