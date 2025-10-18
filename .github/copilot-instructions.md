@@ -688,6 +688,7 @@ chore: clean debug console logs from production code
 ```
 
 **Conventional Commit Types**:
+
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `refactor:` - Code restructuring without behavior change
@@ -878,6 +879,7 @@ useEffect(() => {
 ```
 
 **Keyboard Navigation**:
+
 - ESC key closes modals
 - Tab navigation works through all interactive elements
 - Focus traps within modals prevent background interaction
