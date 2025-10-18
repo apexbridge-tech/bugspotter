@@ -677,14 +677,25 @@ export function mainFunction() {
 
 ### Commit Messages
 
-Keep under 60 words, use conventional commits:
+**Keep under 60 words**, use conventional commits format:
 
 ```
 feat: add session replay support with rrweb integration
 fix: remove await on synchronous generateTokens function
 refactor: implement strategy pattern for error handlers
 docs: complete ticket integration section with examples
+chore: clean debug console logs from production code
 ```
+
+**Conventional Commit Types**:
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `refactor:` - Code restructuring without behavior change
+- `docs:` - Documentation updates
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks (dependencies, configs)
+- `perf:` - Performance improvements
+- `style:` - Code style/formatting changes
 
 ### CI/CD
 
@@ -735,8 +746,15 @@ See: `.github/workflows/ci.yml`
 
 - **Error Handling**: `packages/backend/src/api/middleware/error.ts` (strategy pattern)
 - **Authentication**: `packages/backend/src/api/middleware/auth.ts` (dual auth: API keys + JWT)
+- **Audit Middleware**: `packages/backend/src/api/middleware/audit.ts` (automatic activity logging)
 - **Database Client**: `packages/backend/src/db/client.ts` (factory pattern)
-- **Repositories**: `packages/backend/src/db/repositories.ts` (6 repositories, base class)
+- **Repositories**: `packages/backend/src/db/repositories.ts` (7 repositories: Project, User, BugReport, Session, Ticket, ProjectMember, AuditLog)
+
+### API Layer
+
+- **Audit Log Routes**: `packages/backend/src/api/routes/audit-logs.ts` (read-only admin access)
+- **Audit Log Schema**: `packages/backend/src/api/schemas/audit-log-schema.ts` (Fastify validation schemas)
+- **Common Schemas**: `packages/backend/src/api/schemas/common-schema.ts` (reusable pagination, sorting)
 
 ### Storage Layer
 
@@ -748,6 +766,13 @@ See: `.github/workflows/ci.yml`
 ### SDK
 
 - **Sanitizer**: `packages/sdk/src/utils/sanitize.ts` (PII detection, facade pattern)
+- **Session Replay**: `packages/sdk/docs/SESSION_REPLAY.md` (rrweb integration)
+
+### Admin Panel
+
+- **Audit Logs Page**: `apps/admin/src/pages/audit-logs.tsx` (WCAG 2.1 AA compliant, complete accessibility implementation)
+- **Auth Context**: `apps/admin/src/contexts/auth-context.tsx` (memory-only token storage, httpOnly refresh cookies)
+- **API Client**: `apps/admin/src/lib/api-client.tsx` (axios interceptor for token refresh)
 - **Session Replay**: `packages/sdk/docs/SESSION_REPLAY.md` (rrweb integration)
 
 ## Quick Commands
@@ -778,6 +803,87 @@ pnpm format:check     # Check formatting
 **Location**: `apps/admin/` - Self-hosted admin control panel for BugSpotter
 
 **Stack**: React 18.3.1, TypeScript, Vite 5, Tailwind CSS 3, TanStack Query 5, React Router 6
+
+### Accessibility Standards (WCAG 2.1 AA)
+
+All admin UI components must meet WCAG 2.1 AA compliance:
+
+**Required Patterns**:
+
+```tsx
+// ✅ GOOD: Modal with proper ARIA and focus management
+const modalRef = useRef<HTMLDivElement>(null);
+const previousFocusRef = useRef<HTMLElement | null>(null);
+
+useEffect(() => {
+  if (isOpen) {
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    modalRef.current?.focus();
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+    previousFocusRef.current?.focus();
+  }
+}, [isOpen]);
+
+<div
+  ref={modalRef}
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-title"
+  tabIndex={-1}
+>
+  <h2 id="modal-title">Modal Title</h2>
+</div>
+
+// ✅ GOOD: Icon buttons with accessible labels
+<Button
+  onClick={handleAction}
+  aria-label="Close dialog"
+>
+  <X className="w-4 h-4" aria-hidden="true" />
+</Button>
+
+// ✅ GOOD: Form labels with htmlFor
+<label htmlFor="email-input" className="text-sm font-medium">
+  Email Address
+</label>
+<Input id="email-input" type="email" />
+
+// ✅ GOOD: Status icons with screen reader text
+{success ? (
+  <>
+    <CheckCircle className="w-5 h-5 text-green-600" aria-hidden="true" />
+    <span className="sr-only">Success</span>
+  </>
+) : (
+  <>
+    <XCircle className="w-5 h-5 text-red-600" aria-hidden="true" />
+    <span className="sr-only">Failed</span>
+  </>
+)}
+
+// ✅ GOOD: Loading states with live regions
+<div role="status" aria-live="polite">
+  Loading data...
+</div>
+
+// ✅ GOOD: Tables with captions
+<table>
+  <caption className="sr-only">
+    Audit log entries with timestamp, action, and status
+  </caption>
+  <thead>...</thead>
+</table>
+```
+
+**Keyboard Navigation**:
+- ESC key closes modals
+- Tab navigation works through all interactive elements
+- Focus traps within modals prevent background interaction
+- Focus returns to trigger element after modal closes
+
+See: `apps/admin/src/pages/audit-logs.tsx` (complete accessibility implementation)
 
 ### Security Best Practices
 
@@ -921,6 +1027,28 @@ const handleNumberChange = (field, value, min = 0) => {
 />;
 ```
 
+**6. Clean Console Logging**
+
+Remove all debug console.log statements from production code:
+
+```tsx
+// ❌ BAD: Debug logging clutters production
+console.log('🔍 Fetching data...', filters);
+console.log('✅ Data received:', data);
+
+// ✅ GOOD: Remove debug logs, keep only critical errors
+// (No console.log at all in production code)
+
+// ⚠️ ACCEPTABLE: Keep console.error for unexpected failures
+console.error('Failed to load critical resource:', error);
+```
+
+**Rule**: Before committing, search for `console.log|console.warn` and remove debugging statements. Only `console.error` is acceptable for genuine error conditions that need developer attention.
+
+### Error Handling Patterns
+
+**Consistent error handling across admin pages**:
+
 ### Nginx Security Headers
 
 **Modern Security Headers** for `apps/admin/nginx.conf`:
@@ -979,11 +1107,28 @@ Before committing admin panel changes:
    - [ ] No duplicated Card/CardContent boilerplate
    - [ ] Input validation (min/max, type checking)
    - [ ] TypeScript errors resolved
+   - [ ] All debug console.log statements removed
 
 4. **Build**:
    - [ ] `pnpm build` succeeds
    - [ ] No console errors in production build
    - [ ] CSP headers don't block functionality
+
+5. **Accessibility** (WCAG 2.1 AA):
+   - [ ] Form labels with `htmlFor` attributes
+   - [ ] Icon-only buttons have `aria-label`
+   - [ ] Modals have proper ARIA attributes (`role="dialog"`, `aria-modal`, `aria-labelledby`)
+   - [ ] Focus management (trap focus in modals, restore on close)
+   - [ ] Keyboard navigation works (Tab, ESC key)
+   - [ ] Screen reader text for status icons (`<span className="sr-only">`)
+   - [ ] Tables have `<caption>` elements
+   - [ ] Loading states use `role="status"` and `aria-live`
+
+6. **Consistency**:
+   - [ ] Import `handleApiError` from `'../lib/api-client'`
+   - [ ] Error handling with try/catch and user-friendly messages
+   - [ ] Section comments like `{/* Header */}`, `{/* Filters */}`
+   - [ ] Destructure `error` from useQuery hooks
 
 ---
 

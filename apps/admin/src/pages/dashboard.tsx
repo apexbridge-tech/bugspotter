@@ -6,22 +6,10 @@ import { Activity, FolderKanban, Users, AlertCircle } from 'lucide-react';
 export default function DashboardPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['analytics-dashboard'],
-    queryFn: async () => {
-      console.log('🔍 Fetching analytics dashboard...');
-      try {
-        const result = await analyticsService.getDashboard();
-        console.log('✅ Analytics data received:', result);
-        return result;
-      } catch (err) {
-        console.error('❌ Analytics fetch failed:', err);
-        throw err;
-      }
-    },
+    queryFn: () => analyticsService.getDashboard(),
     refetchInterval: 60000, // Refresh every minute
     retry: 1, // Only retry once
   });
-
-  console.log('Dashboard state:', { isLoading, hasData: !!data, hasError: !!error, data });
 
   if (isLoading) {
     return (
@@ -32,7 +20,6 @@ export default function DashboardPage() {
   }
 
   if (error) {
-    console.error('Dashboard error state:', { error, data });
     return (
       <div className="flex items-center justify-center h-64">
         <div className="space-y-2">

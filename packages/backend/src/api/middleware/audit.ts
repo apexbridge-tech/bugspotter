@@ -25,22 +25,37 @@ const AUDIT_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * Extract resource ID from request path and body
  */
 function extractResourceId(request: FastifyRequest): string | null {
-  // Try to extract from URL params (e.g., /api/v1/users/123)
-  const pathParts = request.url.split('/');
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  // 1. Try Fastify route params first (most reliable)
+  const params = request.params as Record<string, unknown> | null;
+  if (params && typeof params === 'object') {
+    // Check common param names
+    const paramId =
+      params.id || params.projectId || params.userId || params.bugId || params.reportId;
+    if (typeof paramId === 'string' && uuidRegex.test(paramId)) {
+      return paramId;
+    }
+  }
+
+  // 2. Try to extract from URL path (e.g., /api/v1/users/123)
+  // Remove query params first
+  const path = request.url.split('?')[0];
+  const pathParts = path.split('/');
   const lastPart = pathParts[pathParts.length - 1];
 
-  // Check if last part looks like a UUID
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(lastPart)) {
     return lastPart;
   }
 
-  // Try to extract from body
+  // 3. Try to extract from body
   const body = request.body as Record<string, unknown> | null;
   if (body && typeof body === 'object') {
-    const id =
-      (body.id as string) || (body.project_id as string) || (body.user_id as string) || null;
-    return id;
+    // Check common body fields with type validation
+    const bodyId = body.id || body.project_id || body.user_id || body.bug_id;
+    if (typeof bodyId === 'string' && uuidRegex.test(bodyId)) {
+      return bodyId;
+    }
   }
 
   return null;

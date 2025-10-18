@@ -31,14 +31,10 @@ export default function LoginPage() {
     } catch (error) {
       // If setup status endpoint doesn't exist or returns error,
       // assume setup is needed
-      if (import.meta.env.DEV) {
-        console.warn('Setup status check failed:', error);
-      }
       const errorMessage = handleApiError(error);
       if (!errorMessage.includes('not found') && !errorMessage.includes('404')) {
         // Real error (not just "not found"), but continue to login
         // User can try to login and see what happens
-        console.error('Setup status check error:', errorMessage);
       }
     } finally {
       setIsCheckingSetup(false);

@@ -98,7 +98,6 @@ export default function SetupWizard() {
       // Navigate using React Router
       navigate('/health');
     } catch (error) {
-      console.error('❌ Setup failed:', error);
       toast.error(handleApiError(error));
     } finally {
       setIsLoading(false);

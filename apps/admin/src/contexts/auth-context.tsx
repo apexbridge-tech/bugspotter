@@ -35,12 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // On mount, try to restore session using refresh token
     const storedUser = sessionStorage.getItem('user');
 
-    console.log('🔍 Checking for stored user:', storedUser);
-
     if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
       try {
         const userData = JSON.parse(storedUser);
-        console.log('✅ Found user in sessionStorage:', userData);
 
         // Proactively refresh access token using httpOnly refresh cookie
         // CRITICAL: Set user AFTER token refresh to prevent race condition
@@ -59,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .then((data) => {
             const newAccessToken = data.data.access_token;
             if (newAccessToken) {
-              console.log('✅ Access token refreshed on page load');
               setAccessToken(newAccessToken);
               // Now set user to trigger isAuthenticated = true
               setUser(userData);
@@ -83,7 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     } else {
-      console.log('⚠️ No valid user in sessionStorage');
       setIsLoading(false);
     }
   }, [navigate]);
@@ -94,8 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userData: User,
     onComplete?: () => void
   ) => {
-    console.log('🔐 Login called with user:', userData);
-
     // Store access token in memory only (XSS protection)
     setAccessToken(accessToken);
 
@@ -103,7 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Less risk than localStorage, but still consider moving to memory-only in future
     if (userData) {
       const userJson = JSON.stringify(userData);
-      console.log('💾 Storing user in sessionStorage:', userJson);
       sessionStorage.setItem('user', userJson);
     }
 
